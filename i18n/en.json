@@ -400,6 +400,16 @@
     "submitted": "Thanks, your review has been submitted",
     "reputationTitle": "Overall Rating"
   },
+  "profile": {
+    "verifiedBadge": "Verified Account"
+  },
+  "killSwitch": {
+    "title": "SITE LOCKED",
+    "hint": "This site has been temporarily disabled. Only the site owner can unlock it.",
+    "unlock": "Unlock",
+    "notOwner": "Only the owner account can unlock this.",
+    "confirmActivate": "This will lock the ENTIRE site for every visitor immediately. Are you absolutely sure?"
+  },
   "comments": {
     "title": "Comments",
     "placeholder": "Write a comment about this product...",
@@ -462,6 +472,7 @@
     "admins": "Admins",
     "addAdmin": "Add Admin",
     "addAdminByEmail": "Enter a registered user's email to promote them to admin",
+    "sectionsLabel": "Sections this admin can access",
     "emailPlaceholder": "example@email.com",
     "add": "Add",
     "revokeAdmin": "Revoke Admin Access",
@@ -528,7 +539,12 @@
   "teamChat": {
     "hint": "A private room shared by every admin account — no regular user can ever reach it.",
     "attach": "Attach image",
-    "sendFailed": "Couldn't send the message, try again"
+    "sendFailed": "Couldn't send the message, try again",
+    "recordVoice": "Record a voice note",
+    "micDenied": "Couldn't access the microphone.",
+    "editFailed": "Couldn't edit this message (it may be too old).",
+    "confirmDelete": "Delete this message?",
+    "deleteFailed": "Couldn't delete this message (it may be too old)."
   },
   "broadcast": {
     "hint": "Send a notification that reaches every registered user on the platform instantly.",
@@ -559,7 +575,9 @@
     "accountReactivated": { "title": "Your account was reactivated", "body": "You can now use your account normally again" },
     "newReview": { "title": "New review", "body": "{name} left you a review" },
     "offerCancelled": { "title": "Offer cancelled", "body": "{name} cancelled the offer" },
-    "adminMessage": { "title": "Message from Waraqat Shajar", "body": "{text}" }
+    "adminMessage": { "title": "Message from Waraqat Shajar", "body": "{text}" },
+    "productAddedToCart": { "title": "Your product was added to a cart", "body": "{name} added {product} to their cart" },
+    "newProductComment": { "title": "New comment", "body": "{name} commented on your product" }
   },
   "ads": {
     "title": "Ad Management",
@@ -572,6 +590,13 @@
     "save": "Save Ad",
     "delete": "Delete",
     "noAds": "No ads added",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "noAdsInPlacement": "No ads in this placement yet.",
+    "addAdToPlacement": "Add ad here",
+    "cancel": "Cancel",
+    "confirmDelete": "Delete this ad?",
+    "edit": "Edit",
     "placementHomeTop": "Homepage - Top",
     "placementHomeMid": "Homepage - Middle",
     "placementHomeBottom": "Homepage - Bottom",
@@ -605,6 +630,7 @@
     "widgetIconTitle": "Floating Contact Button & Notification Icon",
     "widgetIconHint": "The image shown inside the floating button and the round badge on toast notifications — leave blank to reuse the main logo.",
     "colorTitle": "Brand Color",
+    "cursorSizeTitle": "Cursor Size",
     "contentTitle": "Homepage Text",
     "fieldHeroBadge": "Hero badge text",
     "fieldHeroHeadline": "Hero headline",
@@ -646,7 +672,8 @@
     "customLabel": "Custom",
     "deleteCategory": "Delete",
     "addCategoryTitle": "Add a Category",
-    "confirmDeleteCategory": "Delete this category? Products already using it will keep it, but it won't be addable to new ones."
+    "confirmDeleteCategory": "Delete this category? Products already using it will keep it, but it won't be addable to new ones.",
+    "categoryIdCollision": "A category with this English name (or a very similar one) already exists. Choose a different English name."
   },
   "accountStatus": {
     "suspendedTitle": "Your account is temporarily suspended",

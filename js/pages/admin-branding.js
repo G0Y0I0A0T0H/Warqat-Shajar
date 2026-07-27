@@ -3,7 +3,7 @@ import { guardAdmin } from "../admin-shell.js";
 import { t, getLocale, onLocaleChange } from "../i18n.js";
 import { SiteSettings } from "../firebase.js";
 import { CATEGORIES, CATEGORY_IMAGES } from "../constants.js";
-import { btnClass, badgeClass, icon, renderImageInput, showMessage } from "../ui.js";
+import { btnClass, badgeClass, icon, renderImageInput, showMessage, safeUrl, escapeHtml } from "../ui.js";
 
 let contentEl;
 let siteImages = { heroImages: [], categoryImages: {}, logoUrl: null, widgetIconUrl: null };
@@ -44,7 +44,7 @@ function render() {
     <h2 class="heading" style="font-size:1.1rem;margin-top:1.5rem">${t("branding.logoTitle", "Logo")}</h2>
     <div class="card" style="padding:1.5rem;margin-top:0.75rem">
       <div style="display:flex;align-items:center;gap:1rem;margin-bottom:0.75rem">
-        <img src="${siteImages.logoUrl || "images/logo-icon.png"}" alt="" style="width:3rem;height:3rem;object-fit:contain">
+        <img src="${safeUrl(siteImages.logoUrl) || "images/logo-icon.png"}" alt="" style="width:3rem;height:3rem;object-fit:contain">
       </div>
       <div id="logo-input-mount"></div>
       <button type="button" class="${btnClass("default", "sm")}" id="save-logo-btn" style="margin-top:0.75rem">${t("branding.saveChanges", "Save")}</button>
@@ -54,7 +54,7 @@ function render() {
     <p class="text-muted" style="font-size:0.8rem">${t("branding.widgetIconHint")}</p>
     <div class="card" style="padding:1.5rem;margin-top:0.75rem">
       <div style="display:flex;align-items:center;gap:1rem;margin-bottom:0.75rem">
-        <img src="${siteImages.widgetIconUrl || siteImages.logoUrl || "images/logo-icon.png"}" alt="" style="width:3rem;height:3rem;object-fit:contain">
+        <img src="${safeUrl(siteImages.widgetIconUrl) || safeUrl(siteImages.logoUrl) || "images/logo-icon.png"}" alt="" style="width:3rem;height:3rem;object-fit:contain">
       </div>
       <div id="widget-icon-input-mount"></div>
       <button type="button" class="${btnClass("default", "sm")}" id="save-widget-icon-btn" style="margin-top:0.75rem">${t("branding.saveChanges", "Save")}</button>
@@ -65,6 +65,14 @@ function render() {
       <input type="color" id="brand-color-input" value="${siteTheme.primaryColor || "#2e7d32"}" style="width:3rem;height:2.5rem;border:none;border-radius:var(--radius-md);cursor:pointer">
       <button type="button" class="${btnClass("default", "sm")}" id="save-color-btn">${t("branding.saveChanges", "Save")}</button>
       <span id="color-saved" class="success-text" style="display:none">${t("branding.saved")}</span>
+    </div>
+
+    <h2 class="heading" style="font-size:1.1rem;margin-top:2rem">${t("branding.cursorSizeTitle", "Cursor Size")}</h2>
+    <div class="card" style="padding:1.5rem;margin-top:0.75rem;display:flex;align-items:center;gap:1rem">
+      <input type="range" id="cursor-size-input" min="24" max="72" step="2" value="${siteTheme.cursorSize || 40}" style="flex:1;max-width:16rem">
+      <span id="cursor-size-value" class="text-muted" style="min-width:3rem">${siteTheme.cursorSize || 40}px</span>
+      <button type="button" class="${btnClass("default", "sm")}" id="save-cursor-size-btn">${t("branding.saveChanges", "Save")}</button>
+      <span id="cursor-size-saved" class="success-text" style="display:none">${t("branding.saved")}</span>
     </div>
 
     <h2 class="heading" style="font-size:1.1rem;margin-top:2rem">${t("branding.contentTitle", "Homepage Text")}</h2>
@@ -150,7 +158,7 @@ function render() {
         .map(
           (url, i) => `
         <div style="position:relative;width:8rem;height:5rem;border-radius:var(--radius-lg);overflow:hidden;background:var(--muted)">
-          <img src="${url}" alt="" style="width:100%;height:100%;object-fit:cover">
+          <img src="${safeUrl(url)}" alt="" style="width:100%;height:100%;object-fit:cover">
           <button type="button" class="btn btn-destructive btn-icon-sm" data-remove-hero="${i}" style="position:absolute;top:2px;inset-inline-end:2px;width:1.5rem;height:1.5rem;padding:0" aria-label="${t("branding.removeImage")}">${icon("x")}</button>
         </div>
       `,
@@ -168,7 +176,7 @@ function render() {
         const current = siteImages.categoryImages[c] || CATEGORY_IMAGES[c];
         return `
         <div class="list-row">
-          <img src="${current}" alt="" style="width:3.5rem;height:3.5rem;object-fit:cover;border-radius:var(--radius-lg);flex-shrink:0">
+          <img src="${safeUrl(current)}" alt="" style="width:3.5rem;height:3.5rem;object-fit:cover;border-radius:var(--radius-lg);flex-shrink:0">
           <div class="list-row-main">
             <div style="display:flex;align-items:center;gap:0.4rem">
               <span style="font-weight:600">${t(`categories.${c}`)}</span>
@@ -186,10 +194,10 @@ function render() {
           const isHidden = (categoriesConfig.hidden || []).includes(c.id);
           return `
         <div class="list-row">
-          <img src="${c.imageUrl || ""}" alt="" style="width:3.5rem;height:3.5rem;object-fit:cover;border-radius:var(--radius-lg);flex-shrink:0;background:var(--muted)">
+          <img src="${safeUrl(c.imageUrl)}" alt="" style="width:3.5rem;height:3.5rem;object-fit:cover;border-radius:var(--radius-lg);flex-shrink:0;background:var(--muted)">
           <div class="list-row-main">
             <div style="display:flex;align-items:center;gap:0.4rem">
-              <span style="font-weight:600">${c[getLocale()] || c.en}</span>
+              <span style="font-weight:600">${escapeHtml(c[getLocale()] || c.en)}</span>
               <span class="${badgeClass("outline")}">${t("branding.customLabel", "Custom")}</span>
               ${isHidden ? `<span class="${badgeClass("secondary")}">${t("branding.hiddenLabel", "Hidden")}</span>` : ""}
             </div>
@@ -240,6 +248,19 @@ function render() {
     const color = contentEl.querySelector("#brand-color-input").value;
     await SiteSettings.updateSiteTheme(color);
     const saved = contentEl.querySelector("#color-saved");
+    saved.style.display = "inline";
+    setTimeout(() => (saved.style.display = "none"), 2500);
+  });
+
+  // Cursor size
+  const cursorSizeInput = contentEl.querySelector("#cursor-size-input");
+  const cursorSizeValue = contentEl.querySelector("#cursor-size-value");
+  cursorSizeInput.addEventListener("input", () => {
+    cursorSizeValue.textContent = cursorSizeInput.value + "px";
+  });
+  contentEl.querySelector("#save-cursor-size-btn").addEventListener("click", async () => {
+    await SiteSettings.updateCursorSize(Number(cursorSizeInput.value));
+    const saved = contentEl.querySelector("#cursor-size-saved");
     saved.style.display = "inline";
     setTimeout(() => (saved.style.display = "none"), 2500);
   });
@@ -390,7 +411,15 @@ function render() {
       showMessage(errorEl, t("products.required"));
       return;
     }
-    await SiteSettings.addCustomCategory({ ar, en, imageUrl: newCategoryImageInput.getValue() });
+    try {
+      await SiteSettings.addCustomCategory({ ar, en, imageUrl: newCategoryImageInput.getValue() });
+    } catch (err) {
+      if (err.message.startsWith("category-id-collision")) {
+        showMessage(errorEl, t("branding.categoryIdCollision", "A category with this English name (or a very similar one) already exists. Choose a different English name."));
+      } else {
+        showMessage(errorEl, err.message);
+      }
+    }
   });
 }
 

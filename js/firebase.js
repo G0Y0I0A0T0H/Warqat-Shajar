@@ -38,6 +38,7 @@ import {
   getCountFromServer,
   Timestamp,
   writeBatch,
+  deleteField,
 } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
 const firebaseConfig = {
   apiKey: "AIzaSyDxum9DYcroSdHuXWoeCZvfJ1N5tH9WN0g",
@@ -74,6 +75,29 @@ export const Storage = {
     if (folder) formData.append("folder", folder);
 
     const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
+      method: "POST",
+      body: formData,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => null);
+      throw new Error(err?.error?.message || "Upload failed");
+    }
+    const data = await res.json();
+    return data.secure_url;
+  },
+
+  // Voice notes come from MediaRecorder as a Blob (no filename), and audio
+  // isn't a valid file for Cloudinary's /image/upload endpoint -- /auto/upload
+  // lets Cloudinary detect the real resource type instead of hardcoding
+  // /video/upload (where Cloudinary files audio-only clips).
+  async uploadAudio(path, blob) {
+    const folder = path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : undefined;
+    const formData = new FormData();
+    formData.append("file", blob, "voice-note.webm");
+    formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+    if (folder) formData.append("folder", folder);
+
+    const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/auto/upload`, {
       method: "POST",
       body: formData,
     });
@@ -192,6 +216,9 @@ export const Profile = {
       suspendedUntil: null,
       violationCount: 0,
     });
+    if (input.accountType === "farmer") {
+      SiteSettings.incrementRegisteredFarmers().catch(() => {});
+    }
   },
 
   async getUserProfile(uid) {
@@ -201,6 +228,13 @@ export const Profile = {
 
   subscribeUserProfile(uid, callback) {
     return onSnapshot(userDocRef(uid), (snap) => callback(snap.exists() ? snap.data() : null));
+  },
+
+  // photoURL is a protected field in firestore.rules -- only the owner
+  // account can actually write it, enforced server-side regardless of
+  // who calls this.
+  async updatePhotoURL(uid, photoURL) {
+    await updateDoc(userDocRef(uid), { photoURL });
   },
 
   // Called every time a user's own client blocks a phone-number-sharing
@@ -290,6 +324,11 @@ export const Products = {
 
   async incrementProductDeals(id) {
     await updateDoc(doc(db, "products", id), { dealsCount: increment(1) });
+  },
+
+  async countActive() {
+    const snap = await getCountFromServer(query(productsCol, where("status", "==", "active")));
+    return snap.data().count;
   },
 };
 
@@ -725,12 +764,21 @@ export const Admin = {
     await setDoc(doc(db, "admins", uid), { email, grantedAt: serverTimestamp() });
   },
 
-  async grantAdmin(uid, email, adminModeCode) {
-    await setDoc(doc(db, "admins", uid), { email, adminModeCode, grantedAt: serverTimestamp() });
+  // adminModeCode lives in its own adminSecrets/{uid} doc, readable only by
+  // that admin (or the owner) -- NOT the admins/{uid} doc, which is read by
+  // any signed-in client (e.g. the public "Contact Us" support-admin
+  // picker). It used to sit on admins/{uid} itself, which meant its
+  // plaintext value was returned to every visitor's network response the
+  // moment listSupportAdmins() ran, regardless of what the UI chose to
+  // display -- a real "excessive data exposure" bug, not just theoretical.
+  async grantAdmin(uid, email, adminModeCode, allowedSections = null) {
+    await setDoc(doc(db, "admins", uid), { email, grantedAt: serverTimestamp(), allowedSections });
+    await setDoc(doc(db, "adminSecrets", uid), { adminModeCode });
   },
 
   async revokeAdmin(uid) {
     await deleteDoc(doc(db, "admins", uid));
+    await deleteDoc(doc(db, "adminSecrets", uid)).catch(() => {});
   },
 
   async listAllAdmins() {
@@ -739,7 +787,10 @@ export const Admin = {
   },
 
   async setAdminModeCode(uid, code) {
-    await updateDoc(doc(db, "admins", uid), { adminModeCode: code });
+    await setDoc(doc(db, "adminSecrets", uid), { adminModeCode: code }, { merge: true });
+    // Clean up the old, insecurely-placed copy the first time this admin
+    // rotates their code post-migration; harmless no-op once it's gone.
+    await updateDoc(doc(db, "admins", uid), { adminModeCode: deleteField() }).catch(() => {});
   },
 
   // Support-chat opt-in: an admin who flips this on shows up as a pickable
@@ -754,14 +805,21 @@ export const Admin = {
   },
 
   async verifyAdminModeCode(uid, code) {
-    const snap = await getDoc(doc(db, "admins", uid));
-    if (!snap.exists()) return false;
-    const stored = snap.data().adminModeCode;
-    return Boolean(stored) && stored === code;
+    const snap = await getDoc(doc(db, "adminSecrets", uid));
+    const stored = snap.exists() ? snap.data().adminModeCode : null;
+    if (stored) return stored === code;
+    // Fallback for any admin who hasn't rotated their code since the
+    // adminSecrets migration -- reads the old (still-supported) location.
+    const oldSnap = await getDoc(doc(db, "admins", uid));
+    return oldSnap.exists() && Boolean(oldSnap.data().adminModeCode) && oldSnap.data().adminModeCode === code;
   },
 
   subscribeIsAdmin(uid, callback) {
-    return onSnapshot(doc(db, "admins", uid), (snap) => callback(snap.exists()));
+    return onSnapshot(doc(db, "admins", uid), (snap) =>
+      // allowedSections is null/undefined for admins granted before this
+      // feature existed -- treated as "full access" (see admin-shell.js).
+      callback(snap.exists(), snap.exists() ? snap.data().allowedSections ?? null : null),
+    );
   },
 
   async listAllUsers() {
@@ -891,7 +949,7 @@ const siteImagesRef = doc(db, "settings", "siteImages");
 const DEFAULT_SITE_CONTENT = { ar: {}, en: {} };
 const siteContentRef = doc(db, "settings", "siteContent");
 
-const DEFAULT_SITE_THEME = { primaryColor: null };
+const DEFAULT_SITE_THEME = { primaryColor: null, cursorSize: null };
 const siteThemeRef = doc(db, "settings", "siteTheme");
 
 const DEFAULT_SOCIAL_LINKS = { links: [], phone: null, whatsapp: null, email: null, policyLink: null };
@@ -902,6 +960,23 @@ const adPlacementsRef = doc(db, "settings", "adPlacements");
 
 const DEFAULT_CATEGORIES_CONFIG = { extra: [], hidden: [] };
 const categoriesConfigRef = doc(db, "settings", "categories");
+
+// Real, publicly-readable counters for the homepage stats strip. Kept as a
+// small standalone doc (instead of scanning the users/products collections
+// live) because `users` reads are locked to self-or-admin, and summing
+// dealsCount across every product client-side on every homepage load would
+// be wasteful -- these are bumped by exactly 1 at the two real events they
+// track, mirroring the existing "bump a counter by 1" rule pattern already
+// used for products.viewsCount/offersCount/dealsCount.
+const DEFAULT_PUBLIC_STATS = { registeredFarmers: 0, completedDeals: 0 };
+const publicStatsRef = doc(db, "settings", "publicStats");
+
+const killSwitchRef = doc(db, "settings", "killSwitch");
+
+// Kept in sync by hand with js/constants.js's CATEGORIES -- not imported
+// directly to avoid a circular import (constants.js already imports
+// SiteSettings from this file).
+const BUILTIN_CATEGORY_IDS = ["vegetables", "fruits", "wheat", "cotton", "barley", "rice", "organic"];
 
 function slugify(name) {
   return (
@@ -966,6 +1041,10 @@ export const SiteSettings = {
     await setDoc(siteThemeRef, { primaryColor }, { merge: true });
   },
 
+  async updateCursorSize(cursorSize) {
+    await setDoc(siteThemeRef, { cursorSize }, { merge: true });
+  },
+
   subscribeSocialLinks(callback) {
     return onSnapshot(
       socialLinksRef,
@@ -1019,7 +1098,13 @@ export const SiteSettings = {
   async addCustomCategory({ ar, en, imageUrl }) {
     const config = await SiteSettings.getCategoriesConfigOnce();
     const id = slugify(en);
-    const next = [...config.extra.filter((c) => c.id !== id), { id, ar, en, imageUrl: imageUrl || null }];
+    if (BUILTIN_CATEGORY_IDS.includes(id)) {
+      throw new Error(`category-id-collision-builtin:${id}`);
+    }
+    if (config.extra.some((c) => c.id === id)) {
+      throw new Error(`category-id-collision-existing:${id}`);
+    }
+    const next = [...config.extra, { id, ar, en, imageUrl: imageUrl || null }];
     await setDoc(categoriesConfigRef, { extra: next }, { merge: true });
     return id;
   },
@@ -1035,6 +1120,32 @@ export const SiteSettings = {
       ? [...new Set([...config.hidden, id])]
       : config.hidden.filter((h) => h !== id);
     await setDoc(categoriesConfigRef, { hidden: nextHidden }, { merge: true });
+  },
+
+  async getPublicStatsOnce() {
+    const snap = await getDoc(publicStatsRef);
+    return snap.exists() ? { ...DEFAULT_PUBLIC_STATS, ...snap.data() } : DEFAULT_PUBLIC_STATS;
+  },
+
+  async incrementRegisteredFarmers() {
+    await setDoc(publicStatsRef, { registeredFarmers: increment(1) }, { merge: true });
+  },
+
+  async incrementCompletedDeals() {
+    await setDoc(publicStatsRef, { completedDeals: increment(1) }, { merge: true });
+  },
+
+  // Owner-only in firestore.rules regardless of who calls this client-side.
+  subscribeKillSwitch(callback) {
+    return onSnapshot(
+      killSwitchRef,
+      (snap) => callback(snap.exists() && snap.data().active === true),
+      () => callback(false),
+    );
+  },
+
+  async setKillSwitch(active) {
+    await setDoc(killSwitchRef, { active }, { merge: true });
   },
 };
 
@@ -1060,6 +1171,25 @@ export const AdminChat = {
   subscribeMessages(callback) {
     const q = query(adminChatsCol, orderBy("createdAt", "asc"));
     return onSnapshot(q, (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }))));
+  },
+
+  async updateMessage(id, text) {
+    await updateDoc(doc(db, "adminChats", id), { text });
+  },
+
+  async deleteMessage(id) {
+    await deleteDoc(doc(db, "adminChats", id));
+  },
+
+  // Best-effort client-side daily cleanup: no Cloud Functions/cron exist in
+  // this project, so this just runs whenever any admin has the team chat
+  // page open, deleting anything older than 24h. Failures (e.g. a message
+  // just outside another admin's own edit window mid-delete) are swallowed
+  // per-item so one failure doesn't block the rest.
+  async purgeOldMessages() {
+    const cutoff = Timestamp.fromDate(new Date(Date.now() - 24 * 60 * 60 * 1000));
+    const snap = await getDocs(query(adminChatsCol, where("createdAt", "<", cutoff)));
+    await Promise.all(snap.docs.map((d) => deleteDoc(d.ref).catch(() => {})));
   },
 };
 

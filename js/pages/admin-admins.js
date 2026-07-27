@@ -1,9 +1,13 @@
 import { initLayout } from "../layout.js";
-import { guardAdmin } from "../admin-shell.js";
+import { guardAdmin, NAV_ITEMS } from "../admin-shell.js";
 import { t, onLocaleChange } from "../i18n.js";
 import { Admin, OWNER_EMAIL, auth } from "../firebase.js";
 import { authState } from "../state.js";
 import { btnClass, showMessage } from "../ui.js";
+
+// Every section an owner can grant/withhold, except "admins" itself --
+// managing admins is already owner-only regardless of this list.
+const GRANTABLE_SECTIONS = NAV_ITEMS.filter((item) => item.key !== "admins");
 
 let contentEl;
 let admins = [];
@@ -22,6 +26,9 @@ function render() {
   contentEl.innerHTML = `
     <h1 class="heading" style="font-size:1.5rem">${t("admin.admins")}</h1>
 
+    ${
+      authState.isOwner
+        ? `
     <form id="add-admin-form" class="form-stack card" style="padding:1.5rem;margin-top:1rem">
       <h2 class="card-title" style="font-size:1rem">${t("admin.addAdmin")}</h2>
       <p class="text-muted" style="font-size:0.8rem">${t("admin.addAdminByEmail")}</p>
@@ -33,9 +40,25 @@ function render() {
         <label class="label">${t("admin.initialAdminModePassword")}</label>
         <input class="input force-ltr" id="new-admin-code" type="password" dir="ltr">
       </div>
+      <div class="field">
+        <label class="label">${t("admin.sectionsLabel", "Sections this admin can access")}</label>
+        <div style="display:flex;flex-wrap:wrap;gap:0.75rem">
+          ${GRANTABLE_SECTIONS.map(
+            (item) => `
+            <label style="display:flex;align-items:center;gap:0.35rem;font-size:0.85rem">
+              <input type="checkbox" class="new-admin-section" value="${item.key}" checked>
+              ${t(`admin.${item.key}`)}
+            </label>
+          `,
+          ).join("")}
+        </div>
+      </div>
       <p id="add-admin-error" class="error-text" style="display:none"></p>
       <button type="submit" class="${btnClass("default")}" style="align-self:flex-start">${t("admin.add")}</button>
     </form>
+    `
+        : ""
+    }
 
     <form id="change-code-form" class="form-stack card" style="padding:1.5rem;margin-top:1rem">
       <h2 class="card-title" style="font-size:1rem">${t("admin.changeMyAdminModePassword")}</h2>
@@ -77,18 +100,19 @@ function render() {
     </div>
   `;
 
-  contentEl.querySelector("#add-admin-form").addEventListener("submit", async (e) => {
+  contentEl.querySelector("#add-admin-form")?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const errorEl = contentEl.querySelector("#add-admin-error");
     showMessage(errorEl, "");
     const email = contentEl.querySelector("#new-admin-email").value.trim();
     const code = contentEl.querySelector("#new-admin-code").value;
+    const allowedSections = [...contentEl.querySelectorAll(".new-admin-section:checked")].map((cb) => cb.value);
     const target = allUsers.find((u) => u.email === email);
     if (!target) {
       showMessage(errorEl, t("admin.userNotFound"));
       return;
     }
-    await Admin.grantAdmin(target.uid, email, code);
+    await Admin.grantAdmin(target.uid, email, code, allowedSections);
     await reload();
   });
 

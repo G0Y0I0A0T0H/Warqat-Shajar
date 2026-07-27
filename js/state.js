@@ -11,6 +11,9 @@ export const authState = {
   isAdmin: false,
   isOwner: false,
   isAdminModeActive: false,
+  // null = full access (owner, or an admin granted before this feature
+  // existed); an array restricts the admin sidebar to those nav keys.
+  allowedSections: null,
   loading: true,
 };
 
@@ -125,8 +128,9 @@ Auth.onChange((nextUser) => {
     },
   );
 
-  unsubAdmin = Admin.subscribeIsAdmin(nextUser.uid, (isAdmin) => {
+  unsubAdmin = Admin.subscribeIsAdmin(nextUser.uid, (isAdmin, allowedSections) => {
     authState.isAdmin = isAdmin;
+    authState.allowedSections = allowedSections;
     recomputeAdminMode(adminModeUnlocked);
     if (isAdmin && !bootstrapAttempted) {
       // no-op: owner bootstrap only fires when NOT yet admin (see below)

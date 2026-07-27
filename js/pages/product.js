@@ -1,8 +1,8 @@
 import { initLayout } from "../layout.js";
 import { t, getLocale, onLocaleChange } from "../i18n.js";
-import { Products, Chat, Ads } from "../firebase.js";
+import { Products, Chat, Ads, Notifications } from "../firebase.js";
 import { governorateLabel, categoryLabelById, onCategoriesChange, computeFreshness } from "../constants.js";
-import { renderAdSlot, favoriteButtonHTML, wireFavoriteButtons, initReportDialog, initProductComments, icon, showMessage } from "../ui.js";
+import { renderAdSlot, favoriteButtonHTML, wireFavoriteButtons, initReportDialog, initProductComments, icon, showMessage, escapeHtml, safeUrl } from "../ui.js";
 import { authState, subscribe, addToCart } from "../state.js";
 
 const params = new URLSearchParams(location.search);
@@ -21,7 +21,7 @@ function renderGallery() {
   return `
     <div class="product-gallery-zoom-outer">
       <div class="product-gallery-zoom" id="gallery-zoom-box">
-        <img src="${photos[activePhotoIndex]}" alt="" id="gallery-hero-img">
+        <img src="${safeUrl(photos[activePhotoIndex])}" alt="" id="gallery-hero-img">
         <div class="gallery-zoom-lens" id="gallery-zoom-lens"></div>
         ${
           photos.length > 1
@@ -41,7 +41,7 @@ function renderGallery() {
           ${photos
             .map(
               (url, i) =>
-                `<button type="button" class="product-gallery-thumb ${i === activePhotoIndex ? "is-active" : ""}" data-thumb="${i}"><img src="${url}" alt=""></button>`,
+                `<button type="button" class="product-gallery-thumb ${i === activePhotoIndex ? "is-active" : ""}" data-thumb="${i}"><img src="${safeUrl(url)}" alt=""></button>`,
             )
             .join("")}
         </div>
@@ -103,7 +103,7 @@ function render() {
   detailEl.innerHTML = `
     <div class="product-gallery">
       ${renderGallery()}
-      ${product.videoUrl ? `<video src="${product.videoUrl}" controls style="grid-column:span 3;border-radius:var(--radius-lg);width:100%"></video>` : ""}
+      ${safeUrl(product.videoUrl) ? `<video src="${safeUrl(product.videoUrl)}" controls style="grid-column:span 3;border-radius:var(--radius-lg);width:100%"></video>` : ""}
     </div>
     <div>
       <div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem">
@@ -143,8 +143,8 @@ function render() {
               <p id="cart-error" class="error-text" style="display:none;margin-top:0.5rem"></p>`
         }
       </div>
-      <p style="margin-top:1rem;white-space:pre-line">${product.description}</p>
-      <div class="text-muted" style="margin-top:1rem;font-size:0.875rem">${product.ownerName}</div>
+      <p style="margin-top:1rem;white-space:pre-line">${escapeHtml(product.description)}</p>
+      <div class="text-muted" style="margin-top:1rem;font-size:0.875rem">${escapeHtml(product.ownerName)}</div>
       ${
         isOwner
           ? ""
@@ -287,6 +287,13 @@ async function handleAddToCart(quantity) {
   const qty = quantity || product.minOrderQuantity;
   try {
     await addToCart(product.id, qty);
+    if (product.ownerId && product.ownerId !== authState.user.uid) {
+      Notifications.create({
+        uid: product.ownerId,
+        key: "productAddedToCart",
+        params: { name: authState.profile.fullName, product: categoryLabelById(product.category, getLocale()) },
+      });
+    }
     const btn = document.getElementById("add-to-cart-btn");
     if (btn) {
       const original = btn.innerHTML;
@@ -311,7 +318,7 @@ async function main() {
 
   renderAdSlot(document.getElementById("ad-product-detail"), "product-detail", Ads);
   renderAdSlot(document.getElementById("ad-product-detail-sidebar"), "product-detail-sidebar", Ads, 160, 600);
-  initProductComments(document.getElementById("comments-section"), productId);
+  initProductComments(document.getElementById("comments-section"), productId, product.ownerId);
 
   subscribe(render);
   onLocaleChange(render);

@@ -3,11 +3,15 @@ import { guardAdmin } from "../admin-shell.js";
 import { t, onLocaleChange } from "../i18n.js";
 import { Ads, SiteSettings } from "../firebase.js";
 import { AD_PLACEMENTS } from "../constants.js";
-import { badgeClass, btnClass, showMessage, renderImageInput } from "../ui.js";
+import { badgeClass, btnClass, showMessage, renderImageInput, safeUrl, escapeHtml, icon } from "../ui.js";
 
 let contentEl;
 let ads = [];
 let placements = {};
+let openAddForm = null; // placement key whose "add ad" form is currently open
+let editingAdId = null; // ad id currently shown in edit mode
+let addImageInput = null;
+let editImageInput = null;
 
 const PLACEMENT_KEY = {
   "home-top": "ads.placementHomeTop",
@@ -39,122 +43,152 @@ const PLACEMENT_DESC_FALLBACK = {
   "product-detail-sidebar": "Product detail page, tall skyscraper beside the content (desktop only).",
 };
 
-let photoInput;
+function adsForPlacement(p) {
+  return ads.filter((a) => a.placement === p).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+}
+
+function renderAdRow(ad, index, total) {
+  if (ad.id === editingAdId) {
+    return `
+      <div class="card" style="padding:1rem" data-ad-edit-row="${ad.id}">
+        <div class="field">
+          <label class="label">${t("ads.imageLabel")}</label>
+          <div id="edit-image-mount-${ad.id}"></div>
+        </div>
+        <div class="field">
+          <label class="label">${t("ads.linkLabel")}</label>
+          <input class="input force-ltr" dir="ltr" id="edit-link-${ad.id}" value="${escapeHtml(ad.linkUrl)}">
+        </div>
+        <p class="error-text" id="edit-error-${ad.id}" style="display:none"></p>
+        <div style="display:flex;gap:0.5rem;margin-top:0.5rem">
+          <button type="button" class="${btnClass("default", "sm")}" data-save-edit="${ad.id}">${t("ads.save")}</button>
+          <button type="button" class="${btnClass("ghost", "sm")}" data-cancel-edit="${ad.id}">${t("ads.cancel", "Cancel")}</button>
+        </div>
+      </div>
+    `;
+  }
+  return `
+    <div class="list-row" data-ad-row="${ad.id}">
+      <div style="display:flex;flex-direction:column;gap:0.1rem">
+        <button type="button" class="${btnClass("ghost", "icon-sm")}" data-move-up="${ad.id}" ${index === 0 ? "disabled" : ""} aria-label="${t("ads.moveUp", "Move up")}">${icon("chevron-down")}</button>
+        <button type="button" class="${btnClass("ghost", "icon-sm")}" data-move-down="${ad.id}" ${index === total - 1 ? "disabled" : ""} aria-label="${t("ads.moveDown", "Move down")}" style="transform:rotate(180deg)">${icon("chevron-down")}</button>
+      </div>
+      <img src="${safeUrl(ad.imageUrl)}" alt="" style="width:6rem;height:3rem;object-fit:cover;border-radius:var(--radius-md);flex-shrink:0">
+      <div class="list-row-main">
+        <a href="${safeUrl(ad.linkUrl)}" target="_blank" rel="noopener noreferrer" class="force-ltr" style="font-size:0.75rem;color:var(--text-muted);word-break:break-all">${escapeHtml(ad.linkUrl)}</a>
+        <span class="${badgeClass(ad.active ? "default" : "secondary")}">${ad.active ? t("ads.activeLabel") : t("admin.statusSuspended")}</span>
+      </div>
+      <button type="button" class="${btnClass("ghost", "icon-sm")}" data-edit="${ad.id}" aria-label="${t("ads.edit", "Edit")}">${icon("pencil")}</button>
+      <button type="button" class="${btnClass("outline", "sm")}" data-toggle="${ad.id}" data-active="${ad.active}">${ad.active ? t("admin.suspend") : t("ads.activeLabel")}</button>
+      <button type="button" class="${btnClass("destructive", "sm")}" data-delete="${ad.id}">${t("ads.delete")}</button>
+    </div>
+  `;
+}
+
+function renderPlacementCard(p) {
+  const enabled = placements[p] !== false;
+  const placementAds = adsForPlacement(p);
+  const isAddOpen = openAddForm === p;
+  return `
+    <div class="card" style="padding:1.5rem;margin-top:1rem">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap">
+        <div>
+          <h2 class="card-title" style="font-size:1rem">${t(PLACEMENT_KEY[p])}</h2>
+          <p class="text-muted" style="font-size:0.8rem;margin-top:0.15rem">${t(PLACEMENT_DESC_KEY[p], PLACEMENT_DESC_FALLBACK[p])}</p>
+        </div>
+        <button type="button" class="${btnClass(enabled ? "outline" : "default", "sm")}" data-toggle-placement="${p}" data-enabled="${enabled}">
+          ${enabled ? t("ads.disablePlacement", "Disable") : t("ads.enablePlacement", "Enable")}
+        </button>
+      </div>
+      <div style="margin-top:1rem;display:flex;flex-direction:column;gap:0.5rem">
+        ${
+          placementAds.length
+            ? placementAds.map((ad, i) => renderAdRow(ad, i, placementAds.length)).join("")
+            : `<p class="empty-state" style="padding:0.5rem 0">${t("ads.noAdsInPlacement", "No ads in this placement yet.")}</p>`
+        }
+      </div>
+      ${
+        isAddOpen
+          ? `
+        <form class="form-stack" data-add-form="${p}" style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)">
+          <div class="field"><label class="label">${t("ads.imageLabel")}</label><div id="add-image-mount-${p}"></div></div>
+          <div class="field"><label class="label">${t("ads.linkLabel")}</label><input class="input force-ltr" dir="ltr" id="add-link-${p}" placeholder="https://..."></div>
+          <p class="error-text" id="add-error-${p}" style="display:none"></p>
+          <div style="display:flex;gap:0.5rem">
+            <button type="submit" class="${btnClass("default", "sm")}">${t("ads.save")}</button>
+            <button type="button" class="${btnClass("ghost", "sm")}" data-cancel-add="${p}">${t("ads.cancel", "Cancel")}</button>
+          </div>
+        </form>
+      `
+          : `<button type="button" class="${btnClass("outline", "sm")}" style="margin-top:1rem" data-open-add="${p}">${icon("plus")} ${t("ads.addAdToPlacement", "Add ad here")}</button>`
+      }
+    </div>
+  `;
+}
+
+async function swapOrder(adA, adB) {
+  await Promise.all([
+    Ads.updateAd(adA.id, { order: adB.order ?? 0 }),
+    Ads.updateAd(adB.id, { order: adA.order ?? 0 }),
+  ]);
+  await reload();
+}
 
 function render() {
   contentEl.innerHTML = `
     <h1 class="heading" style="font-size:1.5rem">${t("ads.title")}</h1>
-
-    <form id="add-ad-form" class="form-stack card" style="padding:1.5rem;margin-top:1rem">
-      <h2 class="card-title" style="font-size:1rem">${t("ads.addAd")}</h2>
-      <div class="field">
-        <label class="label">${t("ads.imageLabel")}</label>
-        <div id="ad-image-input-mount"></div>
-      </div>
-      <div class="field">
-        <label class="label">${t("ads.linkLabel")}</label>
-        <input class="input force-ltr" id="ad-link-url" dir="ltr" placeholder="https://...">
-      </div>
-      <div class="grid-2">
-        <div class="field">
-          <label class="label">${t("ads.placementLabel")}</label>
-          <select class="select" id="ad-placement">
-            ${AD_PLACEMENTS.map((p) => `<option value="${p}">${t(PLACEMENT_KEY[p])}</option>`).join("")}
-          </select>
-          <p class="text-muted" id="ad-placement-desc" style="font-size:0.75rem;margin-top:0.25rem"></p>
-        </div>
-        <div class="field">
-          <label class="label">${t("ads.orderLabel")}</label>
-          <input class="input" id="ad-order" type="number" value="0">
-        </div>
-      </div>
-      <p id="add-ad-error" class="error-text" style="display:none"></p>
-      <button type="submit" class="${btnClass("default")}" style="align-self:flex-start">${t("ads.save")}</button>
-    </form>
-
-    <h2 class="heading" style="font-size:1.1rem;margin-top:2rem">${t("ads.placementsTitle", "Placements")}</h2>
-    <p class="text-muted" style="font-size:0.8rem">${t("ads.placementsHint", "Fully hide a placement — no ad and no placeholder box will show there.")}</p>
-    <div class="card" style="margin-top:0.75rem;padding:0 1rem">
-      ${AD_PLACEMENTS.map((p) => {
-        const enabled = placements[p] !== false;
-        return `
-        <div class="placement-row">
-          <div class="placement-row-main">
-            <div style="font-weight:600">${t(PLACEMENT_KEY[p])}</div>
-            <div class="placement-row-desc">${t(PLACEMENT_DESC_KEY[p], PLACEMENT_DESC_FALLBACK[p])}</div>
-          </div>
-          <button type="button" class="${btnClass(enabled ? "outline" : "default", "sm")}" data-toggle-placement="${p}" data-enabled="${enabled}">
-            ${enabled ? t("ads.disablePlacement", "Disable") : t("ads.enablePlacement", "Enable")}
-          </button>
-        </div>
-      `;
-      }).join("")}
-    </div>
-
-    <div class="card" style="margin-top:1.5rem;padding:0 1rem">
-      ${
-        ads.length === 0
-          ? `<p class="empty-state">${t("ads.noAds")}</p>`
-          : ads
-              .map(
-                (a) => `
-              <div class="list-row">
-                <img src="${a.imageUrl}" alt="" style="width:5rem;height:2.5rem;object-fit:cover;border-radius:var(--radius-md);flex-shrink:0">
-                <div class="list-row-main">
-                  <div style="font-weight:600">${t(PLACEMENT_KEY[a.placement] || "")}</div>
-                  <span class="${badgeClass(a.active ? "default" : "secondary")}">${a.active ? t("ads.activeLabel") : t("admin.statusSuspended")}</span>
-                </div>
-                <button type="button" class="${btnClass("outline", "sm")}" data-toggle="${a.id}" data-active="${a.active}">${a.active ? t("admin.suspend") : t("ads.activeLabel")}</button>
-                <button type="button" class="${btnClass("destructive", "sm")}" data-delete="${a.id}">${t("ads.delete")}</button>
-              </div>
-            `,
-              )
-              .join("")
-      }
-    </div>
+    ${AD_PLACEMENTS.map(renderPlacementCard).join("")}
   `;
-
-  photoInput = renderImageInput(contentEl.querySelector("#ad-image-input-mount"), {
-    uploadPathPrefix: "ads/",
-    accept: "image/*",
-  });
-
-  const placementSelect = contentEl.querySelector("#ad-placement");
-  const placementDescEl = contentEl.querySelector("#ad-placement-desc");
-  function updatePlacementDesc() {
-    placementDescEl.textContent = t(PLACEMENT_DESC_KEY[placementSelect.value], PLACEMENT_DESC_FALLBACK[placementSelect.value]);
-  }
-  placementSelect.addEventListener("change", updatePlacementDesc);
-  updatePlacementDesc();
-
-  contentEl.querySelector("#add-ad-form").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const errorEl = contentEl.querySelector("#add-ad-error");
-    showMessage(errorEl, "");
-    const imageUrl = photoInput.getValue();
-    const linkUrl = contentEl.querySelector("#ad-link-url").value.trim();
-    if (!imageUrl || !linkUrl) {
-      showMessage(errorEl, t("products.required"));
-      return;
-    }
-    try {
-      await Ads.createAd({
-        imageUrl,
-        linkUrl,
-        placement: placementSelect.value,
-        order: Number(contentEl.querySelector("#ad-order").value) || 0,
-        active: true,
-      });
-      await reload();
-    } catch (err) {
-      showMessage(errorEl, err.message);
-    }
-  });
 
   contentEl.querySelectorAll("[data-toggle-placement]").forEach((btn) => {
     btn.addEventListener("click", async () => {
       const enabled = btn.dataset.enabled === "true";
       await SiteSettings.updateAdPlacementEnabled(btn.dataset.togglePlacement, !enabled);
+    });
+  });
+
+  contentEl.querySelectorAll("[data-open-add]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      openAddForm = btn.dataset.openAdd;
+      editingAdId = null;
+      render();
+    });
+  });
+  contentEl.querySelectorAll("[data-cancel-add]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      openAddForm = null;
+      render();
+    });
+  });
+
+  contentEl.querySelectorAll("[data-edit]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      editingAdId = btn.dataset.edit;
+      openAddForm = null;
+      render();
+    });
+  });
+  contentEl.querySelectorAll("[data-cancel-edit]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      editingAdId = null;
+      render();
+    });
+  });
+
+  contentEl.querySelectorAll("[data-move-up]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const ad = ads.find((a) => a.id === btn.dataset.moveUp);
+      const siblings = adsForPlacement(ad.placement);
+      const idx = siblings.findIndex((a) => a.id === ad.id);
+      if (idx > 0) swapOrder(ad, siblings[idx - 1]);
+    });
+  });
+  contentEl.querySelectorAll("[data-move-down]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const ad = ads.find((a) => a.id === btn.dataset.moveDown);
+      const siblings = adsForPlacement(ad.placement);
+      const idx = siblings.findIndex((a) => a.id === ad.id);
+      if (idx < siblings.length - 1) swapOrder(ad, siblings[idx + 1]);
     });
   });
 
@@ -166,10 +200,62 @@ function render() {
   });
   contentEl.querySelectorAll("[data-delete]").forEach((btn) => {
     btn.addEventListener("click", async () => {
+      if (!confirm(t("ads.confirmDelete", "Delete this ad?"))) return;
       await Ads.deleteAd(btn.dataset.delete);
       await reload();
     });
   });
+
+  if (openAddForm) {
+    const mount = contentEl.querySelector(`#add-image-mount-${openAddForm}`);
+    if (mount) addImageInput = renderImageInput(mount, { uploadPathPrefix: "ads/" });
+    contentEl.querySelector(`[data-add-form="${openAddForm}"]`).addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const p = openAddForm;
+      const errorEl = document.getElementById(`add-error-${p}`);
+      showMessage(errorEl, "");
+      const imageUrl = addImageInput.getValue();
+      const linkUrl = document.getElementById(`add-link-${p}`).value.trim();
+      if (!imageUrl || !linkUrl) {
+        showMessage(errorEl, t("products.required"));
+        return;
+      }
+      const existing = adsForPlacement(p);
+      const nextOrder = existing.length ? Math.max(...existing.map((a) => a.order ?? 0)) + 1 : 0;
+      try {
+        await Ads.createAd({ imageUrl, linkUrl, placement: p, order: nextOrder, active: true });
+        openAddForm = null;
+        await reload();
+      } catch (err) {
+        showMessage(errorEl, err.message);
+      }
+    });
+  }
+
+  if (editingAdId) {
+    const ad = ads.find((a) => a.id === editingAdId);
+    if (ad) {
+      const mount = document.getElementById(`edit-image-mount-${ad.id}`);
+      if (mount) editImageInput = renderImageInput(mount, { value: ad.imageUrl, uploadPathPrefix: "ads/" });
+      document.querySelector(`[data-save-edit="${ad.id}"]`).addEventListener("click", async () => {
+        const errorEl = document.getElementById(`edit-error-${ad.id}`);
+        showMessage(errorEl, "");
+        const imageUrl = editImageInput.getValue();
+        const linkUrl = document.getElementById(`edit-link-${ad.id}`).value.trim();
+        if (!imageUrl || !linkUrl) {
+          showMessage(errorEl, t("products.required"));
+          return;
+        }
+        try {
+          await Ads.updateAd(ad.id, { imageUrl, linkUrl });
+          editingAdId = null;
+          await reload();
+        } catch (err) {
+          showMessage(errorEl, err.message);
+        }
+      });
+    }
+  }
 }
 
 async function reload() {

@@ -1,8 +1,8 @@
 import { initLayout } from "../layout.js";
 import { t, getLocale, onLocaleChange } from "../i18n.js";
-import { Reviews } from "../firebase.js";
+import { Reviews, Profile } from "../firebase.js";
 import { governorateLabel, categoryLabelById, onCategoriesChange } from "../constants.js";
-import { renderAvatar, renderStars, badgeClass, icon } from "../ui.js";
+import { renderAvatar, renderStars, badgeClass, icon, escapeHtml, renderImageInput } from "../ui.js";
 import { authState, subscribe } from "../state.js";
 
 const viewEl = document.getElementById("profile-view");
@@ -34,10 +34,14 @@ async function render() {
     <div style="display:flex;align-items:center;gap:1rem">
       ${renderAvatar(profile.fullName, profile.photoURL, "avatar-lg")}
       <div>
-        <h1 class="heading" style="font-size:1.25rem">${profile.fullName}</h1>
+        <h1 class="heading" style="font-size:1.25rem;display:flex;align-items:center;gap:0.35rem">
+          ${escapeHtml(profile.fullName)}
+          ${authState.isOwner ? `<span title="${t("profile.verifiedBadge", "Verified")}" style="color:var(--primary)">${icon("verified")}</span>` : ""}
+        </h1>
         <span class="${badgeClass("secondary")}">${t(`roles.${profile.accountType}`)}</span>
       </div>
     </div>
+    ${authState.isOwner ? `<div id="owner-photo-input-mount" style="margin-top:0.75rem;max-width:22rem"></div>` : ""}
     ${
       rating.count > 0
         ? `<div style="margin-top:1rem">
@@ -68,11 +72,16 @@ async function render() {
             </div>`
           : ""
       }
-      <a href="https://postimages.org/" target="_blank" rel="noopener noreferrer" class="btn btn-outline" style="align-self:flex-start">
-        ${icon("image")} ${getLocale() === "ar" ? "ارفع صورك واحصل على رابط" : "Upload your photos & get a link"}
-      </a>
     </div>
   `;
+
+  if (authState.isOwner) {
+    renderImageInput(viewEl.querySelector("#owner-photo-input-mount"), {
+      value: profile.photoURL || "",
+      uploadPathPrefix: "avatars/",
+      onChange: (url) => Profile.updatePhotoURL(profile.uid, url),
+    });
+  }
 }
 
 async function main() {

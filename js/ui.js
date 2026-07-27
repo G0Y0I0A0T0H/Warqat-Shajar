@@ -4,7 +4,7 @@
 // render helper.
 import { authState, favoritesState, toggleFavorite } from "./state.js";
 import { t, getLocale } from "./i18n.js";
-import { Reports, Comments, SiteSettings, Storage, PhoneAttempts } from "./firebase.js";
+import { Reports, Comments, SiteSettings, Storage, PhoneAttempts, Notifications } from "./firebase.js";
 import { computeFreshness } from "./constants.js";
 
 export function btnClass(variant = "default", size = "default", extra = "") {
@@ -57,9 +57,9 @@ export function initials(name) {
 
 export function renderAvatar(name, photoURL, sizeClass = "") {
   if (photoURL) {
-    return `<span class="avatar ${sizeClass}"><img src="${photoURL}" alt="${name || ""}"></span>`;
+    return `<span class="avatar ${sizeClass}"><img src="${safeUrl(photoURL)}" alt="${escapeHtml(name || "")}"></span>`;
   }
-  return `<span class="avatar ${sizeClass}">${initials(name)}</span>`;
+  return `<span class="avatar ${sizeClass}">${escapeHtml(initials(name))}</span>`;
 }
 
 // ---------------------------------------------------------------------------
@@ -97,7 +97,8 @@ const ICON_PATHS = {
   link: '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
   facebook: '<path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/>',
   instagram: '<rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/>',
-  whatsapp: '<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>',
+  whatsapp:
+    '<path d="M12 2a10 10 0 0 0-8.5 15.3L2 22l4.9-1.3A10 10 0 1 0 12 2Z"/><path d="M8.5 8.3c.2-.5.5-.5.7-.5h.5c.2 0 .4 0 .6.4.2.5.6 1.6.7 1.7.1.1.1.3 0 .5-.1.2-.2.3-.4.5-.2.2-.4.3-.2.6.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.3 2.5 1.5.3.1.5.1.7-.1.2-.2.8-.9 1-1.2.2-.3.4-.2.6-.1.2.1 1.5.7 1.8.9.3.1.4.2.5.3.1.2.1 1-.3 1.9-.4.9-2.1 1.7-2.9 1.8-.7.1-1.6.2-4.6-1-3.7-1.5-6-5.3-6.2-5.6-.2-.3-1.5-2-1.5-3.8 0-1.8.9-2.6 1.3-3z" fill="currentColor" stroke="none"/>',
   tiktok: '<path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5"/>',
   youtube: '<rect x="2" y="6" width="20" height="12" rx="3"/><path d="M10 9l5 3-5 3z" fill="currentColor" stroke="none"/>',
   moon: '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
@@ -107,6 +108,7 @@ const ICON_PATHS = {
   bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
   mail: '<rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/>',
   "book-open": '<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2Z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7Z"/>',
+  verified: '<circle cx="12" cy="12" r="10"/><path d="m8 12 3 3 5-6"/>',
 };
 
 export function icon(name, extraClass = "") {
@@ -158,9 +160,33 @@ function getToastContainer() {
   return el;
 }
 
+// Every innerHTML template literal in this app interpolates data that can
+// originate from another user (chat text, names, descriptions, comments...).
+// escapeHtml() is the one place that turns that untrusted text into inert
+// text before it's placed in markup -- wrap any user-controlled value with
+// it at the point it's interpolated into an innerHTML string.
+export function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+}
+
+// This app mixes relative internal paths ("dashboard-chat.html?id=..."),
+// absolute external URLs (Cloudinary, social links), and mailto:/tel: --
+// so an allowlist of schemes would break legitimate links. Instead, block
+// the specific executable schemes ("javascript:" etc.) that a user could
+// type into a freeform link field (product video link, ad link, a
+// notification's own link, ...) to run script when the value is placed in
+// src/href. Whitespace/control characters are stripped before the scheme
+// check since browsers tolerate "java\tscript:" as an evasion.
+export function safeUrl(value) {
+  const url = String(value ?? "").trim();
+  const normalized = url.replace(/[\x00-\x20]/g, "").toLowerCase();
+  if (/^(javascript|data|vbscript|file):/.test(normalized)) return "";
+  return escapeHtml(url);
+}
+
 export function interpolate(str, params) {
   if (!params) return str;
-  return Object.entries(params).reduce((s, [k, v]) => s.replaceAll(`{${k}}`, v), str);
+  return Object.entries(params).reduce((s, [k, v]) => s.replaceAll(`{${k}}`, escapeHtml(v)), str);
 }
 
 // Kept in sync with the admin-configurable widget icon (falls back to the
@@ -176,7 +202,7 @@ export function showToast({ key, params, link }) {
   toast.className = "toast is-clickable";
   toast.innerHTML = `
     <div class="toast-leaf-accent"></div>
-    <img src="${toastBadgeUrl}" class="toast-badge" alt="">
+    <img src="${safeUrl(toastBadgeUrl)}" class="toast-badge" alt="">
     <div class="toast-body">
       <div class="toast-title">${t(`notif.${key}.title`)}<span class="toast-dot"></span></div>
       <div class="toast-subtitle">${interpolate(t(`notif.${key}.body`), params)}</div>
@@ -186,7 +212,8 @@ export function showToast({ key, params, link }) {
   // for one, so the whole toast doubles as its own dismiss target (and
   // navigates too, if it has a link) instead.
   toast.addEventListener("click", () => {
-    if (link) location.href = link;
+    const target = safeUrl(link);
+    if (target) location.href = target;
     toast.remove();
   });
   container.appendChild(toast);
@@ -305,7 +332,7 @@ export async function renderAdSlot(containerEl, placement, AdsApi, width = 500, 
   containerEl.style.maxWidth = width + "px";
   containerEl.style.minHeight = height + "px";
   if (ad) {
-    containerEl.innerHTML = `<a class="ad-slot" href="${ad.linkUrl}" target="_blank" rel="noopener noreferrer sponsored"><img src="${ad.imageUrl}" alt="" style="width:100%;height:100%;object-fit:cover"></a>`;
+    containerEl.innerHTML = `<a class="ad-slot" href="${safeUrl(ad.linkUrl) || "#"}" target="_blank" rel="noopener noreferrer sponsored"><img src="${safeUrl(ad.imageUrl)}" alt="" style="width:100%;height:100%;object-fit:cover"></a>`;
   } else {
     containerEl.innerHTML = `<div class="ad-slot ad-slot-placeholder" style="min-height:${height}px" data-ad-slot>${t("ad.label", "Advertisement")} · ${width}&times;${height}</div>`;
   }
@@ -314,7 +341,7 @@ export async function renderAdSlot(containerEl, placement, AdsApi, width = 500, 
 // ---------------------------------------------------------------------------
 // Image input — paste a URL, or upload a file from device (Firebase Storage)
 // ---------------------------------------------------------------------------
-export function renderImageInput(mountEl, { value = "", uploadPathPrefix, accept = "image/*", onChange, hideUrlField = false }) {
+export function renderImageInput(mountEl, { value = "", uploadPathPrefix, accept = "image/*", onChange, hideUrlField = true }) {
   mountEl.innerHTML = `
     <div class="image-input">
       <input class="input force-ltr image-input-url" dir="ltr" placeholder="https://..." value="${value}" style="${hideUrlField ? "display:none" : ""}">
@@ -367,7 +394,7 @@ export function productCardHTML(product, categoryLabel, governorateLabel, perKgL
   return `
     <a class="card card-flush product-card" href="product.html?id=${product.id}">
       <div class="product-card-media">
-        ${photo ? `<img src="${photo}" alt="${categoryLabel}" loading="lazy">` : ""}
+        ${photo ? `<img src="${safeUrl(photo)}" alt="${escapeHtml(categoryLabel)}" loading="lazy">` : ""}
         ${favoriteButtonHTML(product.id)}
       </div>
       <div class="product-card-body">
@@ -474,7 +501,7 @@ export function initReportDialog(mountEl, reportedUid, reportedName) {
 // ---------------------------------------------------------------------------
 // Product comments section
 // ---------------------------------------------------------------------------
-export function initProductComments(containerEl, productId) {
+export function initProductComments(containerEl, productId, ownerId) {
   containerEl.innerHTML = `
     <h2 class="card-title">${t("comments.title")}</h2>
     <div id="comments-form-area"></div>
@@ -518,6 +545,13 @@ export function initProductComments(containerEl, productId) {
           authorPhotoURL: authState.profile.photoURL ?? null,
           text,
         });
+        if (ownerId && ownerId !== authState.user.uid) {
+          Notifications.create({
+            uid: ownerId,
+            key: "newProductComment",
+            params: { name: authState.profile.fullName },
+          });
+        }
         textEl.value = "";
       });
     } else {
@@ -541,10 +575,10 @@ export function initProductComments(containerEl, productId) {
           ${renderAvatar(c.authorName, c.authorPhotoURL)}
           <div class="comment-body">
             <div class="comment-meta">
-              <span class="comment-author">${c.authorName}</span>
+              <span class="comment-author">${escapeHtml(c.authorName)}</span>
               ${canDelete ? `<button type="button" class="btn btn-ghost btn-icon-sm" data-delete-comment="${c.id}" aria-label="${t("comments.delete")}">${icon("trash")}</button>` : ""}
             </div>
-            <p class="comment-text">${c.text}</p>
+            <p class="comment-text">${escapeHtml(c.text)}</p>
             ${date ? `<span class="comment-date">${date}</span>` : ""}
           </div>
         </div>`;

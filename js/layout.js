@@ -3,9 +3,9 @@
 // partials below used when authoring pages); this module only wires
 // behavior against fixed IDs present identically on every page.
 import { authState, favoritesState, cartState, notifState, subscribe, isUserThemeDark, setUserThemeDark } from "./state.js";
-import { Auth, SiteSettings, Notifications } from "./firebase.js";
+import { Auth, SiteSettings, Notifications, OWNER_EMAIL } from "./firebase.js";
 import { t, getLocale, setLocale, initI18n, onLocaleChange } from "./i18n.js";
-import { icon, renderAvatar, wireDropdown, renderIcons, interpolate, showToast, btnClass } from "./ui.js";
+import { icon, renderAvatar, wireDropdown, renderIcons, interpolate, showToast, btnClass, escapeHtml, safeUrl } from "./ui.js";
 
 const SOCIAL_ICON_KEY = {
   facebook: "facebook",
@@ -155,7 +155,7 @@ function renderNotifPanel(panelEl, items) {
           : items
               .map(
                 (n) => `
-            <a href="${n.link || "#"}" class="notif-row ${!n.read ? "is-unread" : ""}" data-notif-id="${n.id}">
+            <a href="${safeUrl(n.link) || "#"}" class="notif-row ${!n.read ? "is-unread" : ""}" data-notif-id="${n.id}">
               <div class="notif-row-title">${t(`notif.${n.key}.title`)}</div>
               <div class="notif-row-body">${interpolate(t(`notif.${n.key}.body`), n.params)}</div>
               <div class="notif-row-time">${formatNotifTime(n.createdAt)}</div>
@@ -269,10 +269,16 @@ async function applyLogo() {
 
 function applyBrandColor() {
   SiteSettings.subscribeSiteTheme((theme) => {
-    if (!theme.primaryColor) return;
-    document.documentElement.style.setProperty("--primary", theme.primaryColor);
-    document.documentElement.style.setProperty("--brand", theme.primaryColor);
-    document.documentElement.style.setProperty("--ring", theme.primaryColor);
+    if (theme.primaryColor) {
+      document.documentElement.style.setProperty("--primary", theme.primaryColor);
+      document.documentElement.style.setProperty("--brand", theme.primaryColor);
+      document.documentElement.style.setProperty("--ring", theme.primaryColor);
+    }
+    if (theme.cursorSize) {
+      document.documentElement.style.setProperty("--leaf-cursor-size", theme.cursorSize + "px");
+      document.documentElement.style.setProperty("--leaf-trail-size", theme.cursorSize * 0.55 + "px");
+      document.documentElement.style.setProperty("--leaf-particle-size", theme.cursorSize * 0.125 + "px");
+    }
   });
 }
 
@@ -290,7 +296,7 @@ function renderFooterSocial() {
         : links
             .map(
               (l) =>
-                `<a class="footer-social-link" href="${l.url}" target="_blank" rel="noopener noreferrer" aria-label="${l.platform}">${icon(SOCIAL_ICON_KEY[l.platform?.toLowerCase()] || "link")}</a>`,
+                `<a class="footer-social-link" href="${safeUrl(l.url)}" target="_blank" rel="noopener noreferrer" aria-label="${escapeHtml(l.platform)}">${icon(SOCIAL_ICON_KEY[l.platform?.toLowerCase()] || "link")}</a>`,
             )
             .join("");
 
@@ -298,7 +304,9 @@ function renderFooterSocial() {
       phoneMount.querySelector("span:last-child").textContent = data.phone;
     }
     if (whatsappMount) {
-      if (data.whatsapp) {
+      // Same number entered in both fields -> show it once (the phone row),
+      // not twice with a second icon.
+      if (data.whatsapp && data.whatsapp !== data.phone) {
         whatsappMount.querySelector("span:last-child").textContent = data.whatsapp;
         whatsappMount.style.display = "flex";
       } else {
@@ -342,7 +350,7 @@ function renderContactWidgetPanel() {
     ${items
       .map(
         (it, i) => `
-      <a class="contact-widget-item" style="--item-delay:${i * 45}ms" href="${it.href}" ${it.external ? 'target="_blank" rel="noopener noreferrer"' : ""}>
+      <a class="contact-widget-item" style="--item-delay:${i * 45}ms" href="${safeUrl(it.href)}" ${it.external ? 'target="_blank" rel="noopener noreferrer"' : ""}>
         <span class="contact-widget-item-icon">${icon(it.icon)}</span>
         <span>${it.label}</span>
         ${icon("chevron-down", "contact-widget-chevron")}
@@ -387,6 +395,134 @@ function renderContactWidget() {
   renderContactWidgetPanel();
 }
 
+// ---------------------------------------------------------------------------
+// Emergency kill switch -- owner-only, deliberately undiscoverable: no nav
+// item, no button, no visible affordance anywhere. Activated only by a
+// keyboard shortcut that's a no-op unless the currently signed-in user is
+// already the owner (also re-checked server-side by firestore.rules, since
+// client-side gating alone is never real security).
+// ---------------------------------------------------------------------------
+let killSwitchOverlay = null;
+
+function renderKillSwitchOverlay() {
+  if (killSwitchOverlay) return;
+  killSwitchOverlay = document.createElement("div");
+  killSwitchOverlay.id = "kill-switch-overlay";
+  killSwitchOverlay.innerHTML = `
+    <style>
+      #kill-switch-overlay {
+        position: fixed; inset: 0; z-index: 2147483647;
+        display: flex; align-items: center; justify-content: center;
+        background:
+          radial-gradient(circle at 50% 30%, rgba(220,38,38,0.35), transparent 60%),
+          repeating-linear-gradient(0deg, rgba(220,38,38,0.06) 0 1px, transparent 1px 40px),
+          repeating-linear-gradient(90deg, rgba(220,38,38,0.06) 0 1px, transparent 1px 40px),
+          #0a0303;
+        color: #ffd7d7;
+        font-family: inherit;
+      }
+      #kill-switch-overlay .ks-card {
+        width: min(92vw, 380px);
+        padding: 2rem 1.75rem;
+        border-radius: 1rem;
+        background: rgba(20, 4, 4, 0.75);
+        border: 1px solid rgba(220,38,38,0.5);
+        box-shadow: 0 0 60px rgba(220,38,38,0.35), 0 0 0 1px rgba(220,38,38,0.15) inset;
+        text-align: center;
+      }
+      #kill-switch-overlay .ks-lock {
+        width: 3.5rem; height: 3.5rem; margin: 0 auto 1rem;
+        border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        background: rgba(220,38,38,0.15);
+        box-shadow: 0 0 30px rgba(220,38,38,0.6);
+        color: #ff5252;
+        animation: ks-pulse 2s ease-in-out infinite;
+      }
+      @keyframes ks-pulse {
+        0%, 100% { box-shadow: 0 0 20px rgba(220,38,38,0.5); }
+        50% { box-shadow: 0 0 45px rgba(220,38,38,0.85); }
+      }
+      #kill-switch-overlay h1 {
+        font-size: 1.1rem; letter-spacing: 0.04em; margin: 0 0 0.4rem;
+        color: #ff8a8a;
+      }
+      #kill-switch-overlay p {
+        font-size: 0.8rem; color: rgba(255,215,215,0.7); margin: 0 0 1.25rem;
+      }
+      #kill-switch-overlay input {
+        width: 100%; box-sizing: border-box; margin-bottom: 0.6rem;
+        padding: 0.65rem 0.85rem; border-radius: 0.5rem;
+        border: 1px solid rgba(220,38,38,0.4);
+        background: rgba(0,0,0,0.4); color: #ffe5e5;
+      }
+      #kill-switch-overlay button {
+        width: 100%; padding: 0.65rem; border-radius: 0.5rem; border: none;
+        background: #b91c1c; color: #fff; font-weight: 600; cursor: pointer;
+      }
+      #kill-switch-overlay button:hover { background: #dc2626; }
+      #kill-switch-overlay .ks-error {
+        color: #ff8a8a; font-size: 0.8rem; margin-top: 0.6rem; display: none;
+      }
+    </style>
+    <div class="ks-card">
+      <div class="ks-lock">${icon("lock")}</div>
+      <h1>${t("killSwitch.title", "SITE LOCKED")}</h1>
+      <p>${t("killSwitch.hint", "This site has been temporarily disabled. Only the site owner can unlock it.")}</p>
+      <form id="ks-unlock-form">
+        <input type="email" id="ks-email" placeholder="${t("auth.login.emailLabel", "Email")}" autocomplete="off" required>
+        <input type="password" id="ks-password" placeholder="${t("auth.login.passwordLabel", "Password")}" autocomplete="off" required>
+        <button type="submit">${t("killSwitch.unlock", "Unlock")}</button>
+      </form>
+      <p class="ks-error" id="ks-error"></p>
+    </div>
+  `;
+  document.body.appendChild(killSwitchOverlay);
+  killSwitchOverlay.querySelector("#ks-unlock-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const errorEl = killSwitchOverlay.querySelector("#ks-error");
+    errorEl.style.display = "none";
+    const email = killSwitchOverlay.querySelector("#ks-email").value.trim();
+    const password = killSwitchOverlay.querySelector("#ks-password").value;
+    try {
+      const user = await Auth.signInWithEmail(email, password);
+      if (user.email !== OWNER_EMAIL) {
+        await Auth.signOutUser().catch(() => {});
+        throw new Error(t("killSwitch.notOwner", "Only the owner account can unlock this."));
+      }
+      await SiteSettings.setKillSwitch(false);
+    } catch (err) {
+      errorEl.textContent = err.message;
+      errorEl.style.display = "block";
+    }
+  });
+}
+
+function removeKillSwitchOverlay() {
+  if (killSwitchOverlay) {
+    killSwitchOverlay.remove();
+    killSwitchOverlay = null;
+  }
+}
+
+function guardKillSwitch() {
+  SiteSettings.subscribeKillSwitch((active) => {
+    if (active) renderKillSwitchOverlay();
+    else removeKillSwitchOverlay();
+  });
+}
+
+function wireKillSwitchShortcut() {
+  document.addEventListener("keydown", (e) => {
+    if (!authState.isOwner) return;
+    if (e.ctrlKey && e.altKey && e.shiftKey && e.key.toLowerCase() === "k") {
+      if (confirm(t("killSwitch.confirmActivate", "This will lock the ENTIRE site for every visitor immediately. Are you absolutely sure?"))) {
+        SiteSettings.setKillSwitch(true);
+      }
+    }
+  });
+}
+
 export async function initLayout() {
   await initI18n();
   renderIcons(document);
@@ -405,6 +541,8 @@ export async function initLayout() {
   renderFooterSocial();
   renderContactWidget();
   guardProfileCompletion();
+  guardKillSwitch();
+  wireKillSwitchShortcut();
   subscribe(() => {
     renderHeaderAuthArea();
     renderWishlistBadge();

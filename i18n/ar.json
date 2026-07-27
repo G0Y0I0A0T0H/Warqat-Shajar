@@ -400,6 +400,16 @@
     "submitted": "شكراً، تم إرسال تقييمك",
     "reputationTitle": "التقييم العام"
   },
+  "profile": {
+    "verifiedBadge": "حساب موثّق"
+  },
+  "killSwitch": {
+    "title": "الموقع متوقف",
+    "hint": "تم إيقاف الموقع مؤقتاً. فقط صاحب الموقع يقدر يفتحه من جديد.",
+    "unlock": "فتح الموقع",
+    "notOwner": "بس صاحب الموقع يقدر يفتح هاد القفل.",
+    "confirmActivate": "هيك رح توقف كل الموقع فوراً لكل الزوار. متأكد تماماً؟"
+  },
   "comments": {
     "title": "التعليقات",
     "placeholder": "اكتب تعليقك على هذا المنتج...",
@@ -462,6 +472,7 @@
     "admins": "المشرفين",
     "addAdmin": "إضافة مشرف",
     "addAdminByEmail": "أدخل إيميل مستخدم مسجل لترفيعه كمشرف",
+    "sectionsLabel": "الأقسام يلي بيقدر يوصلها هاد المشرف",
     "emailPlaceholder": "example@email.com",
     "add": "إضافة",
     "revokeAdmin": "إلغاء صلاحية الإشراف",
@@ -528,7 +539,12 @@
   "teamChat": {
     "hint": "غرفة محادثة خاصة بين كل حسابات الأدمن — ما بيقدر أي مستخدم عادي يوصلها.",
     "attach": "إرفاق صورة",
-    "sendFailed": "تعذّر إرسال الرسالة، حاول مرة تانية"
+    "sendFailed": "تعذّر إرسال الرسالة، حاول مرة تانية",
+    "recordVoice": "تسجيل رسالة صوتية",
+    "micDenied": "ما قدرنا نوصل للمايكروفون",
+    "editFailed": "ما قدرت تعدل هاد الرسالة (ممكن تكون قديمة كتير)",
+    "confirmDelete": "احذف هاد الرسالة؟",
+    "deleteFailed": "ما قدرت تحذف هاد الرسالة (ممكن تكون قديمة كتير)"
   },
   "broadcast": {
     "hint": "ابعت إشعار بيوصل لكل المستخدمين المسجلين بالمنصة فوراً.",
@@ -559,7 +575,9 @@
     "accountReactivated": { "title": "تم إعادة تفعيل حسابك", "body": "صار فيك تستخدم حسابك بشكل طبيعي" },
     "newReview": { "title": "تقييم جديد", "body": "{name} قيّمك بعد التعامل معك" },
     "offerCancelled": { "title": "تم إلغاء العرض", "body": "{name} ألغى العرض" },
-    "adminMessage": { "title": "رسالة من إدارة ورقة شجر", "body": "{text}" }
+    "adminMessage": { "title": "رسالة من إدارة ورقة شجر", "body": "{text}" },
+    "productAddedToCart": { "title": "منتجك بالسلة", "body": "{name} ضاف {product} لسلته" },
+    "newProductComment": { "title": "تعليق جديد", "body": "{name} علّق على منتجك" }
   },
   "ads": {
     "title": "إدارة الإعلانات",
@@ -572,6 +590,13 @@
     "save": "حفظ الإعلان",
     "delete": "حذف",
     "noAds": "ما في إعلانات مضافة",
+    "moveUp": "حرك لفوق",
+    "moveDown": "حرك لتحت",
+    "noAdsInPlacement": "ما في إعلانات بهاد المكان لسه",
+    "addAdToPlacement": "ضيف إعلان هون",
+    "cancel": "إلغاء",
+    "confirmDelete": "احذف هاد الإعلان؟",
+    "edit": "تعديل",
     "placementHomeTop": "الرئيسية - أعلى",
     "placementHomeMid": "الرئيسية - وسط",
     "placementHomeBottom": "الرئيسية - أسفل",
@@ -605,6 +630,7 @@
     "widgetIconTitle": "أيقونة زر التواصل العائم والإشعارات",
     "widgetIconHint": "الصورة يلي بتظهر جوا الزر العائم والشارة الدائرية بالإشعارات — إذا سيبتها فاضية بتستخدم نفس الشعار الأساسي.",
     "colorTitle": "لون الهوية",
+    "cursorSizeTitle": "حجم مؤشر الماوس",
     "contentTitle": "نصوص الصفحة الرئيسية",
     "fieldHeroBadge": "نص الشارة العلوية",
     "fieldHeroHeadline": "العنوان الرئيسي",
@@ -646,7 +672,8 @@
     "customLabel": "مخصص",
     "deleteCategory": "حذف",
     "addCategoryTitle": "إضافة صنف",
-    "confirmDeleteCategory": "احذف هاد الصنف؟ المنتجات يلي مستخدماه رح تضل عليه بس ما رح تقدر تختارو لمنتجات جديدة."
+    "confirmDeleteCategory": "احذف هاد الصنف؟ المنتجات يلي مستخدماه رح تضل عليه بس ما رح تقدر تختارو لمنتجات جديدة.",
+    "categoryIdCollision": "في صنف تاني (أو الاسم الإنجليزي متشابه كتير) موجود مسبقاً بهاد الاسم. جرب اسم إنجليزي مختلف."
   },
   "accountStatus": {
     "suspendedTitle": "حسابك معلّق مؤقتاً",
