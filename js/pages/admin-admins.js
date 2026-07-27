@@ -67,6 +67,7 @@ function render() {
         <input class="input force-ltr" id="new-code" type="password" dir="ltr">
       </div>
       <p id="change-code-saved" class="success-text" style="display:none">${t("admin.passwordUpdated")}</p>
+      <p id="change-code-error" class="error-text" style="display:none"></p>
       <button type="submit" class="${btnClass("outline")}" style="align-self:flex-start">${t("admin.saveChanges")}</button>
     </form>
 
@@ -118,11 +119,17 @@ function render() {
 
   contentEl.querySelector("#change-code-form").addEventListener("submit", async (e) => {
     e.preventDefault();
+    const errorEl = contentEl.querySelector("#change-code-error");
+    showMessage(errorEl, "");
     const code = contentEl.querySelector("#new-code").value;
-    await Admin.setAdminModeCode(currentUid, code);
-    const saved = contentEl.querySelector("#change-code-saved");
-    saved.style.display = "block";
-    setTimeout(() => (saved.style.display = "none"), 2500);
+    try {
+      await Admin.setAdminModeCode(currentUid, code);
+      const saved = contentEl.querySelector("#change-code-saved");
+      saved.style.display = "block";
+      setTimeout(() => (saved.style.display = "none"), 2500);
+    } catch (err) {
+      showMessage(errorEl, err.message);
+    }
   });
 
   contentEl.querySelector("#toggle-support-btn").addEventListener("click", async () => {

@@ -411,7 +411,10 @@ function renderKillSwitchOverlay() {
   killSwitchOverlay.innerHTML = `
     <style>
       #kill-switch-overlay {
-        position: fixed; inset: 0; z-index: 2147483647;
+        /* One less than the cursor layer's z-index (2147483647 in cursor.css)
+           so the leaf cursor always stays visible on top of this lock
+           screen too, instead of being painted under it. */
+        position: fixed; inset: 0; z-index: 2147483646;
         display: flex; align-items: center; justify-content: center;
         background:
           radial-gradient(circle at 50% 30%, rgba(220,38,38,0.35), transparent 60%),
@@ -464,6 +467,18 @@ function renderKillSwitchOverlay() {
       #kill-switch-overlay .ks-error {
         color: #ff8a8a; font-size: 0.8rem; margin-top: 0.6rem; display: none;
       }
+      #kill-switch-overlay .ks-divider {
+        display: flex; align-items: center; gap: 0.6rem; margin: 0.9rem 0;
+        font-size: 0.75rem; color: rgba(255,215,215,0.5);
+      }
+      #kill-switch-overlay .ks-divider::before,
+      #kill-switch-overlay .ks-divider::after {
+        content: ""; flex: 1; height: 1px; background: rgba(220,38,38,0.3);
+      }
+      #kill-switch-overlay .ks-google-btn {
+        background: transparent; border: 1px solid rgba(220,38,38,0.5);
+      }
+      #kill-switch-overlay .ks-google-btn:hover { background: rgba(220,38,38,0.15); }
     </style>
     <div class="ks-card">
       <div class="ks-lock">${icon("lock")}</div>
@@ -474,23 +489,41 @@ function renderKillSwitchOverlay() {
         <input type="password" id="ks-password" placeholder="${t("auth.login.passwordLabel", "Password")}" autocomplete="off" required>
         <button type="submit">${t("killSwitch.unlock", "Unlock")}</button>
       </form>
+      <div class="ks-divider">${t("auth.orDivider", "or")}</div>
+      <button type="button" class="ks-google-btn" id="ks-google-btn">${t("auth.googleButton", "Continue with Google")}</button>
       <p class="ks-error" id="ks-error"></p>
     </div>
   `;
   document.body.appendChild(killSwitchOverlay);
+
+  const errorEl = killSwitchOverlay.querySelector("#ks-error");
+  async function finishUnlock(user) {
+    if (user.email !== OWNER_EMAIL) {
+      await Auth.signOutUser().catch(() => {});
+      throw new Error(t("killSwitch.notOwner", "Only the owner account can unlock this."));
+    }
+    await SiteSettings.setKillSwitch(false);
+  }
+
   killSwitchOverlay.querySelector("#ks-unlock-form").addEventListener("submit", async (e) => {
     e.preventDefault();
-    const errorEl = killSwitchOverlay.querySelector("#ks-error");
     errorEl.style.display = "none";
     const email = killSwitchOverlay.querySelector("#ks-email").value.trim();
     const password = killSwitchOverlay.querySelector("#ks-password").value;
     try {
-      const user = await Auth.signInWithEmail(email, password);
-      if (user.email !== OWNER_EMAIL) {
-        await Auth.signOutUser().catch(() => {});
-        throw new Error(t("killSwitch.notOwner", "Only the owner account can unlock this."));
-      }
-      await SiteSettings.setKillSwitch(false);
+      await finishUnlock(await Auth.signInWithEmail(email, password));
+    } catch (err) {
+      errorEl.textContent = err.message;
+      errorEl.style.display = "block";
+    }
+  });
+
+  killSwitchOverlay.querySelector("#ks-google-btn").addEventListener("click", async () => {
+    errorEl.style.display = "none";
+    try {
+      const { user, redirected } = await Auth.signInWithGoogle();
+      if (redirected) return; // page will reload after the redirect completes
+      await finishUnlock(user);
     } catch (err) {
       errorEl.textContent = err.message;
       errorEl.style.display = "block";
@@ -506,6 +539,15 @@ function removeKillSwitchOverlay() {
 }
 
 function guardKillSwitch() {
+  // Picks up the result if the Google sign-in on the lock screen had to
+  // fall back to a full-page redirect (popup blocked) -- the page reloads
+  // on the way back, so this is the only chance to complete that unlock.
+  Auth.completeGoogleRedirect()
+    .then((user) => {
+      if (user && user.email === OWNER_EMAIL) SiteSettings.setKillSwitch(false).catch(() => {});
+    })
+    .catch(() => {});
+
   SiteSettings.subscribeKillSwitch((active) => {
     if (active) renderKillSwitchOverlay();
     else removeKillSwitchOverlay();
