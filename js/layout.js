@@ -434,13 +434,18 @@ function renderKillSwitchOverlay() {
         text-align: center;
       }
       #kill-switch-overlay .ks-lock {
-        width: 3.5rem; height: 3.5rem; margin: 0 auto 1rem;
-        border-radius: 50%;
+        width: 4.5rem; height: 4.5rem; margin: 0 auto 1rem;
         display: flex; align-items: center; justify-content: center;
-        background: rgba(220,38,38,0.15);
-        box-shadow: 0 0 30px rgba(220,38,38,0.6);
-        color: #ff5252;
         animation: ks-pulse 2s ease-in-out infinite;
+      }
+      #kill-switch-overlay .ks-lock img {
+        width: 100%; height: 100%; object-fit: contain;
+        /* Recolors the site's own green logo to red for this screen only --
+           hue-rotate(-120deg) turns green (~120deg hue) into red (~0deg);
+           near-white/near-gray gloss highlights barely shift since they
+           have very low saturation. */
+        filter: hue-rotate(-120deg) saturate(1.6) brightness(0.95)
+          drop-shadow(0 0 18px rgba(220,38,38,0.75));
       }
       @keyframes ks-pulse {
         0%, 100% { box-shadow: 0 0 20px rgba(220,38,38,0.5); }
@@ -481,7 +486,7 @@ function renderKillSwitchOverlay() {
       #kill-switch-overlay .ks-google-btn:hover { background: rgba(220,38,38,0.15); }
     </style>
     <div class="ks-card">
-      <div class="ks-lock">${icon("lock")}</div>
+      <div class="ks-lock"><img src="images/logo-icon.png" alt=""></div>
       <h1>${t("killSwitch.title", "SITE LOCKED")}</h1>
       <p>${t("killSwitch.hint", "This site has been temporarily disabled. Only the site owner can unlock it.")}</p>
       <form id="ks-unlock-form">
