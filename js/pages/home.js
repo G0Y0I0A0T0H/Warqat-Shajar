@@ -2,10 +2,8 @@ import { initLayout } from "../layout.js";
 import { t, getLocale, onLocaleChange } from "../i18n.js";
 import { SiteSettings, Products, Ads } from "../firebase.js";
 import { mergeCategories, categoryLabel, categoryLabelById, onCategoriesChange, governorateLabel } from "../constants.js";
-import { renderAdSlot, wireFavoriteButtons, productCardHTML, icon } from "../ui.js";
+import { renderAdSlot, wireFavoriteButtons, productCardHTML, icon, escapeHtml, safeUrl } from "../ui.js";
 import { authState, subscribe } from "../state.js";
-
-const STAT_BASE_VALUES = [24000, 8000, 10000];
 
 const TRUST_ITEMS = [
   { key: "support", icon: "headset" },
@@ -90,10 +88,10 @@ function renderCategoryGrid() {
       const image = cat.isCustom ? cat.image : lastCategoryImages[cat.id] || cat.image;
       return `
     <a href="products.html?category=${cat.id}" class="category-card">
-      <img src="${image}" alt="${label}" loading="lazy">
+      <img src="${safeUrl(image)}" alt="${escapeHtml(label)}" loading="lazy">
       <div class="category-card-overlay"></div>
       <div class="category-card-label">
-        <div class="category-card-name">${label}</div>
+        <div class="category-card-name">${escapeHtml(label)}</div>
         <div class="category-card-hint">${t("categories.shopNow")}</div>
       </div>
     </a>`;
@@ -135,19 +133,22 @@ function applyAuthAwareCTAs() {
   }
 }
 
-let statTimer = null;
-
-function animateStats() {
+// Real counts from Firestore -- registered farmers and completed deals come
+// from settings/publicStats (a small denormalized counter doc, since users
+// reads are locked to self-or-admin and summing dealsCount across every
+// product client-side would be wasteful); active products is a live count
+// query since that collection is already publicly readable.
+async function animateStats() {
   const valueEls = document.querySelectorAll(".hero-stat-value");
-  if (valueEls.length !== STAT_BASE_VALUES.length) return;
-  if (statTimer) clearInterval(statTimer);
-  statTimer = setInterval(() => {
-    valueEls.forEach((el, i) => {
-      const jitter = Math.floor(Math.random() * 40) - 20;
-      const value = STAT_BASE_VALUES[i] + jitter;
-      el.textContent = "+" + value.toLocaleString("en-US");
-    });
-  }, 4000);
+  if (valueEls.length !== 3) return;
+  const [stats, activeProducts] = await Promise.all([
+    SiteSettings.getPublicStatsOnce().catch(() => ({ registeredFarmers: 0, completedDeals: 0 })),
+    Products.countActive().catch(() => 0),
+  ]);
+  const values = [stats.registeredFarmers, activeProducts, stats.completedDeals];
+  valueEls.forEach((el, i) => {
+    el.textContent = "+" + values[i].toLocaleString("en-US");
+  });
 }
 
 async function renderFeaturedProducts() {

@@ -32,19 +32,19 @@ service cloud.firestore {
     // Fields a normal user must never be able to set on themselves directly
     // (trust/role/moderation state — only admins or trusted server flows may change these).
     function userProtectedFields() {
-      return ['status', 'suspendedUntil', 'ratingAverage', 'ratingCount', 'accountType', 'uid', 'createdAt'];
+      return ['status', 'suspendedUntil', 'ratingAverage', 'ratingCount', 'accountType', 'uid', 'createdAt', 'photoURL'];
     }
 
     // One-time bootstrap: only this exact account may grant itself admin.
-    // Once created, any admin may promote new admins, but only the owner may
-    // revoke an existing admin doc or touch someone else's — regular admins
-    // can add colleagues and manage their own admin-mode password / support
-    // opt-in, but can never demote or edit one another.
+    // Only the owner may create a new admin, revoke an existing admin doc,
+    // or touch someone else's, or set allowedSections (granular per-section
+    // permissions) — regular admins can only manage their own admin-mode
+    // password / support opt-in, never demote/edit one another or grant
+    // themselves more access.
     match /admins/{uid} {
       allow read: if isSignedIn();
-      allow create: if isSignedIn() &&
-        ((request.auth.uid == uid && request.auth.token.email == 'sgyiath@gmail.com') ||
-         isAdmin());
+      allow create: if isOwner() ||
+        (isSignedIn() && request.auth.uid == uid && request.auth.token.email == 'sgyiath@gmail.com');
       allow update: if isOwner() || (
         isAdmin() && request.auth.uid == uid &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['adminModeCode', 'acceptingSupport'])
@@ -52,11 +52,35 @@ service cloud.firestore {
       allow delete: if isOwner();
     }
 
+    // adminModeCode used to live on admins/{uid} itself, but that doc's read
+    // rule is isSignedIn() (needed for the public support-admin picker and
+    // isAdmin() checks) -- meaning any regular user's client could read
+    // every admin's plaintext unlock code directly from the network
+    // response. Split into its own doc with much narrower read access:
+    // only that admin themselves, or the owner.
+    match /adminSecrets/{uid} {
+      allow read: if isSignedIn() && (request.auth.uid == uid || isOwner());
+      allow create: if isSignedIn() &&
+        ((request.auth.uid == uid && request.auth.token.email == 'sgyiath@gmail.com') || isAdmin());
+      allow update: if isOwner() || (isAdmin() && request.auth.uid == uid);
+      allow delete: if isOwner() || (isAdmin() && request.auth.uid == uid);
+    }
+
     match /users/{uid} {
-      allow read: if isSignedIn();
+      // Full profile documents hold phone/email — never expose them broadly.
+      // Only the owner of the doc or an admin may read it; every legitimate
+      // read site in the app (own-profile subscription, Admin.listAllUsers())
+      // already fits this. Anything else (product owner name, chat participant
+      // name, etc.) is denormalized onto its own document, not live-read here.
+      allow read: if isSignedIn() && (request.auth.uid == uid || isAdmin());
       allow create: if isSignedIn() && request.auth.uid == uid;
       allow update: if isOwner() ||
-        (isAdmin() && resource.data.email != 'sgyiath@gmail.com') || (
+        (
+          // Only the owner account may ever set photoURL -- an admin
+          // moderating another user's doc still can't touch it here.
+          isAdmin() && resource.data.email != 'sgyiath@gmail.com' &&
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['photoURL'])
+        ) || (
         isSignedIn() && request.auth.uid == uid &&
         !request.resource.data.diff(resource.data).affectedKeys().hasAny(userProtectedFields())
       ) || (
@@ -90,7 +114,46 @@ service cloud.firestore {
 
     match /settings/{docId} {
       allow read: if true;
-      allow write: if isAdmin();
+      // killSwitch is excluded here and given its own owner-only rule below --
+      // Firestore ORs every matching block together, so without this
+      // exclusion a regular admin would still be able to toggle it through
+      // this generic rule regardless of the narrower one.
+      allow write: if isAdmin() && docId != 'killSwitch';
+    }
+
+    // Emergency kill switch: owner-only, on purpose -- this is a
+    // whole-site lock, not a normal admin setting. Read stays public
+    // because every page (including logged-out visitors) must be able to
+    // check it to know whether to render the lock screen.
+    match /settings/killSwitch {
+      allow read: if true;
+      allow write: if isOwner();
+    }
+
+    // Real homepage stat counters (registered farmers, completed deals) --
+    // bumped by ordinary signed-in users at the moment those events happen
+    // (registration, offer acceptance), not just admins. Same narrow
+    // "bump by exactly 1" shape already used for products' view/offer/deal
+    // counters; the isAdmin() branch above still covers full admin access.
+    match /settings/publicStats {
+      allow read: if true;
+      allow write: if isSignedIn() && (
+        (resource == null &&
+         request.resource.data.diff({}).affectedKeys().hasOnly(['registeredFarmers']) &&
+         request.resource.data.registeredFarmers == 1)
+        ||
+        (resource != null &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['registeredFarmers']) &&
+         request.resource.data.registeredFarmers == resource.data.get('registeredFarmers', 0) + 1)
+        ||
+        (resource == null &&
+         request.resource.data.diff({}).affectedKeys().hasOnly(['completedDeals']) &&
+         request.resource.data.completedDeals == 1)
+        ||
+        (resource != null &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['completedDeals']) &&
+         request.resource.data.completedDeals == resource.data.get('completedDeals', 0) + 1)
+      );
     }
 
     match /products/{productId} {
@@ -221,7 +284,14 @@ service cloud.firestore {
     // A single shared room for every admin — never exposed to regular users.
     match /adminChats/{messageId} {
       allow read, create: if isAdmin();
-      allow update, delete: if isOwner();
+      // Owner can always moderate; a message's own sender can also edit/
+      // delete it, but only within a short window after sending (matches
+      // the "sender may act on their own recent content" trust level
+      // already used elsewhere, e.g. offer cancellation).
+      allow update, delete: if isOwner() || (
+        isAdmin() && resource.data.senderId == request.auth.uid &&
+        request.time < resource.data.createdAt + duration.value(15, 'm')
+      );
     }
 
     // Written by any signed-in user into another user's own inbox (e.g. a
@@ -233,7 +303,11 @@ service cloud.firestore {
         (resource.data.uid == request.auth.uid || isAdmin());
       allow create: if isSignedIn() &&
         request.resource.data.keys().hasOnly(['uid', 'key', 'params', 'link', 'read', 'createdAt']) &&
-        request.resource.data.read == false;
+        request.resource.data.read == false &&
+        // "adminMessage" renders as an official admin notice ("رسالة من
+        // إدارة ورقة شجر") -- without this, any signed-in user could forge
+        // one against any other uid to impersonate the site admin.
+        (request.resource.data.key != 'adminMessage' || isAdmin());
     }
 
     match /{document=**} {

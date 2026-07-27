@@ -10,6 +10,8 @@
 
 :root {
   --leaf-cursor-size: 40px;
+  --leaf-trail-size: 22px;
+  --leaf-particle-size: 5px;
 }
 
 /* Native cursor is only removed once JS confirms this environment should
@@ -67,13 +69,16 @@ html.leaf-cursor-active {
               filter 0.2s ease;
 }
 
-/* Hover over links / buttons: enlarge + brighten, "the leaf opens" */
+/* Hover over links / buttons: enlarge + brighten, "the leaf opens".
+   Kept modest on purpose -- a wide glow at this z-index visually swallows
+   small UI elements (e.g. the ~40px hero carousel arrows) it hovers over,
+   reading as a rendering glitch rather than an intentional hover effect. */
 .leaf-cursor-layer[data-state="link"] .leaf-cursor-main {
-  filter: drop-shadow(0 1px 1px rgba(4, 53, 15, 0.35)) drop-shadow(0 0 9px rgba(92, 240, 125, 0.75))
-    drop-shadow(0 0 20px rgba(92, 240, 125, 0.4));
+  filter: drop-shadow(0 1px 1px rgba(4, 53, 15, 0.35)) drop-shadow(0 0 6px rgba(92, 240, 125, 0.65))
+    drop-shadow(0 0 11px rgba(92, 240, 125, 0.3));
 }
 .leaf-cursor-layer[data-state="link"] .leaf-cursor-use {
-  transform: scale(1.22);
+  transform: scale(1.12);
 }
 
 /* Mouse down: compress; mouse up: springs back via the transition above */
@@ -106,9 +111,9 @@ html.leaf-cursor-active {
   position: absolute;
   top: 0;
   left: 0;
-  width: 22px;
-  height: 22px;
-  margin: -11px 0 0 -11px; /* center on its own x/y */
+  width: var(--leaf-trail-size);
+  height: var(--leaf-trail-size);
+  margin: calc(var(--leaf-trail-size) / -2) 0 0 calc(var(--leaf-trail-size) / -2); /* center on its own x/y */
   pointer-events: none;
   opacity: 0;
   will-change: transform, opacity;
@@ -122,9 +127,9 @@ html.leaf-cursor-active {
   position: absolute;
   top: 0;
   left: 0;
-  width: 5px;
-  height: 5px;
-  margin: -2.5px 0 0 -2.5px;
+  width: var(--leaf-particle-size);
+  height: var(--leaf-particle-size);
+  margin: calc(var(--leaf-particle-size) / -2) 0 0 calc(var(--leaf-particle-size) / -2);
   border-radius: 50%;
   pointer-events: none;
   opacity: 0;

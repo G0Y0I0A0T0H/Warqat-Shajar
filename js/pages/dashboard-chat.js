@@ -1,9 +1,9 @@
 import { initLayout } from "../layout.js";
 import { guardDashboard } from "../dashboard-shell.js";
 import { t, onLocaleChange } from "../i18n.js";
-import { Chat, Products, Reviews, PhoneAttempts, Notifications } from "../firebase.js";
+import { Chat, Products, Reviews, PhoneAttempts, Notifications, SiteSettings } from "../firebase.js";
 import { authState } from "../state.js";
-import { btnClass, badgeClass, icon, initReportDialog, renderStarButtons, showMessage, containsPhoneNumber } from "../ui.js";
+import { btnClass, badgeClass, icon, initReportDialog, renderStarButtons, showMessage, containsPhoneNumber, escapeHtml } from "../ui.js";
 
 const params = new URLSearchParams(location.search);
 const chatId = params.get("id");
@@ -133,7 +133,7 @@ function renderMessages() {
               return `<div class="chat-row"><p class="text-muted" style="text-align:center;font-size:0.8rem">${t(m.systemKey)}</p></div>`;
             }
             if (m.type === "text") {
-              return `<div class="chat-row ${isMine ? "is-mine" : ""}"><div class="chat-bubble">${m.text}</div></div>`;
+              return `<div class="chat-row ${isMine ? "is-mine" : ""}"><div class="chat-bubble">${escapeHtml(m.text)}</div></div>`;
             }
             const o = m.offer;
             const canRespond = !isMine && o.status === "pending";
@@ -208,6 +208,7 @@ async function acceptOffer(messageId) {
   if (chat.contextType === "product") {
     // Best-effort: a denied counter bump shouldn't block the accept action itself.
     await Products.incrementProductDeals(chat.contextId).catch(() => {});
+    SiteSettings.incrementCompletedDeals().catch(() => {});
   }
   const offerMsg = messages.find((m) => m.id === messageId);
   if (offerMsg) Notifications.create({ uid: offerMsg.senderId, key: "offerAccepted", params: { name: profile.fullName } });

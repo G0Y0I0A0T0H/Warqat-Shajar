@@ -4,9 +4,9 @@
 // state.js (recomputeAdminMode/applyDarkMode) — this module only renders UI.
 import { authState, subscribe, unlockAdminMode } from "./state.js";
 import { t, onLocaleChange } from "./i18n.js";
-import { icon, renderAvatar, showMessage } from "./ui.js";
+import { icon, renderAvatar, showMessage, escapeHtml } from "./ui.js";
 
-const NAV_ITEMS = [
+export const NAV_ITEMS = [
   { href: "admin.html", key: "analytics", icon: "bar-chart" },
   { href: "admin-users.html", key: "users", icon: "users" },
   { href: "admin-admins.html", key: "admins", icon: "shield-check" },
@@ -45,6 +45,15 @@ function renderGate(root) {
   });
 }
 
+// Owner always sees every section; an admin with no allowedSections field
+// set (granted before this feature existed) also keeps full access --
+// only an admin with an explicit, non-null allowedSections array is
+// actually restricted.
+function visibleNavItems() {
+  if (authState.isOwner || !authState.allowedSections) return NAV_ITEMS;
+  return NAV_ITEMS.filter((item) => authState.allowedSections.includes(item.key));
+}
+
 function renderSidebar(activeHref) {
   const mount = document.getElementById("admin-sidebar-mount");
   if (!mount) return;
@@ -54,15 +63,17 @@ function renderSidebar(activeHref) {
       <div class="admin-sidebar-header">
         ${renderAvatar(profile?.fullName, profile?.photoURL)}
         <div>
-          <div class="admin-sidebar-name">${profile?.fullName ?? ""}</div>
+          <div class="admin-sidebar-name">${escapeHtml(profile?.fullName ?? "")}</div>
           <span class="admin-sidebar-badge">${icon("shield-check")} ${t("admin.fullControl")}</span>
         </div>
       </div>
       <nav class="admin-sidebar-nav">
-        ${NAV_ITEMS.map(
-          (item) =>
-            `<a class="admin-nav-link ${item.href === activeHref ? "is-active" : ""}" href="${item.href}"><span class="admin-nav-icon">${icon(item.icon)}</span>${t(`admin.${item.key}`)}</a>`,
-        ).join("")}
+        ${visibleNavItems()
+          .map(
+            (item) =>
+              `<a class="admin-nav-link ${item.href === activeHref ? "is-active" : ""}" href="${item.href}"><span class="admin-nav-icon">${icon(item.icon)}</span>${t(`admin.${item.key}`)}</a>`,
+          )
+          .join("")}
       </nav>
     </div>
   `;
@@ -101,6 +112,20 @@ export function guardAdmin(activeHref) {
       if (!authState.isAdminModeActive) {
         shellBuilt = false;
         renderGate(root);
+        return;
+      }
+      // A restricted admin can't reach a disallowed section even by typing
+      // its URL directly -- hiding it from the sidebar alone isn't real
+      // access control.
+      const activeItem = NAV_ITEMS.find((item) => item.href === activeHref);
+      if (
+        !authState.isOwner &&
+        authState.allowedSections &&
+        activeItem &&
+        !authState.allowedSections.includes(activeItem.key)
+      ) {
+        shellBuilt = false;
+        renderDenied(root);
         return;
       }
       if (!shellBuilt) {
