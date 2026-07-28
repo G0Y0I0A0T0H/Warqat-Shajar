@@ -1,7 +1,7 @@
 import { initLayout } from "../layout.js";
 import { guardDashboard } from "../dashboard-shell.js";
 import { t, onLocaleChange } from "../i18n.js";
-import { Chat, Products, Reviews, PhoneAttempts, Notifications, SiteSettings } from "../firebase.js";
+import { Chat, Products, Reviews, PhoneAttempts, Notifications, SiteSettings, Escrow } from "../firebase.js";
 import { authState } from "../state.js";
 import { btnClass, badgeClass, icon, initReportDialog, renderStarButtons, showMessage, containsPhoneNumber, escapeHtml } from "../ui.js";
 
@@ -10,6 +10,7 @@ const chatId = params.get("id");
 
 const messagesEl = document.getElementById("chat-messages");
 const offerFormMount = document.getElementById("offer-form-mount");
+const escrowMount = document.getElementById("escrow-mount");
 
 let profile = null;
 let chat = null;
@@ -17,6 +18,25 @@ let messages = [];
 let offerFormOpen = false;
 let counterSource = null; // { messageId, offer } when countering
 let reviewed = false;
+
+// Who's buyer/seller in this specific product chat (derived once from the
+// product's ownerId vs the other chat participant) -- null for non-product
+// chats (support/sourcing), where the escrow tracker never applies.
+let dealParties = null;
+let escrowOrderId = null;
+let escrowOrder = null;
+let escrowUnsub = null;
+let disputeFormOpen = false;
+
+const ESCROW_STATUS_KEY = {
+  awaiting_payment: "escrow.statusAwaitingPayment",
+  payment_claimed: "escrow.statusPaymentClaimed",
+  payment_confirmed: "escrow.statusPaymentConfirmed",
+  delivery_confirmed: "escrow.statusDeliveryConfirmed",
+  disputed: "escrow.statusDisputed",
+  released: "escrow.statusReleased",
+  refunded: "escrow.statusRefunded",
+};
 
 const STATUS_KEY = {
   pending: "chat.offerStatusPending",
@@ -122,7 +142,97 @@ function openRateDialog(other) {
   });
 }
 
+// Re-subscribes to the escrow order for whichever offer is currently
+// accepted (there's at most one live deal per chat at a time). Called from
+// renderMessages() since that's the single place that already knows the
+// current accepted-offer message.
+function watchEscrowOrder() {
+  const acceptedMsg = messages.find((m) => m.type === "offer" && m.offer?.status === "accepted");
+  const nextId = acceptedMsg?.id || null;
+  if (nextId === escrowOrderId) return;
+  escrowOrderId = nextId;
+  if (escrowUnsub) {
+    escrowUnsub();
+    escrowUnsub = null;
+  }
+  escrowOrder = null;
+  disputeFormOpen = false;
+  if (nextId) {
+    escrowUnsub = Escrow.subscribeOrder(nextId, (order) => {
+      escrowOrder = order;
+      renderEscrowTracker();
+    });
+  } else {
+    renderEscrowTracker();
+  }
+}
+
+function renderEscrowTracker() {
+  if (!escrowMount) return;
+  if (!escrowOrder || !dealParties) {
+    escrowMount.innerHTML = "";
+    return;
+  }
+  const isBuyer = profile.uid === escrowOrder.buyerId;
+  const isSeller = profile.uid === escrowOrder.sellerId;
+  const isFinal = escrowOrder.status === "released" || escrowOrder.status === "refunded";
+  const canDispute = !isFinal && escrowOrder.status !== "disputed" && (isBuyer || isSeller);
+
+  let actionsHtml = "";
+  if (isBuyer && escrowOrder.status === "awaiting_payment") {
+    actionsHtml = `<button type="button" class="${btnClass("default", "sm")}" id="escrow-mark-paid-btn">${t("escrow.markPaidBtn")}</button>`;
+  } else if (isBuyer && escrowOrder.status === "payment_confirmed") {
+    actionsHtml = `<button type="button" class="${btnClass("default", "sm")}" id="escrow-confirm-delivery-btn">${t("escrow.confirmDeliveryBtn")}</button>`;
+  }
+
+  escrowMount.innerHTML = `
+    <div class="card escrow-tracker" style="padding:1rem;margin-bottom:0.75rem;display:flex;flex-direction:column;gap:0.5rem">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;flex-wrap:wrap">
+        <span class="${badgeClass(escrowOrder.status === "released" ? "default" : escrowOrder.status === "disputed" ? "destructive" : "outline")}">${t(ESCROW_STATUS_KEY[escrowOrder.status])}</span>
+        <span class="text-muted" style="font-size:0.8rem">${t("escrow.totalLabel")}: ${escrowOrder.totalAmount}</span>
+      </div>
+      ${escrowOrder.status === "awaiting_payment" && isBuyer ? `<p class="text-muted" style="font-size:0.8rem">${t("escrow.awaitingPaymentBuyerHint")}</p>` : ""}
+      ${escrowOrder.status === "disputed" ? `<p class="error-text" style="font-size:0.8rem">${escapeHtml(escrowOrder.disputeNote || "")}</p>` : ""}
+      ${actionsHtml ? `<div style="display:flex;gap:0.5rem;flex-wrap:wrap">${actionsHtml}</div>` : ""}
+      ${
+        canDispute
+          ? `<div>
+              <button type="button" class="${btnClass("ghost", "sm")}" id="escrow-dispute-toggle-btn">${t("escrow.raiseDisputeBtn")}</button>
+              ${
+                disputeFormOpen
+                  ? `<div style="display:flex;flex-direction:column;gap:0.4rem;margin-top:0.5rem">
+                      <textarea class="textarea" id="escrow-dispute-note" rows="2" placeholder="${t("escrow.disputeNotePlaceholder")}"></textarea>
+                      <button type="button" class="${btnClass("destructive", "sm")}" id="escrow-dispute-submit-btn" style="align-self:flex-start">${t("escrow.disputeSubmitBtn")}</button>
+                    </div>`
+                  : ""
+              }
+            </div>`
+          : ""
+      }
+    </div>
+  `;
+
+  document.getElementById("escrow-mark-paid-btn")?.addEventListener("click", async () => {
+    await Escrow.markPaymentClaimed(escrowOrder.id);
+  });
+  document.getElementById("escrow-confirm-delivery-btn")?.addEventListener("click", async () => {
+    await Escrow.confirmDelivery(escrowOrder.id);
+  });
+  document.getElementById("escrow-dispute-toggle-btn")?.addEventListener("click", () => {
+    disputeFormOpen = !disputeFormOpen;
+    renderEscrowTracker();
+  });
+  document.getElementById("escrow-dispute-submit-btn")?.addEventListener("click", async () => {
+    const note = document.getElementById("escrow-dispute-note").value.trim();
+    if (!note) return;
+    await Escrow.raiseDispute(escrowOrder.id, profile.uid, note);
+    disputeFormOpen = false;
+  });
+}
+
 function renderMessages() {
+  watchEscrowOrder();
+  renderEscrowTracker();
   messagesEl.innerHTML =
     messages.length === 0
       ? `<p class="empty-state">${t("chat.noMessages")}</p>`
@@ -212,6 +322,19 @@ async function acceptOffer(messageId) {
   }
   const offerMsg = messages.find((m) => m.id === messageId);
   if (offerMsg) Notifications.create({ uid: offerMsg.senderId, key: "offerAccepted", params: { name: profile.fullName } }).catch(() => {});
+
+  if (dealParties && offerMsg) {
+    Escrow.createOrder({
+      orderId: messageId,
+      chatId,
+      productId: chat.contextId,
+      productLabel: chat.contextLabel,
+      ...dealParties,
+      quantity: offerMsg.offer.quantity,
+      unit: offerMsg.offer.unit,
+      pricePerUnit: offerMsg.offer.pricePerUnit,
+    }).catch(() => {});
+  }
 }
 
 function renderOfferForm() {
@@ -313,6 +436,22 @@ async function main() {
   if (!chatId) return;
   chat = await Chat.getChat(chatId);
   if (!chat) return;
+
+  if (chat.contextType === "product") {
+    const product = await Products.getProduct(chat.contextId).catch(() => null);
+    if (product) {
+      const sellerId = product.ownerId;
+      const buyerId = chat.participantIds.find((id) => id !== sellerId);
+      if (buyerId) {
+        dealParties = {
+          sellerId,
+          sellerName: chat.participantNames[sellerId] || product.ownerName,
+          buyerId,
+          buyerName: chat.participantNames[buyerId],
+        };
+      }
+    }
+  }
 
   reviewed = await Reviews.hasReviewedChat(profile.uid, chatId).catch(() => false);
   renderHeader();

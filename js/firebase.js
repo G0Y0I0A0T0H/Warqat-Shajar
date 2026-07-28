@@ -578,6 +578,98 @@ export const Chat = {
 };
 
 // ===========================================================================
+// Escrow order tracker — one doc per accepted chat offer (doc id == the
+// offer message's own id), a manually-attested state machine loosely
+// modelled on a real escrow flow (see the payment-system guide the owner
+// provided): awaiting_payment -> payment_claimed -> payment_confirmed ->
+// delivery_confirmed -> released, with a disputed branch resolved by the
+// owner. IMPORTANT: this project has no payment gateway or backend, so
+// nothing here actually holds or moves money -- every status is a
+// self-reported attestation (the buyer says "I paid", the owner confirms
+// they really received it against settings/paymentInfo, the buyer confirms
+// delivery). The value this adds is state-machine discipline (illegal
+// jumps rejected by firestore.rules) and an immutable audit trail, not
+// payment verification.
+// ===========================================================================
+const escrowOrdersCol = collection(db, "escrowOrders");
+
+export const Escrow = {
+  async createOrder({ orderId, chatId, productId, productLabel, buyerId, buyerName, sellerId, sellerName, quantity, unit, pricePerUnit }) {
+    await setDoc(doc(db, "escrowOrders", orderId), {
+      chatId,
+      productId,
+      productLabel: productLabel || null,
+      buyerId,
+      buyerName,
+      sellerId,
+      sellerName,
+      quantity,
+      unit,
+      pricePerUnit,
+      totalAmount: quantity * pricePerUnit,
+      status: "awaiting_payment",
+      paymentClaimedAt: null,
+      paymentConfirmedAt: null,
+      deliveryConfirmedAt: null,
+      disputedAt: null,
+      disputedBy: null,
+      disputeNote: null,
+      releasedAt: null,
+      refundedAt: null,
+      createdAt: serverTimestamp(),
+    });
+  },
+
+  subscribeOrder(orderId, callback) {
+    return onSnapshot(
+      doc(db, "escrowOrders", orderId),
+      (snap) => callback(snap.exists() ? { id: snap.id, ...snap.data() } : null),
+      () => callback(null),
+    );
+  },
+
+  async markPaymentClaimed(orderId) {
+    await updateDoc(doc(db, "escrowOrders", orderId), { status: "payment_claimed", paymentClaimedAt: serverTimestamp() });
+  },
+
+  // Owner-only in firestore.rules -- confirms a real transfer was received
+  // against the owner's own settings/paymentInfo details.
+  async confirmPaymentReceived(orderId) {
+    await updateDoc(doc(db, "escrowOrders", orderId), { status: "payment_confirmed", paymentConfirmedAt: serverTimestamp() });
+  },
+
+  async confirmDelivery(orderId) {
+    await updateDoc(doc(db, "escrowOrders", orderId), { status: "delivery_confirmed", deliveryConfirmedAt: serverTimestamp() });
+  },
+
+  async raiseDispute(orderId, uid, note) {
+    await updateDoc(doc(db, "escrowOrders", orderId), {
+      status: "disputed",
+      disputedAt: serverTimestamp(),
+      disputedBy: uid,
+      disputeNote: note,
+    });
+  },
+
+  // Both owner-only in firestore.rules -- the owner physically pays the
+  // farmer (or refunds the buyer) outside the app, then marks it here.
+  async release(orderId) {
+    await updateDoc(doc(db, "escrowOrders", orderId), { status: "released", releasedAt: serverTimestamp() });
+  },
+
+  async refund(orderId) {
+    await updateDoc(doc(db, "escrowOrders", orderId), { status: "refunded", refundedAt: serverTimestamp() });
+  },
+
+  // Owner-only oversight list (admin-payments.js) -- fetched in full and
+  // filtered client-side since the collection is expected to stay small.
+  async listAllOnce() {
+    const snap = await getDocs(escrowOrdersCol);
+    return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  },
+};
+
+// ===========================================================================
 // Phone-attempt logging — a user's own client writes one of these whenever
 // containsPhoneNumber() blocks their chat/comment submission, so admins can
 // see who tried to share contact info, when, and with/on whom.
