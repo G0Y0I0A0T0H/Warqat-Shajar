@@ -19,7 +19,16 @@ export const NAV_ITEMS = [
   { href: "admin-broadcast.html", key: "broadcast", icon: "bell" },
   { href: "admin-ads.html", key: "ads", icon: "megaphone" },
   { href: "admin-branding.html", key: "branding", icon: "image" },
+  { href: "admin-payments.html", key: "payments", icon: "credit-card" },
 ];
+
+// Sections that stay hidden/inaccessible to every admin except the owner,
+// regardless of an admin's allowedSections grant -- unlike other sections,
+// these can't be delegated at all. ("admins" itself is NOT owner-only: any
+// admin still needs admin-admins.html for their own password/support-toggle
+// self-service, it's only the "add admin" form inside that page which is
+// owner-gated.)
+export const OWNER_ONLY_KEYS = ["payments"];
 
 function renderDenied(root) {
   root.innerHTML = `<div class="admin-denied">${t("admin.accessDenied")}</div>`;
@@ -50,8 +59,9 @@ function renderGate(root) {
 // only an admin with an explicit, non-null allowedSections array is
 // actually restricted.
 function visibleNavItems() {
-  if (authState.isOwner || !authState.allowedSections) return NAV_ITEMS;
-  return NAV_ITEMS.filter((item) => authState.allowedSections.includes(item.key));
+  const items = authState.isOwner ? NAV_ITEMS : NAV_ITEMS.filter((item) => !OWNER_ONLY_KEYS.includes(item.key));
+  if (authState.isOwner || !authState.allowedSections) return items;
+  return items.filter((item) => authState.allowedSections.includes(item.key));
 }
 
 function renderSidebar(activeHref) {
@@ -118,6 +128,11 @@ export function guardAdmin(activeHref) {
       // its URL directly -- hiding it from the sidebar alone isn't real
       // access control.
       const activeItem = NAV_ITEMS.find((item) => item.href === activeHref);
+      if (!authState.isOwner && activeItem && OWNER_ONLY_KEYS.includes(activeItem.key)) {
+        shellBuilt = false;
+        renderDenied(root);
+        return;
+      }
       if (
         !authState.isOwner &&
         authState.allowedSections &&

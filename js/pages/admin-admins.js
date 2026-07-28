@@ -1,13 +1,14 @@
 import { initLayout } from "../layout.js";
-import { guardAdmin, NAV_ITEMS } from "../admin-shell.js";
+import { guardAdmin, NAV_ITEMS, OWNER_ONLY_KEYS } from "../admin-shell.js";
 import { t, onLocaleChange } from "../i18n.js";
 import { Admin, OWNER_EMAIL, auth } from "../firebase.js";
 import { authState } from "../state.js";
 import { btnClass, showMessage } from "../ui.js";
 
-// Every section an owner can grant/withhold, except "admins" itself --
-// managing admins is already owner-only regardless of this list.
-const GRANTABLE_SECTIONS = NAV_ITEMS.filter((item) => item.key !== "admins");
+// Every section an owner can grant/withhold, except "admins" (managing
+// admins is already owner-only regardless of this list) and any section in
+// OWNER_ONLY_KEYS (e.g. "payments" -- can't be delegated at all).
+const GRANTABLE_SECTIONS = NAV_ITEMS.filter((item) => item.key !== "admins" && !OWNER_ONLY_KEYS.includes(item.key));
 
 let contentEl;
 let admins = [];

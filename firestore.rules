@@ -113,12 +113,16 @@ service cloud.firestore {
     }
 
     match /settings/{docId} {
-      allow read: if true;
-      // killSwitch is excluded here and given its own owner-only rule below --
-      // Firestore ORs every matching block together, so without this
-      // exclusion a regular admin would still be able to toggle it through
-      // this generic rule regardless of the narrower one.
-      allow write: if isAdmin() && docId != 'killSwitch';
+      // paymentInfo holds the owner's own bank/wallet receiving details --
+      // excluded from the public read here (unlike every other settings
+      // doc) and given its own owner-only rule below.
+      allow read: if docId != 'paymentInfo';
+      // killSwitch and paymentInfo are excluded here and given their own
+      // owner-only rules below -- Firestore ORs every matching block
+      // together, so without this exclusion a regular admin would still be
+      // able to write through this generic rule regardless of the narrower
+      // ones.
+      allow write: if isAdmin() && docId != 'killSwitch' && docId != 'paymentInfo';
     }
 
     // Emergency kill switch: owner-only, on purpose -- this is a
@@ -128,6 +132,16 @@ service cloud.firestore {
     match /settings/killSwitch {
       allow read: if true;
       allow write: if isOwner();
+    }
+
+    // Owner's own payment-receiving details (Vodafone Cash / InstaPay / bank
+    // account) for the manual-payment flow -- there's no live payment
+    // gateway in this project, so buyers are told where to send money
+    // manually and the owner confirms receipt themselves. Owner-only on
+    // both read and write since this is personal financial info, not a
+    // general admin setting other admins should ever see.
+    match /settings/paymentInfo {
+      allow read, write: if isOwner();
     }
 
     // Real homepage stat counters (registered farmers, completed deals) --

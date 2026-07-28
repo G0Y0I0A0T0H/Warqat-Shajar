@@ -109,6 +109,7 @@ const ICON_PATHS = {
   mail: '<rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/>',
   "book-open": '<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2Z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7Z"/>',
   verified: '<circle cx="12" cy="12" r="10"/><path d="m8 12 3 3 5-6"/>',
+  "credit-card": '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/>',
 };
 
 export function icon(name, extraClass = "") {
