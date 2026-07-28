@@ -249,6 +249,77 @@ service cloud.firestore {
       }
     }
 
+    // Manually-attested "escrow" order tracker, one doc per accepted chat
+    // offer (doc id == the offer message's own id). There is no payment
+    // gateway or backend in this project, so nothing here holds or moves
+    // real money -- every status is a self-reported attestation (buyer
+    // claims payment sent, owner confirms real receipt against their own
+    // settings/paymentInfo, buyer confirms delivery, either side can
+    // dispute). What this DOES enforce for real: illegal state jumps are
+    // rejected here, not just in the UI, and the trail is immutable (no
+    // delete rule at all).
+    match /escrowOrders/{orderId} {
+      allow read: if isSignedIn() &&
+        (request.auth.uid == resource.data.buyerId || request.auth.uid == resource.data.sellerId || isAdmin());
+
+      // Only a real participant of the actual accepted offer this order
+      // references may create it, and buyerId/sellerId must be the chat's
+      // real two participants (not an arbitrary third uid) -- checked
+      // against the real chat/message docs, never trusted from the
+      // client's own claim alone.
+      allow create: if isSignedIn() &&
+        request.resource.data.buyerId != request.resource.data.sellerId &&
+        (request.auth.uid == request.resource.data.buyerId || request.auth.uid == request.resource.data.sellerId) &&
+        request.resource.data.status == 'awaiting_payment' &&
+        get(/databases/$(database)/documents/chats/$(request.resource.data.chatId)).data.participantIds
+          .hasAll([request.resource.data.buyerId, request.resource.data.sellerId]) &&
+        get(/databases/$(database)/documents/chats/$(request.resource.data.chatId)/messages/$(orderId)).data.offer.status == 'accepted';
+
+      // Every branch below is a narrow, one-directional jump gated to one
+      // specific role -- see js/pages/dashboard-chat.js and
+      // js/pages/admin-payments.js for the matching UI. Deliberately
+      // separates "the buyer/seller attest" from "the owner confirms real
+      // money movement", per the vulnerabilities guide's principle of not
+      // letting general admin access double as financial authority.
+      allow update: if isSignedIn() && (
+        (request.auth.uid == resource.data.buyerId &&
+         resource.data.status == 'awaiting_payment' &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'paymentClaimedAt']) &&
+         request.resource.data.status == 'payment_claimed')
+        ||
+        (request.auth.uid == resource.data.buyerId &&
+         resource.data.status == 'payment_confirmed' &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'deliveryConfirmedAt']) &&
+         request.resource.data.status == 'delivery_confirmed')
+        ||
+        ((request.auth.uid == resource.data.buyerId || request.auth.uid == resource.data.sellerId) &&
+         resource.data.status != 'released' && resource.data.status != 'refunded' && resource.data.status != 'disputed' &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'disputedAt', 'disputedBy', 'disputeNote']) &&
+         request.resource.data.status == 'disputed' &&
+         request.resource.data.disputedBy == request.auth.uid)
+        ||
+        (isOwner() &&
+         resource.data.status == 'payment_claimed' &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'paymentConfirmedAt']) &&
+         request.resource.data.status == 'payment_confirmed')
+        ||
+        (isOwner() &&
+         resource.data.status == 'delivery_confirmed' &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'releasedAt']) &&
+         request.resource.data.status == 'released')
+        ||
+        (isOwner() &&
+         resource.data.status == 'disputed' &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'releasedAt']) &&
+         request.resource.data.status == 'released')
+        ||
+        (isOwner() &&
+         resource.data.status == 'disputed' &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'refundedAt']) &&
+         request.resource.data.status == 'refunded')
+      );
+    }
+
     match /reviews/{reviewId} {
       allow read: if true;
       allow create: if isActiveUser() &&
