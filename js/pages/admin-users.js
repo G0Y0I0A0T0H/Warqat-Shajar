@@ -3,7 +3,7 @@ import { guardAdmin } from "../admin-shell.js";
 import { t, onLocaleChange } from "../i18n.js";
 import { Admin, OWNER_EMAIL, Notifications } from "../firebase.js";
 import { authState } from "../state.js";
-import { badgeClass, btnClass, icon } from "../ui.js";
+import { badgeClass, btnClass, icon, escapeHtml } from "../ui.js";
 
 let contentEl;
 let users = [];
@@ -37,11 +37,11 @@ function render() {
                 <div class="list-row">
                   <div class="list-row-main">
                     <div style="display:flex;align-items:center;gap:0.5rem">
-                      <span style="font-weight:600">${u.fullName}</span>
+                      <span style="font-weight:600">${escapeHtml(u.fullName)}</span>
                       <span class="${badgeClass("outline")}">${t(`roles.${u.accountType}`)}</span>
                       <span class="${badgeClass(STATUS_VARIANT[status])}">${t(STATUS_KEY[status])}</span>
                     </div>
-                    <div class="text-muted" style="font-size:0.8rem">${u.email ?? ""} · <span class="force-ltr" style="display:inline-block">${u.phone ?? ""}</span></div>
+                    <div class="text-muted" style="font-size:0.8rem">${escapeHtml(u.email ?? "")} · <span class="force-ltr" style="display:inline-block">${escapeHtml(u.phone ?? "")}</span></div>
                   </div>
                   <div class="list-row-actions">
                     ${
@@ -73,7 +73,7 @@ function render() {
       const days = prompt(t("admin.suspendDays"), "30");
       if (!days) return;
       await Admin.setUserStatus(btn.dataset.suspend, "suspended", Number(days));
-      Notifications.create({ uid: btn.dataset.suspend, key: "accountSuspended" });
+      Notifications.create({ uid: btn.dataset.suspend, key: "accountSuspended" }).catch(() => {});
       await reload();
     });
   });
@@ -87,16 +87,20 @@ function render() {
   contentEl.querySelectorAll("[data-reactivate]").forEach((btn) => {
     btn.addEventListener("click", async () => {
       await Admin.setUserStatus(btn.dataset.reactivate, "active");
-      Notifications.create({ uid: btn.dataset.reactivate, key: "accountReactivated" });
+      Notifications.create({ uid: btn.dataset.reactivate, key: "accountReactivated" }).catch(() => {});
       await reload();
     });
   });
   contentEl.querySelectorAll("[data-notify]").forEach((btn) => {
-    btn.addEventListener("click", () => {
+    btn.addEventListener("click", async () => {
       const text = prompt(t("broadcast.sendToUserPrompt"));
       if (!text?.trim()) return;
-      Notifications.create({ uid: btn.dataset.notify, key: "adminMessage", params: { text: text.trim() } });
-      alert(t("broadcast.sentToUser"));
+      try {
+        await Notifications.create({ uid: btn.dataset.notify, key: "adminMessage", params: { text: text.trim() } });
+        alert(t("broadcast.sentToUser"));
+      } catch {
+        alert(t("broadcast.failed"));
+      }
     });
   });
   contentEl.querySelectorAll("[data-delete]").forEach((btn) => {

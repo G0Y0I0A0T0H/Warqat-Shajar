@@ -5,7 +5,7 @@ import { initLayout } from "../layout.js";
 import { guardDashboard } from "../dashboard-shell.js";
 import { t, onLocaleChange } from "../i18n.js";
 import { Chat, Notifications } from "../firebase.js";
-import { badgeClass, btnClass } from "../ui.js";
+import { badgeClass, btnClass, escapeHtml } from "../ui.js";
 
 const listEl = document.getElementById("my-orders-list");
 let orders = [];
@@ -36,7 +36,7 @@ function render() {
           </div>
           <div class="grid-2 text-muted" style="gap:0.5rem;margin-top:0.5rem;font-size:0.875rem">
             <div>${t("orders.quantity")}: ${o.quantity} ${o.unit}</div>
-            <div>${t("myOrders.farmer")}: ${o.farmerName}</div>
+            <div>${t("myOrders.farmer")}: ${escapeHtml(o.farmerName)}</div>
             <div>${t("chat.offerTotal")}: ${o.totalPrice}</div>
           </div>
         </div>
@@ -59,7 +59,7 @@ function render() {
       const [chatId, messageId] = btn.dataset.cancel.split(":");
       const order = orders.find((o) => o.chatId === chatId && o.messageId === messageId);
       await Chat.respondToOffer(chatId, messageId, "cancelled");
-      if (order) Notifications.create({ uid: order.farmerUid, key: "offerCancelled", params: { name: profileRef.fullName } });
+      if (order) Notifications.create({ uid: order.farmerUid, key: "offerCancelled", params: { name: profileRef.fullName } }).catch(() => {});
       await reload();
     });
   });

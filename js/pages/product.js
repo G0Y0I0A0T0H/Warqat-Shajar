@@ -292,7 +292,7 @@ async function handleAddToCart(quantity) {
         uid: product.ownerId,
         key: "productAddedToCart",
         params: { name: authState.profile.fullName, product: categoryLabelById(product.category, getLocale()) },
-      });
+      }).catch(() => {});
     }
     const btn = document.getElementById("add-to-cart-btn");
     if (btn) {

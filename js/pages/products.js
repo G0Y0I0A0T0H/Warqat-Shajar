@@ -9,6 +9,29 @@ const categorySelect = document.getElementById("filter-category");
 const governorateSelect = document.getElementById("filter-governorate");
 const listEl = document.getElementById("products-list");
 
+// Light Arabic-aware normalization so "احمد"/"أحمد" or "قريه"/"قرية" still
+// match each other -- collapses alef variants, hamza seats, ta-marbuta, and
+// strips diacritics/tatweel, then lowercases (for any Latin text mixed in).
+function normalizeSearchText(value) {
+  return (value || "")
+    .replace(/[ً-ْـ]/g, "")
+    .replace(/[إأآا]/g, "ا")
+    .replace(/ى/g, "ي")
+    .replace(/ة/g, "ه")
+    .replace(/ؤ/g, "و")
+    .replace(/ئ/g, "ي")
+    .trim()
+    .toLowerCase();
+}
+
+function matchesSearch(product, categoryText, governorateText, normalizedQuery) {
+  if (!normalizedQuery) return true;
+  const haystack = normalizeSearchText(
+    [categoryText, governorateText, product.ownerName, product.description].filter(Boolean).join(" "),
+  );
+  return normalizedQuery.split(/\s+/).every((word) => haystack.includes(word));
+}
+
 function populateFilters() {
   const category = categorySelect.value;
   const governorate = governorateSelect.value;
@@ -26,10 +49,15 @@ function populateFilters() {
 
 async function loadProducts() {
   listEl.innerHTML = "";
-  const products = await Products.listActiveProducts({
+  const rawProducts = await Products.listActiveProducts({
     category: categorySelect.value || undefined,
     governorate: governorateSelect.value || undefined,
   }).catch(() => []);
+
+  const query = normalizeSearchText(new URLSearchParams(location.search).get("q"));
+  const products = rawProducts.filter((p) =>
+    matchesSearch(p, categoryLabelById(p.category, getLocale()), governorateLabel(p.governorate, getLocale()), query),
+  );
 
   if (products.length === 0) {
     listEl.innerHTML = `<p class="empty-state">${getLocale() === "ar" ? "ما في منتجات مطابقة" : "No matching products"}</p>`;
