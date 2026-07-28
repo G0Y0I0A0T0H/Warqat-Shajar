@@ -559,6 +559,39 @@ function guardKillSwitch() {
   });
 }
 
+// The header search box existed purely as decoration -- no id, no form, no
+// listener anywhere -- so typing and pressing Enter did nothing at all.
+// Wired here (not per-page) since the exact same markup is duplicated
+// across every page's header.
+function wireHeaderSearch() {
+  const input = document.querySelector(".header-search input");
+  if (!input) return;
+  const onProductsPage = /(^|\/)products\.html$/.test(location.pathname);
+  if (onProductsPage) {
+    const q = new URLSearchParams(location.search).get("q");
+    if (q) input.value = q;
+  }
+  function go() {
+    const q = input.value.trim();
+    if (onProductsPage) {
+      const url = new URL(location.href);
+      if (q) url.searchParams.set("q", q);
+      else url.searchParams.delete("q");
+      location.href = url.pathname + url.search;
+    } else {
+      location.href = "products.html" + (q ? "?q=" + encodeURIComponent(q) : "");
+    }
+  }
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") go();
+  });
+  const icon = document.querySelector(".header-search [data-icon='search']");
+  if (icon) {
+    icon.style.cursor = "pointer";
+    icon.addEventListener("click", go);
+  }
+}
+
 function wireKillSwitchShortcut() {
   document.addEventListener("keydown", (e) => {
     if (!authState.isOwner) return;
@@ -590,6 +623,7 @@ export async function initLayout() {
   guardProfileCompletion();
   guardKillSwitch();
   wireKillSwitchShortcut();
+  wireHeaderSearch();
   subscribe(() => {
     renderHeaderAuthArea();
     renderWishlistBadge();

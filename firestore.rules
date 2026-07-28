@@ -285,13 +285,13 @@ service cloud.firestore {
     match /adminChats/{messageId} {
       allow read, create: if isAdmin();
       // Owner can always moderate; a message's own sender can also edit/
-      // delete it, but only within a short window after sending (matches
-      // the "sender may act on their own recent content" trust level
-      // already used elsewhere, e.g. offer cancellation).
-      allow update, delete: if isOwner() || (
-        isAdmin() && resource.data.senderId == request.auth.uid &&
-        request.time < resource.data.createdAt + duration.value(15, 'm')
-      );
+      // delete their own message any time -- an earlier version limited
+      // this to a 15-minute window, but that just meant the delete button
+      // stayed visible on older messages and silently failed when clicked,
+      // reading as "deletion is broken" rather than a deliberate limit.
+      // This is an internal admin-only room, not the public user chat, so
+      // there's no real moderation reason to keep that window.
+      allow update, delete: if isOwner() || (isAdmin() && resource.data.senderId == request.auth.uid);
     }
 
     // Written by any signed-in user into another user's own inbox (e.g. a

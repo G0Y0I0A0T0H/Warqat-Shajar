@@ -5,7 +5,7 @@ import { t, getLocale, onLocaleChange, refreshTranslations } from "../i18n.js";
 import { Products, PhoneAttempts, Notifications } from "../firebase.js";
 import { mergeCategories, categoryLabelById, onCategoriesChange } from "../constants.js";
 import { populateGovernorateSelect } from "./auth-shared.js";
-import { renderStarButtons, showMessage, renderImageInput, containsPhoneNumber } from "../ui.js";
+import { renderStarButtons, showMessage, renderImageInput, containsPhoneNumber, safeUrl } from "../ui.js";
 
 function toDateInputValue(value) {
   if (!value) return "";
@@ -130,7 +130,7 @@ export function renderProductForm(mountEl, profile, existingProduct) {
       .map(
         (url, i) => `
         <div style="position:relative;width:5rem;height:5rem;border-radius:var(--radius-lg);overflow:hidden;background:var(--muted)">
-          <img src="${url}" alt="" style="width:100%;height:100%;object-fit:cover">
+          <img src="${safeUrl(url)}" alt="" style="width:100%;height:100%;object-fit:cover">
           <button type="button" class="btn btn-destructive btn-icon-sm" data-remove-photo="${i}" style="position:absolute;top:2px;inset-inline-end:2px;width:1.25rem;height:1.25rem;padding:0">&times;</button>
         </div>
       `,
@@ -225,10 +225,11 @@ export function renderProductForm(mountEl, profile, existingProduct) {
           uid: profile.uid,
           key: "productAdded",
           params: { product: categoryLabelById(category, getLocale()) },
-        });
+        }).catch(() => {});
       }
       location.href = "dashboard-products.html";
-    } catch {
+    } catch (err) {
+      console.error("[product-form] save failed:", err);
       showMessage(errorEl, t("products.uploadFailed"));
     } finally {
       submitBtn.disabled = false;

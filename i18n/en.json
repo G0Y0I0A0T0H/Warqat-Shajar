@@ -542,9 +542,9 @@
     "sendFailed": "Couldn't send the message, try again",
     "recordVoice": "Record a voice note",
     "micDenied": "Couldn't access the microphone.",
-    "editFailed": "Couldn't edit this message (it may be too old).",
+    "editFailed": "Couldn't edit this message, try again.",
     "confirmDelete": "Delete this message?",
-    "deleteFailed": "Couldn't delete this message (it may be too old)."
+    "deleteFailed": "Couldn't delete this message, try again."
   },
   "broadcast": {
     "hint": "Send a notification that reaches every registered user on the platform instantly.",

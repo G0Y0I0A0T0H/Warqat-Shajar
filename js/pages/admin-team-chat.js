@@ -100,7 +100,7 @@ function render() {
         await AdminChat.updateMessage(id, textEl.value.trim());
         editingId = null;
       } catch {
-        showMessage(errorEl, t("teamChat.editFailed", "Couldn't edit this message (it may be too old)."));
+        showMessage(errorEl, t("teamChat.editFailed", "Couldn't edit this message, try again."));
       }
     });
   });
@@ -110,7 +110,7 @@ function render() {
       try {
         await AdminChat.deleteMessage(btn.dataset.deleteMsg);
       } catch {
-        showMessage(errorEl, t("teamChat.deleteFailed", "Couldn't delete this message (it may be too old)."));
+        showMessage(errorEl, t("teamChat.deleteFailed", "Couldn't delete this message, try again."));
       }
     });
   });

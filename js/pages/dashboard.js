@@ -3,7 +3,7 @@ import { guardDashboard } from "../dashboard-shell.js";
 import { t, getLocale, onLocaleChange } from "../i18n.js";
 import { Products, Sourcing, Chat, Notifications } from "../firebase.js";
 import { governorateLabel, categoryLabelById, onCategoriesChange } from "../constants.js";
-import { badgeClass, btnClass, icon } from "../ui.js";
+import { badgeClass, btnClass, icon, escapeHtml } from "../ui.js";
 import { initHelpTour } from "../help-tour.js";
 
 const welcomeEl = document.getElementById("welcome-heading");
@@ -68,7 +68,7 @@ function renderSourcingMatchCard(r) {
           ? `<div class="sourcing-match-meta">${t("sourcing.priceRange")}: ${r.priceMin}–${r.priceMax ?? ""}</div>`
           : ""
       }
-      <div class="sourcing-match-meta">${t("sourcing.postedBy")}: ${r.ownerName}</div>
+      <div class="sourcing-match-meta">${t("sourcing.postedBy")}: ${escapeHtml(r.ownerName)}</div>
       <div class="sourcing-match-govs">
         ${r.governorates.map((g) => `<span class="${badgeClass("outline")}">${governorateLabel(g, getLocale())}</span>`).join("")}
       </div>
@@ -110,7 +110,7 @@ async function handleFulfillRequest(request) {
       contextId: request.id,
       contextLabel: categoryLabelById(request.category, getLocale()),
     });
-    Notifications.create({ uid: request.ownerId, key: "sourcingResponse", params: { name: currentProfile.fullName } });
+    Notifications.create({ uid: request.ownerId, key: "sourcingResponse", params: { name: currentProfile.fullName } }).catch(() => {});
     location.href = `dashboard-chat.html?id=${chatId}`;
   } finally {
     fulfilling = false;

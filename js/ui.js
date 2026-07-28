@@ -550,7 +550,7 @@ export function initProductComments(containerEl, productId, ownerId) {
             uid: ownerId,
             key: "newProductComment",
             params: { name: authState.profile.fullName },
-          });
+          }).catch(() => {});
         }
         textEl.value = "";
       });

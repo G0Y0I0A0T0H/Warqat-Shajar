@@ -1169,8 +1169,13 @@ main {
   inset-inline-start: 0.75rem;
 }
 
+/* inset-inline-start/end flip sides in this RTL site (start = right,
+   end = left) but these are spatial navigation arrows, not text -- the
+   left-positioned arrow should always point left and the right-positioned
+   one right, regardless of reading direction. So the rotation has to be
+   the opposite of what the "prev"/"next" naming alone would suggest. */
 .hero-arrow-prev svg {
-  transform: rotate(90deg);
+  transform: rotate(-90deg);
 }
 
 .hero-arrow-next {
@@ -1178,7 +1183,7 @@ main {
 }
 
 .hero-arrow-next svg {
-  transform: rotate(-90deg);
+  transform: rotate(90deg);
 }
 
 @media (min-width: 640px) {
@@ -3160,6 +3165,7 @@ main {
   border-radius: 999px;
   background: #fff;
   padding: 8px;
+  object-fit: contain;
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3), 0 0 0 3px color-mix(in srgb, var(--primary) 40%, transparent);
   z-index: 2;
 }

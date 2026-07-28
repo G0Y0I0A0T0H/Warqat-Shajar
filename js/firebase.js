@@ -1201,6 +1201,12 @@ export const AdminChat = {
 const notificationsCol = collection(db, "notifications");
 
 export const Notifications = {
+  // Does NOT swallow its own errors -- callers that want fire-and-forget
+  // behavior (most of them: a notification failing shouldn't block the
+  // primary action like sending a chat message) add their own .catch(() =>
+  // {}). Callers where the notification IS the primary action (admin
+  // sending a message to a user) need the real error to surface instead of
+  // silently claiming success.
   async create({ uid, key, params, link }) {
     await addDoc(notificationsCol, {
       uid,
@@ -1209,7 +1215,7 @@ export const Notifications = {
       link: link ?? null,
       read: false,
       createdAt: serverTimestamp(),
-    }).catch(() => {});
+    });
   },
 
   subscribeMine(uid, callback) {

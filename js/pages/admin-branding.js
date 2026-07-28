@@ -194,7 +194,11 @@ function render() {
           const isHidden = (categoriesConfig.hidden || []).includes(c.id);
           return `
         <div class="list-row">
-          <img src="${safeUrl(c.imageUrl)}" alt="" style="width:3.5rem;height:3.5rem;object-fit:cover;border-radius:var(--radius-lg);flex-shrink:0;background:var(--muted)">
+          ${
+            c.imageUrl
+              ? `<img src="${safeUrl(c.imageUrl)}" alt="" style="width:3.5rem;height:3.5rem;object-fit:cover;border-radius:var(--radius-lg);flex-shrink:0;background:var(--muted)">`
+              : `<div style="width:3.5rem;height:3.5rem;border-radius:var(--radius-lg);flex-shrink:0;background:var(--muted);display:flex;align-items:center;justify-content:center;color:var(--muted-foreground)">${icon("image")}</div>`
+          }
           <div class="list-row-main">
             <div style="display:flex;align-items:center;gap:0.4rem">
               <span style="font-weight:600">${escapeHtml(c[getLocale()] || c.en)}</span>

@@ -115,7 +115,7 @@ function openRateDialog(other) {
       rating,
       comment,
     });
-    Notifications.create({ uid: other.uid, key: "newReview", params: { name: profile.fullName } });
+    Notifications.create({ uid: other.uid, key: "newReview", params: { name: profile.fullName } }).catch(() => {});
     reviewed = true;
     close();
     renderRateMount(other);
@@ -180,14 +180,14 @@ function renderMessages() {
     btn.addEventListener("click", async () => {
       await Chat.respondToOffer(chatId, btn.dataset.decline, "declined");
       const offerMsg = messages.find((m) => m.id === btn.dataset.decline);
-      if (offerMsg) Notifications.create({ uid: offerMsg.senderId, key: "offerDeclined", params: { name: profile.fullName } });
+      if (offerMsg) Notifications.create({ uid: offerMsg.senderId, key: "offerDeclined", params: { name: profile.fullName } }).catch(() => {});
     });
   });
   messagesEl.querySelectorAll("[data-cancel]").forEach((btn) => {
     btn.addEventListener("click", () => {
       if (!confirm(t("chat.confirmCancelOffer"))) return;
       Chat.respondToOffer(chatId, btn.dataset.cancel, "cancelled");
-      Notifications.create({ uid: otherParticipant().uid, key: "offerCancelled", params: { name: profile.fullName } });
+      Notifications.create({ uid: otherParticipant().uid, key: "offerCancelled", params: { name: profile.fullName } }).catch(() => {});
     });
   });
   messagesEl.querySelectorAll("[data-counter]").forEach((btn) => {
@@ -211,7 +211,7 @@ async function acceptOffer(messageId) {
     SiteSettings.incrementCompletedDeals().catch(() => {});
   }
   const offerMsg = messages.find((m) => m.id === messageId);
-  if (offerMsg) Notifications.create({ uid: offerMsg.senderId, key: "offerAccepted", params: { name: profile.fullName } });
+  if (offerMsg) Notifications.create({ uid: offerMsg.senderId, key: "offerAccepted", params: { name: profile.fullName } }).catch(() => {});
 }
 
 function renderOfferForm() {
@@ -295,7 +295,7 @@ function renderOfferForm() {
       uid: otherParticipant().uid,
       key: "newOffer",
       params: { name: profile.fullName, product: chat.contextLabel || "" },
-    });
+    }).catch(() => {});
     if (chat.contextType === "product") {
       // Best-effort: a denied counter bump shouldn't block the offer from sending.
       await Products.incrementProductOffers(chat.contextId).catch(() => {});
@@ -359,7 +359,7 @@ async function main() {
     textInput.value = "";
     try {
       await Chat.sendTextMessage(chatId, profile.uid, text);
-      Notifications.create({ uid: otherParticipant().uid, key: "newMessage", params: { name: profile.fullName } });
+      Notifications.create({ uid: otherParticipant().uid, key: "newMessage", params: { name: profile.fullName } }).catch(() => {});
     } catch {
       showMessage(chatErrorEl, t("chats.locked"));
     }
