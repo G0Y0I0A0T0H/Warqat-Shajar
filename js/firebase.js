@@ -973,6 +973,18 @@ const publicStatsRef = doc(db, "settings", "publicStats");
 
 const killSwitchRef = doc(db, "settings", "killSwitch");
 
+// Owner's own payment-receiving details -- see firestore.rules for why this
+// doc is owner-only on both read and write.
+const DEFAULT_PAYMENT_INFO = {
+  vodafoneCash: null,
+  instapay: null,
+  bankName: null,
+  bankAccountName: null,
+  bankAccountNumber: null,
+  notes: null,
+};
+const paymentInfoRef = doc(db, "settings", "paymentInfo");
+
 // Kept in sync by hand with js/constants.js's CATEGORIES -- not imported
 // directly to avoid a circular import (constants.js already imports
 // SiteSettings from this file).
@@ -1146,6 +1158,30 @@ export const SiteSettings = {
 
   async setKillSwitch(active) {
     await setDoc(killSwitchRef, { active }, { merge: true });
+  },
+
+  // Owner-only in firestore.rules regardless of who calls this client-side.
+  subscribePaymentInfo(callback) {
+    return onSnapshot(
+      paymentInfoRef,
+      (snap) => callback(snap.exists() ? { ...DEFAULT_PAYMENT_INFO, ...snap.data() } : DEFAULT_PAYMENT_INFO),
+      () => callback(DEFAULT_PAYMENT_INFO),
+    );
+  },
+
+  async updatePaymentInfo({ vodafoneCash, instapay, bankName, bankAccountName, bankAccountNumber, notes }) {
+    await setDoc(
+      paymentInfoRef,
+      {
+        vodafoneCash: vodafoneCash || null,
+        instapay: instapay || null,
+        bankName: bankName || null,
+        bankAccountName: bankAccountName || null,
+        bankAccountNumber: bankAccountNumber || null,
+        notes: notes || null,
+      },
+      { merge: true },
+    );
   },
 };
 

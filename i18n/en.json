@@ -490,6 +490,7 @@
     "noData": "Not enough data yet",
     "ads": "Ads",
     "branding": "Visual Identity",
+    "payments": "Payments",
     "comments": "Comments",
     "viewProduct": "View Product",
     "totalComments": "Total Comments",
@@ -616,6 +617,18 @@
     "descProductDetail": "Product detail page, below the description.",
     "enablePlacement": "Enable",
     "disablePlacement": "Disable"
+  },
+  "payments": {
+    "title": "Payment Receiving System",
+    "hint": "This info is private to you (the owner) only — no other admin can see it. There's no live payment gateway wired into the site yet, so the idea is you list your own receiving methods here (Vodafone Cash / InstaPay / bank account) and confirm transfers with the buyer manually.",
+    "vodafoneCashLabel": "Vodafone Cash number",
+    "instapayLabel": "InstaPay ID (number or username)",
+    "bankNameLabel": "Bank name",
+    "bankAccountNameLabel": "Account holder name",
+    "bankAccountNumberLabel": "Account number / IBAN",
+    "notesLabel": "Additional instructions (optional)",
+    "save": "Save",
+    "saved": "Saved"
   },
   "branding": {
     "title": "Visual Identity Control",
