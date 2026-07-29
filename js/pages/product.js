@@ -288,11 +288,21 @@ async function handleAddToCart(quantity) {
   const qty = quantity || product.minOrderQuantity;
   try {
     await addToCart(product.id, qty);
+    const productLabel = product.title || categoryLabelById(product.category, getLocale());
+    // Confirmation notification for the buyer themselves (separate from the
+    // seller-facing one below) -- so "add to cart" shows up in your own
+    // notification bell/toast, not just the button's brief checkmark state.
+    Notifications.create({
+      uid: authState.user.uid,
+      key: "cartItemAdded",
+      params: { product: productLabel },
+      link: "cart.html",
+    }).catch(() => {});
     if (product.ownerId && product.ownerId !== authState.user.uid) {
       Notifications.create({
         uid: product.ownerId,
         key: "productAddedToCart",
-        params: { name: authState.profile.fullName, product: product.title || categoryLabelById(product.category, getLocale()) },
+        params: { name: authState.profile.fullName, product: productLabel },
       }).catch(() => {});
     }
     const btn = document.getElementById("add-to-cart-btn");

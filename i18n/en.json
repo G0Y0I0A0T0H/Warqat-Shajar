@@ -604,6 +604,7 @@
     "newReview": { "title": "New review", "body": "{name} left you a review" },
     "offerCancelled": { "title": "Offer cancelled", "body": "{name} cancelled the offer" },
     "adminMessage": { "title": "Message from Waraqat Shajar", "body": "{text}" },
+    "cartItemAdded": { "title": "Added to your cart", "body": "You added {product} to your cart" },
     "productAddedToCart": { "title": "Your product was added to a cart", "body": "{name} added {product} to their cart" },
     "newProductComment": { "title": "New comment", "body": "{name} commented on your product" }
   },
