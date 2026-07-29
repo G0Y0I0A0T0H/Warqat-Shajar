@@ -180,6 +180,7 @@
       "phoneHint": "Your number is never shown to other users — used only for delivery and support",
       "governorateLabel": "Governorate",
       "governoratePlaceholder": "Select governorate",
+      "dialectLabel": "Site dialect",
       "cropsLabel": "Crops you currently have available",
       "sourcingLabel": "Products you're looking to source",
       "emailLabel": "Email",
@@ -490,6 +491,7 @@
     "noData": "Not enough data yet",
     "ads": "Ads",
     "branding": "Visual Identity",
+    "dialects": "UI Dialects",
     "payments": "Payments",
     "comments": "Comments",
     "viewProduct": "View Product",
@@ -617,6 +619,18 @@
     "descProductDetail": "Product detail page, below the description.",
     "enablePlacement": "Enable",
     "disablePlacement": "Disable"
+  },
+  "dialects": {
+    "hint": "Edit the Egyptian-dialect text shown to users who selected it, or add a value for a key that hasn't been translated yet. Changes save immediately and go live right away, no code deploy needed. A key with no value here just falls back to the base text (\"Base text\" column).",
+    "addKeyTitle": "Add / edit a key",
+    "keyPathPlaceholder": "e.g. cart.empty",
+    "egyptianValuePlaceholder": "Egyptian-dialect text",
+    "addKeyBtn": "Save",
+    "keyColumn": "Key",
+    "baseColumn": "Base text",
+    "egyptianColumn": "Egyptian",
+    "editedBadge": "Edited",
+    "saveBtn": "Save"
   },
   "payments": {
     "title": "Payment Receiving System",
