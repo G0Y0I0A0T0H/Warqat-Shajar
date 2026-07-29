@@ -3,7 +3,7 @@ import { guardDashboard } from "../dashboard-shell.js";
 import { t, getLocale, onLocaleChange } from "../i18n.js";
 import { Products } from "../firebase.js";
 import { categoryLabelById, onCategoriesChange } from "../constants.js";
-import { badgeClass, btnClass, icon } from "../ui.js";
+import { badgeClass, btnClass, icon, safeUrl, escapeHtml } from "../ui.js";
 import { initHelpTour } from "../help-tour.js";
 
 const listEl = document.getElementById("products-list");
@@ -22,11 +22,12 @@ function render(products) {
       (p, i) => `
       <div class="list-row" data-product-row="${i === 0 ? "first" : ""}">
         <div style="width:3.5rem;height:3.5rem;border-radius:var(--radius-lg);background:var(--muted);overflow:hidden;flex-shrink:0">
-          ${p.photoUrls?.[0] ? `<img src="${p.photoUrls[0]}" alt="" style="width:100%;height:100%;object-fit:cover">` : ""}
+          ${p.photoUrls?.[0] ? `<img src="${safeUrl(p.photoUrls[0])}" alt="" style="width:100%;height:100%;object-fit:cover">` : ""}
         </div>
         <div class="list-row-main">
-          <div style="display:flex;align-items:center;gap:0.5rem">
-            <span style="font-weight:600">${categoryLabelById(p.category, getLocale())}</span>
+          <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap">
+            <span style="font-weight:600">${p.title ? escapeHtml(p.title) : categoryLabelById(p.category, getLocale())}</span>
+            ${p.title ? `<span class="${badgeClass("outline")}" style="font-size:0.7rem">${categoryLabelById(p.category, getLocale())}</span>` : ""}
             <span class="${badgeClass(p.status === "active" ? "default" : "secondary")}">${t(p.status === "active" ? "products.statusActive" : "products.statusPaused")}</span>
           </div>
           <div class="text-muted" style="font-size:0.875rem">${p.quantity} ${t(p.unit === "kg" ? "products.unitKg" : "products.unitTon")} — ${p.price} ${t("featured.perKg")}</div>

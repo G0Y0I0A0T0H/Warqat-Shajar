@@ -1,7 +1,7 @@
 import { initLayout } from "../layout.js";
 import { guardAdmin, NAV_ITEMS, OWNER_ONLY_KEYS } from "../admin-shell.js";
 import { t, onLocaleChange } from "../i18n.js";
-import { Admin, OWNER_EMAIL, auth } from "../firebase.js";
+import { Admin, OWNER_EMAIL, auth, SiteSettings } from "../firebase.js";
 import { authState } from "../state.js";
 import { btnClass, showMessage } from "../ui.js";
 
@@ -13,6 +13,8 @@ const GRANTABLE_SECTIONS = NAV_ITEMS.filter((item) => item.key !== "admins" && !
 let contentEl;
 let admins = [];
 let allUsers = [];
+let chatDisabled = false;
+let maintenanceModeOn = false;
 
 function visibleAdmins() {
   return authState.isOwner ? admins : admins.filter((a) => a.email !== OWNER_EMAIL);
@@ -30,6 +32,25 @@ function render() {
     ${
       authState.isOwner
         ? `
+    <div class="card" style="padding:1.5rem;margin-top:1rem">
+      <h2 class="card-title" style="font-size:1rem">${t("admin.systemControlsTitle")}</h2>
+      <div style="display:flex;flex-direction:column;gap:1rem;margin-top:0.75rem">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap">
+          <div>
+            <div style="font-weight:600;font-size:0.9rem">${t("admin.chatDisableTitle")}</div>
+            <p class="text-muted" style="font-size:0.8rem;margin-top:0.15rem">${t("admin.chatDisableHint")}</p>
+          </div>
+          <button type="button" class="${btnClass(chatDisabled ? "destructive" : "outline", "sm")}" id="toggle-chat-disabled-btn">${chatDisabled ? t("admin.chatDisableOn") : t("admin.chatDisableOff")}</button>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap">
+          <div>
+            <div style="font-weight:600;font-size:0.9rem">${t("admin.maintenanceModeTitle")}</div>
+            <p class="text-muted" style="font-size:0.8rem;margin-top:0.15rem">${t("admin.maintenanceModeHint")}</p>
+          </div>
+          <button type="button" class="${btnClass(maintenanceModeOn ? "destructive" : "outline", "sm")}" id="toggle-maintenance-btn">${maintenanceModeOn ? t("admin.maintenanceModeOn") : t("admin.maintenanceModeOff")}</button>
+        </div>
+      </div>
+    </div>
     <form id="add-admin-form" class="form-stack card" style="padding:1.5rem;margin-top:1rem">
       <h2 class="card-title" style="font-size:1rem">${t("admin.addAdmin")}</h2>
       <p class="text-muted" style="font-size:0.8rem">${t("admin.addAdminByEmail")}</p>
@@ -133,6 +154,18 @@ function render() {
     }
   });
 
+  contentEl.querySelector("#toggle-chat-disabled-btn")?.addEventListener("click", async () => {
+    const next = !chatDisabled;
+    if (next && !confirm(t("admin.confirmChatDisable"))) return;
+    await SiteSettings.setChatDisabled(next);
+  });
+
+  contentEl.querySelector("#toggle-maintenance-btn")?.addEventListener("click", async () => {
+    const next = !maintenanceModeOn;
+    if (next && !confirm(t("admin.confirmMaintenanceMode"))) return;
+    await SiteSettings.setMaintenanceMode(next);
+  });
+
   contentEl.querySelector("#toggle-support-btn").addEventListener("click", async () => {
     await Admin.setAcceptingSupport(currentUid, !acceptingSupport);
     await reload();
@@ -160,6 +193,16 @@ async function main() {
   await initLayout();
   await guardAdmin("admin-admins.html");
   contentEl = document.getElementById("admin-content");
+  if (authState.isOwner) {
+    SiteSettings.subscribeChatDisabled((active) => {
+      chatDisabled = active;
+      render();
+    });
+    SiteSettings.subscribeMaintenanceMode((active) => {
+      maintenanceModeOn = active;
+      render();
+    });
+  }
   await reload();
   onLocaleChange(render);
 }

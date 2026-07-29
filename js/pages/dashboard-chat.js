@@ -4,6 +4,7 @@ import { t, onLocaleChange } from "../i18n.js";
 import { Chat, Products, Reviews, PhoneAttempts, Notifications, SiteSettings, Escrow } from "../firebase.js";
 import { authState } from "../state.js";
 import { btnClass, badgeClass, icon, initReportDialog, renderStarButtons, showMessage, containsPhoneNumber, escapeHtml } from "../ui.js";
+import { initHelpTour } from "../help-tour.js";
 
 const params = new URLSearchParams(location.search);
 const chatId = params.get("id");
@@ -228,6 +229,11 @@ function renderEscrowTracker() {
     await Escrow.raiseDispute(escrowOrder.id, profile.uid, note);
     disputeFormOpen = false;
   });
+
+  // Shown once ever (help-tour.js guards this via localStorage) the first
+  // time any user sees this card, since it's brand new and self-explanatory
+  // only once you know what the statuses mean.
+  initHelpTour("escrow-tracker", [{ target: "#escrow-mount .escrow-tracker", text: t("escrow.tourExplain") }]);
 }
 
 function renderMessages() {
@@ -471,6 +477,17 @@ async function main() {
     makeOfferBtn.disabled = true;
     textInput.disabled = true;
     sendBtn.disabled = true;
+  } else if (!authState.isAdmin) {
+    // Sitewide chat-disable switch (owner-only) -- admins can still send
+    // per firestore.rules (e.g. to moderate), so this check is skipped for
+    // them; every other participant sees the same disabled composer as the
+    // per-chat lock above.
+    SiteSettings.subscribeChatDisabled((disabled) => {
+      document.getElementById("chat-disabled-notice").style.display = disabled ? "block" : "none";
+      makeOfferBtn.disabled = disabled;
+      textInput.disabled = disabled;
+      sendBtn.disabled = disabled;
+    });
   }
 
   makeOfferBtn.addEventListener("click", () => {

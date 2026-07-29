@@ -112,6 +112,7 @@
     "barley": "Barley",
     "rice": "Rice",
     "organic": "Organic Products",
+    "animal-feed": "Animal Feed",
     "shopNow": "Shop Now"
   },
   "featured": {
@@ -293,6 +294,9 @@
   },
   "dashboardOverview": {
     "welcome": "Welcome",
+    "addProductCtaTitleEmpty": "Get started: add your first product",
+    "addProductCtaTitle": "Got a new harvest? Add it in two minutes",
+    "addProductCtaSteps": "Click the button, pick the category and write the product's name, set the price and quantity, add one photo — done, your product shows up to every trader and factory right away.",
     "totalViews": "Product Views",
     "totalOffers": "Offers Received",
     "totalProducts": "Active Products",
@@ -303,6 +307,7 @@
   "products": {
     "addProduct": "Add Product",
     "editProduct": "Edit Product",
+    "titleLabel": "Product name",
     "categoryLabel": "Category",
     "priceLabel": "Price",
     "unitLabel": "Unit",
@@ -338,6 +343,9 @@
     "uploadFailed": "Failed to save product, please try again",
     "tourAdd": "Tap here to list a new product for sale — just a photo, price, and quantity.",
     "tourCard": "Each of your products gets a card here: photo, price, and how many views or offers it got — pause or delete it anytime.",
+    "tourSearch": "Search by category, governorate, farmer name, or description — try it any time.",
+    "tourCategoryFilter": "Or narrow down by category here.",
+    "tourGovernorateFilter": "...and by governorate here, to find what's closest to you.",
     "phoneNotAllowed": "Phone numbers aren't allowed in the product description — keep contact inside chat"
   },
   "freshness": {
@@ -403,6 +411,10 @@
   },
   "profile": {
     "verifiedBadge": "Verified Account"
+  },
+  "maintenance": {
+    "message": "Something went wrong on our end, it will be fixed soon",
+    "contactSupport": "Contact support"
   },
   "killSwitch": {
     "title": "SITE LOCKED",
@@ -512,7 +524,18 @@
     "changeMyAdminModePassword": "Change your admin mode password",
     "newAdminModePassword": "New password",
     "saveChanges": "Save",
-    "passwordUpdated": "Password updated"
+    "passwordUpdated": "Password updated",
+    "systemControlsTitle": "System controls",
+    "chatDisableTitle": "Disable the entire chat system",
+    "chatDisableHint": "Immediately blocks new messages in every user chat (buying/selling and support) sitewide -- the admin team chat is unaffected.",
+    "chatDisableOn": "Enabled (chat is down)",
+    "chatDisableOff": "Disabled",
+    "confirmChatDisable": "Are you sure you want to disable chat sitewide for every user?",
+    "maintenanceModeTitle": "Maintenance mode (system under development)",
+    "maintenanceModeHint": "Shows every visitor an \"error occurred\" screen instead of the site -- you and other signed-in admins can still reach the admin panel to turn it back off.",
+    "maintenanceModeOn": "Enabled (maintenance is live)",
+    "maintenanceModeOff": "Disabled",
+    "confirmMaintenanceMode": "Are you sure you want to enable maintenance mode? Every visitor will see the maintenance screen instead of the site."
   },
   "phoneAttempts": {
     "hint": "Every attempt to share a phone number anywhere on the site is logged here automatically — 3 attempts from the same user auto-suspends their account for 24h.",
@@ -537,9 +560,11 @@
     "viewOnly": "View only — for internal review",
     "lockChat": "Stop Conversation",
     "lockChatConfirm": "Are you sure you want to stop this conversation? Neither side will be able to send new messages.",
-    "locked": "Conversation stopped"
+    "locked": "Conversation stopped",
+    "sitewideDisabled": "Chat is temporarily disabled site-wide by the admin"
   },
   "teamChat": {
+    "liveLabel": "Admins only — live",
     "hint": "A private room shared by every admin account — no regular user can ever reach it.",
     "attach": "Attach image",
     "sendFailed": "Couldn't send the message, try again",
@@ -668,7 +693,8 @@
     "awaitingPaymentBuyerHint": "Send the amount to the receiving method the seller listed, then click the button below.",
     "raiseDisputeBtn": "Report a problem",
     "disputeNotePlaceholder": "Briefly describe the problem...",
-    "disputeSubmitBtn": "Submit report"
+    "disputeSubmitBtn": "Submit report",
+    "tourExplain": "This card tracks payment for this deal — it shows exactly where things stand: payment, delivery, and payout. If anything goes wrong, you can report it here any time."
   },
   "branding": {
     "title": "Visual Identity Control",
@@ -680,8 +706,12 @@
     "uploading": "Uploading...",
     "saved": "Saved",
     "logoTitle": "Logo",
-    "widgetIconTitle": "Floating Contact Button & Notification Icon",
-    "widgetIconHint": "The image shown inside the floating button and the round badge on toast notifications — leave blank to reuse the main logo.",
+    "logoHint": "Used everywhere on the site: header, footer, floating contact button, notification toasts, browser tab icon.",
+    "groupsHint": "Organized into four sections: identity, text content, contact channels, and images.",
+    "groupIdentity": "Identity & Appearance",
+    "groupText": "Site Text",
+    "groupContact": "Contact & Social",
+    "groupImages": "Homepage Images",
     "colorTitle": "Brand Color",
     "cursorSizeTitle": "Cursor Size",
     "contentTitle": "Homepage Text",

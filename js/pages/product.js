@@ -2,7 +2,7 @@ import { initLayout } from "../layout.js";
 import { t, getLocale, onLocaleChange } from "../i18n.js";
 import { Products, Chat, Ads, Notifications } from "../firebase.js";
 import { governorateLabel, categoryLabelById, onCategoriesChange, computeFreshness } from "../constants.js";
-import { renderAdSlot, favoriteButtonHTML, wireFavoriteButtons, initReportDialog, initProductComments, icon, showMessage, escapeHtml, safeUrl } from "../ui.js";
+import { renderAdSlot, favoriteButtonHTML, wireFavoriteButtons, initReportDialog, initProductComments, icon, showMessage, escapeHtml, safeUrl, badgeClass } from "../ui.js";
 import { authState, subscribe, addToCart } from "../state.js";
 
 const params = new URLSearchParams(location.search);
@@ -107,12 +107,13 @@ function render() {
     </div>
     <div>
       <div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem">
-        <h1 class="heading" style="font-size:1.5rem">${categoryLabelById(product.category, getLocale())}</h1>
+        <h1 class="heading" style="font-size:1.5rem">${product.title ? escapeHtml(product.title) : categoryLabelById(product.category, getLocale())}</h1>
         <div style="display:flex;align-items:center;gap:0.5rem">
           <span style="display:flex;align-items:center;gap:0.25rem;font-weight:600">${icon("star", "is-filled")} ${product.qualityRating}</span>
           <span id="fav-btn-mount"></span>
         </div>
       </div>
+      ${product.title ? `<span class="${badgeClass("outline")}" style="margin-top:0.35rem;display:inline-block">${categoryLabelById(product.category, getLocale())}</span>` : ""}
       <p class="text-muted" style="display:flex;align-items:center;gap:0.25rem;margin-top:0.25rem;font-size:0.875rem">${icon("map-pin")} ${governorateLabel(product.governorate, getLocale())}</p>
       <p class="product-detail-price" style="margin-top:1rem">${product.price} ${t("featured.perKg")}</p>
       <div class="product-detail-stats" style="margin-top:1rem">
@@ -235,7 +236,7 @@ async function handleNegotiate() {
       otherPhone: product.ownerPhone,
       contextType: "product",
       contextId: product.id,
-      contextLabel: categoryLabelById(product.category, getLocale()),
+      contextLabel: product.title || categoryLabelById(product.category, getLocale()),
     });
     location.href = `dashboard-chat.html?id=${chatId}`;
   } finally {
@@ -261,7 +262,7 @@ async function handleOrderNow(quantity) {
       otherPhone: product.ownerPhone,
       contextType: "product",
       contextId: product.id,
-      contextLabel: categoryLabelById(product.category, getLocale()),
+      contextLabel: product.title || categoryLabelById(product.category, getLocale()),
     });
     await Chat.sendOfferMessage(chatId, authState.user.uid, {
       quantity: qty,
@@ -291,7 +292,7 @@ async function handleAddToCart(quantity) {
       Notifications.create({
         uid: product.ownerId,
         key: "productAddedToCart",
-        params: { name: authState.profile.fullName, product: categoryLabelById(product.category, getLocale()) },
+        params: { name: authState.profile.fullName, product: product.title || categoryLabelById(product.category, getLocale()) },
       }).catch(() => {});
     }
     const btn = document.getElementById("add-to-cart-btn");

@@ -5,7 +5,7 @@ import { t, getLocale, onLocaleChange, refreshTranslations } from "../i18n.js";
 import { Products, PhoneAttempts, Notifications } from "../firebase.js";
 import { mergeCategories, categoryLabelById, onCategoriesChange } from "../constants.js";
 import { populateGovernorateSelect } from "./auth-shared.js";
-import { renderStarButtons, showMessage, renderImageInput, containsPhoneNumber, safeUrl } from "../ui.js";
+import { renderStarButtons, showMessage, renderImageInput, containsPhoneNumber, safeUrl, escapeHtml } from "../ui.js";
 
 function toDateInputValue(value) {
   if (!value) return "";
@@ -20,6 +20,10 @@ export function renderProductForm(mountEl, profile, existingProduct) {
 
   mountEl.innerHTML = `
     <form id="product-form" class="form-stack card" style="padding:1.5rem">
+      <div class="field">
+        <label class="label" data-i18n="products.titleLabel">Product name</label>
+        <input class="input" id="pf-title" maxlength="80" value="${escapeHtml(existingProduct?.title || "")}">
+      </div>
       <div class="field">
         <label class="label" data-i18n="products.categoryLabel">Category</label>
         <select class="select" id="pf-category"></select>
@@ -169,6 +173,7 @@ export function renderProductForm(mountEl, profile, existingProduct) {
     e.preventDefault();
     showMessage(errorEl, "");
 
+    const title = mountEl.querySelector("#pf-title").value.trim();
     const category = categorySelect.value;
     const governorate = governorateSelect.value;
     const price = Number(mountEl.querySelector("#pf-price").value);
@@ -179,8 +184,20 @@ export function renderProductForm(mountEl, profile, existingProduct) {
     const harvestDateValue = mountEl.querySelector("#pf-harvest-date").value;
     const videoUrl = videoInput.getValue() || null;
 
-    if (!category || !governorate || !price || !quantity || !minOrderQuantity || !harvestDateValue) {
+    if (!title || !category || !governorate || !price || !quantity || !minOrderQuantity || !harvestDateValue) {
       showMessage(errorEl, t("products.required"));
+      return;
+    }
+    if (containsPhoneNumber(title)) {
+      showMessage(errorEl, t("products.phoneNotAllowed"));
+      PhoneAttempts.logAttempt({
+        uid: profile.uid,
+        name: profile.fullName,
+        context: "productDescription",
+        contextId: existingProduct?.id || null,
+        targetName: null,
+        snippet: title,
+      }).catch(() => {});
       return;
     }
     if (containsPhoneNumber(description)) {
@@ -199,6 +216,7 @@ export function renderProductForm(mountEl, profile, existingProduct) {
     submitBtn.disabled = true;
     try {
       const input = {
+        title,
         category,
         governorate,
         price,
@@ -224,7 +242,7 @@ export function renderProductForm(mountEl, profile, existingProduct) {
         Notifications.create({
           uid: profile.uid,
           key: "productAdded",
-          params: { product: categoryLabelById(category, getLocale()) },
+          params: { product: title },
         }).catch(() => {});
       }
       location.href = "dashboard-products.html";

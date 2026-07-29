@@ -3,7 +3,7 @@ import { t, getLocale, onLocaleChange } from "../i18n.js";
 import { Products, Chat } from "../firebase.js";
 import { categoryLabelById, onCategoriesChange } from "../constants.js";
 import { authState, cartState, subscribe, updateCartQuantity, removeFromCart } from "../state.js";
-import { btnClass, icon, showMessage } from "../ui.js";
+import { btnClass, icon, showMessage, escapeHtml, safeUrl } from "../ui.js";
 
 const contentEl = document.getElementById("cart-content");
 const productCache = new Map();
@@ -52,11 +52,11 @@ async function render() {
       return `
         <div class="cart-row" data-product="${productId}">
           <a href="product.html?id=${productId}" class="cart-row-media">
-            ${photo ? `<img src="${photo}" alt="">` : ""}
+            ${photo ? `<img src="${safeUrl(photo)}" alt="">` : ""}
           </a>
           <div class="cart-row-main">
-            <a href="product.html?id=${productId}" style="font-weight:600;color:var(--foreground)">${categoryLabelById(product.category, getLocale())}</a>
-            <div class="text-muted" style="font-size:0.8rem">${product.ownerName}</div>
+            <a href="product.html?id=${productId}" style="font-weight:600;color:var(--foreground)">${product.title ? escapeHtml(product.title) : categoryLabelById(product.category, getLocale())}</a>
+            <div class="text-muted" style="font-size:0.8rem">${escapeHtml(product.ownerName)}</div>
             <div style="display:flex;align-items:center;gap:0.5rem;margin-top:0.5rem;flex-wrap:wrap">
               <input class="input" type="number" min="${product.minOrderQuantity}" max="${product.quantity}" value="${quantity}" data-qty-input="${productId}" style="max-width:6rem">
               <span class="text-muted" style="font-size:0.8rem">${unitLabel}</span>
@@ -125,7 +125,7 @@ async function handleOrderNow(productId) {
       otherPhone: product.ownerPhone,
       contextType: "product",
       contextId: product.id,
-      contextLabel: categoryLabelById(product.category, getLocale()),
+      contextLabel: product.title || categoryLabelById(product.category, getLocale()),
     });
     await Chat.sendOfferMessage(chatId, authState.user.uid, {
       quantity,

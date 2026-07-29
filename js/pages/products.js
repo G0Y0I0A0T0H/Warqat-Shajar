@@ -4,6 +4,7 @@ import { Products, Ads } from "../firebase.js";
 import { GOVERNORATES, governorateLabel, mergeCategories, categoryLabel, categoryLabelById, onCategoriesChange } from "../constants.js";
 import { renderAdSlot, wireFavoriteButtons, productCardHTML } from "../ui.js";
 import { subscribe } from "../state.js";
+import { initHelpTour } from "../help-tour.js";
 
 const categorySelect = document.getElementById("filter-category");
 const governorateSelect = document.getElementById("filter-governorate");
@@ -96,6 +97,12 @@ async function main() {
     populateFilters();
     loadProducts();
   });
+
+  initHelpTour("products-browse", [
+    { target: ".header-search input", text: t("products.tourSearch", "Search by category, governorate, farmer name, or description — try it any time.") },
+    { target: "#filter-category", text: t("products.tourCategoryFilter", "Or narrow down by category here.") },
+    { target: "#filter-governorate", text: t("products.tourGovernorateFilter", "...and by governorate here, to find what's closest to you.") },
+  ]);
 }
 
 main();

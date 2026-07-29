@@ -190,11 +190,11 @@ export function interpolate(str, params) {
   return Object.entries(params).reduce((s, [k, v]) => s.replaceAll(`{${k}}`, escapeHtml(v)), str);
 }
 
-// Kept in sync with the admin-configurable widget icon (falls back to the
-// main logo, then this static default) so toasts match the floating button.
+// Always mirrors the one site logo (falls back to the static default if the
+// admin never set a custom logo) so toasts match the header/widget everywhere.
 let toastBadgeUrl = "images/logo-icon.png";
 SiteSettings.subscribeSiteImages((images) => {
-  toastBadgeUrl = images.widgetIconUrl || images.logoUrl || "images/logo-icon.png";
+  toastBadgeUrl = images.logoUrl || "images/logo-icon.png";
 });
 
 export function showToast({ key, params, link }) {
@@ -392,17 +392,21 @@ export function renderImageInput(mountEl, { value = "", uploadPathPrefix, accept
 export function productCardHTML(product, categoryLabel, governorateLabel, perKgLabel) {
   const photo = product.photoUrls?.[0];
   const freshness = product.harvestDate ? computeFreshness(product.harvestDate, product.category) : null;
+  // Older products created before the title field existed fall back to
+  // showing the category as the heading, same as before.
+  const heading = product.title ? escapeHtml(product.title) : categoryLabel;
   return `
     <a class="card card-flush product-card" href="product.html?id=${product.id}">
       <div class="product-card-media">
-        ${photo ? `<img src="${safeUrl(photo)}" alt="${escapeHtml(categoryLabel)}" loading="lazy">` : ""}
+        ${photo ? `<img src="${safeUrl(photo)}" alt="${heading}" loading="lazy">` : ""}
         ${favoriteButtonHTML(product.id)}
       </div>
       <div class="product-card-body">
         <div class="product-card-top">
-          <h3 class="product-card-title">${categoryLabel}</h3>
+          <h3 class="product-card-title">${heading}</h3>
           <span class="product-card-rating">${icon("star", "is-filled")} ${product.qualityRating}</span>
         </div>
+        ${product.title ? `<span class="${badgeClass("outline")}" style="font-size:0.7rem">${categoryLabel}</span>` : ""}
         <p class="product-card-gov">${governorateLabel}</p>
         <p class="product-card-price">${product.price} ${perKgLabel}</p>
         ${freshness ? `<span class="product-card-freshness" style="color:${freshness.color}">${t("freshness.label")}: ${freshness.score}/10</span>` : ""}
