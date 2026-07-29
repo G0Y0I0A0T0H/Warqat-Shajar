@@ -513,6 +513,7 @@ export const Chat = {
               messageId: m.id,
               productId: chat.contextId,
               productLabel: chat.contextLabel,
+              buyerId: buyerUid,
               buyerName: chat.participantNames[buyerUid],
               buyerPhone: chat.participantPhones[buyerUid],
               createdAt: data.createdAt ?? null,
@@ -626,6 +627,11 @@ export const Escrow = {
       refundedAt: null,
       createdAt: serverTimestamp(),
     });
+  },
+
+  async getOrderOnce(orderId) {
+    const snap = await getDoc(doc(db, "escrowOrders", orderId));
+    return snap.exists() ? { id: snap.id, ...snap.data() } : null;
   },
 
   subscribeOrder(orderId, callback) {
@@ -1042,7 +1048,6 @@ const DEFAULT_SITE_IMAGES = {
   heroImages: ["images/hero-farmer.jpg"],
   categoryImages: {},
   logoUrl: null,
-  widgetIconUrl: null,
 };
 const siteImagesRef = doc(db, "settings", "siteImages");
 
@@ -1075,6 +1080,20 @@ const killSwitchRef = doc(db, "settings", "killSwitch");
 
 const dialectOverridesRef = doc(db, "settings", "dialectOverrides");
 
+// Separate from killSwitch on purpose -- killSwitch is the owner
+// deliberately locking the whole site behind a login-to-unlock screen;
+// maintenanceMode is a softer "something's being fixed, come back soon"
+// screen with no unlock form (the owner just flips it off from the admin
+// panel), and it exempts signed-in admins so they can still reach that
+// toggle. See js/layout.js for the overlay UI.
+const maintenanceModeRef = doc(db, "settings", "maintenanceMode");
+
+// Owner-only sitewide switch that blocks new messages in every regular
+// (user-to-user/support) chat -- enforced in firestore.rules, not just the
+// UI. Deliberately does NOT touch adminChats (the admin team-chat room),
+// which is a separate collection entirely.
+const chatDisabledRef = doc(db, "settings", "chatDisabled");
+
 // Owner's own payment-receiving details -- see firestore.rules for why this
 // doc is owner-only on both read and write.
 const DEFAULT_PAYMENT_INFO = {
@@ -1090,7 +1109,7 @@ const paymentInfoRef = doc(db, "settings", "paymentInfo");
 // Kept in sync by hand with js/constants.js's CATEGORIES -- not imported
 // directly to avoid a circular import (constants.js already imports
 // SiteSettings from this file).
-const BUILTIN_CATEGORY_IDS = ["vegetables", "fruits", "wheat", "cotton", "barley", "rice", "organic"];
+const BUILTIN_CATEGORY_IDS = ["vegetables", "fruits", "wheat", "cotton", "barley", "rice", "organic", "animal-feed"];
 
 function slugify(name) {
   return (
@@ -1126,12 +1145,6 @@ export const SiteSettings = {
 
   async updateLogoUrl(url) {
     await setDoc(siteImagesRef, { logoUrl: url }, { merge: true });
-  },
-
-  // Falls back to the main logo (then the static default already baked into
-  // the floating widget/toast markup) if the admin never set a dedicated one.
-  async updateWidgetIconUrl(url) {
-    await setDoc(siteImagesRef, { widgetIconUrl: url || null }, { merge: true });
   },
 
   async getSiteContentOnce() {
@@ -1260,6 +1273,32 @@ export const SiteSettings = {
 
   async setKillSwitch(active) {
     await setDoc(killSwitchRef, { active }, { merge: true });
+  },
+
+  // Owner-only in firestore.rules regardless of who calls this client-side.
+  subscribeMaintenanceMode(callback) {
+    return onSnapshot(
+      maintenanceModeRef,
+      (snap) => callback(snap.exists() && snap.data().active === true),
+      () => callback(false),
+    );
+  },
+
+  async setMaintenanceMode(active) {
+    await setDoc(maintenanceModeRef, { active }, { merge: true });
+  },
+
+  // Owner-only in firestore.rules regardless of who calls this client-side.
+  subscribeChatDisabled(callback) {
+    return onSnapshot(
+      chatDisabledRef,
+      (snap) => callback(snap.exists() && snap.data().active === true),
+      () => callback(false),
+    );
+  },
+
+  async setChatDisabled(active) {
+    await setDoc(chatDisabledRef, { active }, { merge: true });
   },
 
   // Owner-only in firestore.rules regardless of who calls this client-side.

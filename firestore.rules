@@ -117,12 +117,13 @@ service cloud.firestore {
       // excluded from the public read here (unlike every other settings
       // doc) and given its own owner-only rule below.
       allow read: if docId != 'paymentInfo';
-      // killSwitch and paymentInfo are excluded here and given their own
-      // owner-only rules below -- Firestore ORs every matching block
-      // together, so without this exclusion a regular admin would still be
-      // able to write through this generic rule regardless of the narrower
-      // ones.
-      allow write: if isAdmin() && docId != 'killSwitch' && docId != 'paymentInfo';
+      // killSwitch, maintenanceMode, chatDisabled, and paymentInfo are all
+      // excluded here and given their own owner-only rules below --
+      // Firestore ORs every matching block together, so without this
+      // exclusion a regular admin would still be able to write through
+      // this generic rule regardless of the narrower ones.
+      allow write: if isAdmin() &&
+        docId != 'killSwitch' && docId != 'maintenanceMode' && docId != 'chatDisabled' && docId != 'paymentInfo';
     }
 
     // Emergency kill switch: owner-only, on purpose -- this is a
@@ -130,6 +131,24 @@ service cloud.firestore {
     // because every page (including logged-out visitors) must be able to
     // check it to know whether to render the lock screen.
     match /settings/killSwitch {
+      allow read: if true;
+      allow write: if isOwner();
+    }
+
+    // Softer "under maintenance" full-site screen, separate from the kill
+    // switch above -- no unlock-via-login form, the owner just flips it
+    // back off from the admin panel, which is why signed-in admins are
+    // exempted client-side from ever seeing the overlay. Read stays public
+    // for the same reason as killSwitch: every visitor's page needs to
+    // check it.
+    match /settings/maintenanceMode {
+      allow read: if true;
+      allow write: if isOwner();
+    }
+
+    // Owner-only sitewide chat-disable switch (see the chats/messages
+    // create rule below for the actual enforcement).
+    match /settings/chatDisabled {
       allow read: if true;
       allow write: if isOwner();
     }
@@ -222,14 +241,20 @@ service cloud.firestore {
 
       match /messages/{messageId} {
         allow read: if isParticipant(get(/databases/$(database)/documents/chats/$(chatId)).data) || isAdmin();
-        // Admins bypass participancy entirely so they can post the automated
-        // "conversation stopped" system warning; regular participants are
-        // blocked from posting any NEW message once an admin has locked the chat.
+        // Admins bypass participancy, per-chat lock, AND the sitewide
+        // chat-disable switch entirely, so they can still post the
+        // automated "conversation stopped" system warning or moderate
+        // during a sitewide disable; regular participants are blocked from
+        // posting any NEW message once an admin has locked this specific
+        // chat, or while the owner has disabled chat sitewide (see
+        // settings/chatDisabled -- adminChats, the separate admin team-chat
+        // room, is entirely unaffected by this).
         allow create: if isAdmin() || (
           isActiveUser() &&
           request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participantIds &&
           request.resource.data.senderId == request.auth.uid &&
-          get(/databases/$(database)/documents/chats/$(chatId)).data.get('locked', false) == false
+          get(/databases/$(database)/documents/chats/$(chatId)).data.get('locked', false) == false &&
+          get(/databases/$(database)/documents/settings/chatDisabled).data.get('active', false) == false
         );
         allow update: if isAdmin() || (
           isSignedIn() &&

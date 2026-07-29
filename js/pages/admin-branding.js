@@ -6,11 +6,23 @@ import { CATEGORIES, CATEGORY_IMAGES } from "../constants.js";
 import { btnClass, badgeClass, icon, renderImageInput, showMessage, safeUrl, escapeHtml } from "../ui.js";
 
 let contentEl;
-let siteImages = { heroImages: [], categoryImages: {}, logoUrl: null, widgetIconUrl: null };
+let siteImages = { heroImages: [], categoryImages: {}, logoUrl: null };
 let siteContent = { ar: {}, en: {} };
 let siteTheme = { primaryColor: null };
 let socialLinks = { links: [] };
 let categoriesConfig = { extra: [], hidden: [] };
+
+// Groups the flat list of sections into clearly-labeled, visually distinct
+// blocks -- each renders as a bordered <section> with one big group heading,
+// so the page reads as ~4 topics instead of ~10 same-weight headings in a row.
+function sectionGroup(titleKey, fallback, innerHtml) {
+  return `
+    <section class="card" style="margin-top:1.5rem;padding:1.5rem;border-inline-start:3px solid var(--primary)">
+      <h2 class="heading" style="font-size:1.2rem">${t(titleKey, fallback)}</h2>
+      <div style="margin-top:1rem;display:flex;flex-direction:column;gap:1.5rem">${innerHtml}</div>
+    </section>
+  `;
+}
 
 const CONTENT_FIELDS = [
   { key: "heroBadge", labelKey: "branding.fieldHeroBadge", fallback: "Hero badge text" },
@@ -34,196 +46,212 @@ const SOCIAL_PLATFORMS = ["facebook", "instagram", "x", "whatsapp", "tiktok", "y
 
 let heroInput;
 let logoInput;
-let widgetIconInput;
 let categoryInputs = {};
 
 function render() {
-  contentEl.innerHTML = `
-    <h1 class="heading" style="font-size:1.5rem">${t("branding.title")}</h1>
-
-    <h2 class="heading" style="font-size:1.1rem;margin-top:1.5rem">${t("branding.logoTitle", "Logo")}</h2>
-    <div class="card" style="padding:1.5rem;margin-top:0.75rem">
-      <div style="display:flex;align-items:center;gap:1rem;margin-bottom:0.75rem">
+  const identityGroup = `
+    <div>
+      <h3 class="card-title" style="font-size:0.95rem">${t("branding.logoTitle", "Logo")}</h3>
+      <p class="text-muted" style="font-size:0.8rem;margin-top:0.15rem">${t("branding.logoHint", "Used everywhere on the site: header, footer, floating contact button, notification toasts, browser tab icon.")}</p>
+      <div style="display:flex;align-items:center;gap:1rem;margin:0.75rem 0">
         <img src="${safeUrl(siteImages.logoUrl) || "images/logo-icon.png"}" alt="" style="width:3rem;height:3rem;object-fit:contain">
       </div>
       <div id="logo-input-mount"></div>
       <button type="button" class="${btnClass("default", "sm")}" id="save-logo-btn" style="margin-top:0.75rem">${t("branding.saveChanges", "Save")}</button>
     </div>
-
-    <h2 class="heading" style="font-size:1.1rem;margin-top:2rem">${t("branding.widgetIconTitle")}</h2>
-    <p class="text-muted" style="font-size:0.8rem">${t("branding.widgetIconHint")}</p>
-    <div class="card" style="padding:1.5rem;margin-top:0.75rem">
-      <div style="display:flex;align-items:center;gap:1rem;margin-bottom:0.75rem">
-        <img src="${safeUrl(siteImages.widgetIconUrl) || safeUrl(siteImages.logoUrl) || "images/logo-icon.png"}" alt="" style="width:3rem;height:3rem;object-fit:contain">
+    <div>
+      <h3 class="card-title" style="font-size:0.95rem">${t("branding.colorTitle", "Brand Color")}</h3>
+      <div style="display:flex;align-items:center;gap:1rem;margin-top:0.5rem">
+        <input type="color" id="brand-color-input" value="${siteTheme.primaryColor || "#2e7d32"}" style="width:3rem;height:2.5rem;border:none;border-radius:var(--radius-md);cursor:pointer">
+        <button type="button" class="${btnClass("default", "sm")}" id="save-color-btn">${t("branding.saveChanges", "Save")}</button>
+        <span id="color-saved" class="success-text" style="display:none">${t("branding.saved")}</span>
       </div>
-      <div id="widget-icon-input-mount"></div>
-      <button type="button" class="${btnClass("default", "sm")}" id="save-widget-icon-btn" style="margin-top:0.75rem">${t("branding.saveChanges", "Save")}</button>
     </div>
-
-    <h2 class="heading" style="font-size:1.1rem;margin-top:2rem">${t("branding.colorTitle", "Brand Color")}</h2>
-    <div class="card" style="padding:1.5rem;margin-top:0.75rem;display:flex;align-items:center;gap:1rem">
-      <input type="color" id="brand-color-input" value="${siteTheme.primaryColor || "#2e7d32"}" style="width:3rem;height:2.5rem;border:none;border-radius:var(--radius-md);cursor:pointer">
-      <button type="button" class="${btnClass("default", "sm")}" id="save-color-btn">${t("branding.saveChanges", "Save")}</button>
-      <span id="color-saved" class="success-text" style="display:none">${t("branding.saved")}</span>
+    <div>
+      <h3 class="card-title" style="font-size:0.95rem">${t("branding.cursorSizeTitle", "Cursor Size")}</h3>
+      <div style="display:flex;align-items:center;gap:1rem;margin-top:0.5rem">
+        <input type="range" id="cursor-size-input" min="24" max="72" step="2" value="${siteTheme.cursorSize || 40}" style="flex:1;max-width:16rem">
+        <span id="cursor-size-value" class="text-muted" style="min-width:3rem">${siteTheme.cursorSize || 40}px</span>
+        <button type="button" class="${btnClass("default", "sm")}" id="save-cursor-size-btn">${t("branding.saveChanges", "Save")}</button>
+        <span id="cursor-size-saved" class="success-text" style="display:none">${t("branding.saved")}</span>
+      </div>
     </div>
+  `;
 
-    <h2 class="heading" style="font-size:1.1rem;margin-top:2rem">${t("branding.cursorSizeTitle", "Cursor Size")}</h2>
-    <div class="card" style="padding:1.5rem;margin-top:0.75rem;display:flex;align-items:center;gap:1rem">
-      <input type="range" id="cursor-size-input" min="24" max="72" step="2" value="${siteTheme.cursorSize || 40}" style="flex:1;max-width:16rem">
-      <span id="cursor-size-value" class="text-muted" style="min-width:3rem">${siteTheme.cursorSize || 40}px</span>
-      <button type="button" class="${btnClass("default", "sm")}" id="save-cursor-size-btn">${t("branding.saveChanges", "Save")}</button>
-      <span id="cursor-size-saved" class="success-text" style="display:none">${t("branding.saved")}</span>
-    </div>
-
-    <h2 class="heading" style="font-size:1.1rem;margin-top:2rem">${t("branding.contentTitle", "Homepage Text")}</h2>
-    <form id="content-form" class="form-stack card" style="padding:1.5rem;margin-top:0.75rem">
-      ${CONTENT_FIELDS.map(
-        (f) => `
-        <div class="field">
-          <label class="label">${t(f.labelKey, f.fallback)}</label>
-          <div class="grid-2" style="gap:0.5rem">
-            <input class="input" data-content-ar="${f.key}" placeholder="${t("branding.arabicPlaceholder", "Arabic")}" value="${siteContent.ar?.[f.key] ?? ""}">
-            <input class="input force-ltr" dir="ltr" data-content-en="${f.key}" placeholder="${t("branding.englishPlaceholder", "English")}" value="${siteContent.en?.[f.key] ?? ""}">
-          </div>
-        </div>
-      `,
-      ).join("")}
-      <span id="content-saved" class="success-text" style="display:none">${t("branding.saved")}</span>
-      <button type="submit" class="${btnClass("default")}" style="align-self:flex-start">${t("branding.saveChanges", "Save")}</button>
-    </form>
-
-    <h2 class="heading" style="font-size:1.1rem;margin-top:2rem">${t("branding.aboutContentTitle", "About Page Text")}</h2>
-    <form id="about-content-form" class="form-stack card" style="padding:1.5rem;margin-top:0.75rem">
-      ${ABOUT_CONTENT_FIELDS.map(
-        (f) => `
-        <div class="field">
-          <label class="label">${t(f.labelKey, f.fallback)}</label>
-          <div class="grid-2" style="gap:0.5rem">
-            ${
-              f.key === "aboutMissionBody"
-                ? `
-              <textarea class="textarea" rows="3" data-content-ar="${f.key}" placeholder="${t("branding.arabicPlaceholder", "Arabic")}">${siteContent.ar?.[f.key] ?? ""}</textarea>
-              <textarea class="textarea force-ltr" dir="ltr" rows="3" data-content-en="${f.key}" placeholder="${t("branding.englishPlaceholder", "English")}">${siteContent.en?.[f.key] ?? ""}</textarea>
-            `
-                : `
+  const textGroup = `
+    <div>
+      <h3 class="card-title" style="font-size:0.95rem">${t("branding.contentTitle", "Homepage Text")}</h3>
+      <form id="content-form" class="form-stack" style="margin-top:0.5rem">
+        ${CONTENT_FIELDS.map(
+          (f) => `
+          <div class="field">
+            <label class="label">${t(f.labelKey, f.fallback)}</label>
+            <div class="grid-2" style="gap:0.5rem">
               <input class="input" data-content-ar="${f.key}" placeholder="${t("branding.arabicPlaceholder", "Arabic")}" value="${siteContent.ar?.[f.key] ?? ""}">
               <input class="input force-ltr" dir="ltr" data-content-en="${f.key}" placeholder="${t("branding.englishPlaceholder", "English")}" value="${siteContent.en?.[f.key] ?? ""}">
-            `
-            }
-          </div>
-        </div>
-      `,
-      ).join("")}
-      <span id="about-content-saved" class="success-text" style="display:none">${t("branding.saved")}</span>
-      <button type="submit" class="${btnClass("default")}" style="align-self:flex-start">${t("branding.saveChanges", "Save")}</button>
-    </form>
-
-    <h2 class="heading" style="font-size:1.1rem;margin-top:2rem">${t("branding.contactTitle")}</h2>
-    <div class="card form-stack" style="padding:1.5rem;margin-top:0.75rem">
-      <div class="field">
-        <label class="label" for="contact-phone-input">${t("branding.contactPhoneLabel")}</label>
-        <input class="input force-ltr" dir="ltr" id="contact-phone-input" value="${socialLinks.phone || ""}">
-      </div>
-      <div class="field">
-        <label class="label" for="contact-whatsapp-input">${t("branding.contactWhatsappLabel")}</label>
-        <input class="input force-ltr" dir="ltr" id="contact-whatsapp-input" value="${socialLinks.whatsapp || ""}">
-      </div>
-      <div class="field">
-        <label class="label" for="contact-email-input">${t("branding.contactEmailLabel")}</label>
-        <input class="input force-ltr" dir="ltr" type="email" id="contact-email-input" value="${socialLinks.email || ""}">
-      </div>
-      <div class="field">
-        <label class="label" for="contact-policy-input">${t("branding.contactPolicyLabel")}</label>
-        <input class="input force-ltr" dir="ltr" id="contact-policy-input" placeholder="terms.html" value="${socialLinks.policyLink || ""}">
-      </div>
-      <span id="contact-saved" class="success-text" style="display:none">${t("branding.saved")}</span>
-      <button type="button" class="${btnClass("default", "sm")}" id="save-contact-btn" style="align-self:flex-start">${t("branding.saveChanges", "Save")}</button>
-    </div>
-
-    <h2 class="heading" style="font-size:1.1rem;margin-top:2rem">${t("branding.socialTitle", "Social Media")}</h2>
-    <div class="card" style="padding:1.5rem;margin-top:0.75rem">
-      <div id="social-list" style="display:flex;flex-direction:column;gap:0.5rem"></div>
-      <div style="display:grid;grid-template-columns:auto 1fr auto;gap:0.5rem;margin-top:0.75rem;align-items:center">
-        <select class="select" id="social-platform">
-          ${SOCIAL_PLATFORMS.map((p) => `<option value="${p}">${t(`branding.platform${p[0].toUpperCase()}${p.slice(1)}`, p)}</option>`).join("")}
-        </select>
-        <input class="input force-ltr" id="social-url" dir="ltr" placeholder="https://...">
-        <button type="button" class="${btnClass("outline", "sm")}" id="social-add-btn">${t("branding.socialAdd", "Add")}</button>
-      </div>
-    </div>
-
-    <h2 class="heading" style="font-size:1.1rem;margin-top:2rem">${t("branding.heroImagesTitle")}</h2>
-    <div style="display:flex;flex-wrap:wrap;gap:0.75rem;margin-top:0.75rem" id="hero-image-list">
-      ${siteImages.heroImages
-        .map(
-          (url, i) => `
-        <div style="position:relative;width:8rem;height:5rem;border-radius:var(--radius-lg);overflow:hidden;background:var(--muted)">
-          <img src="${safeUrl(url)}" alt="" style="width:100%;height:100%;object-fit:cover">
-          <button type="button" class="btn btn-destructive btn-icon-sm" data-remove-hero="${i}" style="position:absolute;top:2px;inset-inline-end:2px;width:1.5rem;height:1.5rem;padding:0" aria-label="${t("branding.removeImage")}">${icon("x")}</button>
-        </div>
-      `,
-        )
-        .join("")}
-    </div>
-    <div id="hero-input-mount" style="margin-top:0.75rem"></div>
-    <button type="button" class="${btnClass("outline")}" id="add-hero-btn" style="margin-top:0.5rem">${t("branding.addImage")}</button>
-
-    <h2 class="heading" style="font-size:1.1rem;margin-top:2rem">${t("branding.categoriesTitle", "Categories")}</h2>
-    <p class="text-muted" style="font-size:0.8rem">${t("branding.categoriesHint", "Hiding a category only removes it from browsing — existing products keep their category.")}</p>
-    <div class="card" style="margin-top:0.75rem;padding:0 1rem">
-      ${CATEGORIES.map((c) => {
-        const isHidden = (categoriesConfig.hidden || []).includes(c);
-        const current = siteImages.categoryImages[c] || CATEGORY_IMAGES[c];
-        return `
-        <div class="list-row">
-          <img src="${safeUrl(current)}" alt="" style="width:3.5rem;height:3.5rem;object-fit:cover;border-radius:var(--radius-lg);flex-shrink:0">
-          <div class="list-row-main">
-            <div style="display:flex;align-items:center;gap:0.4rem">
-              <span style="font-weight:600">${t(`categories.${c}`)}</span>
-              ${isHidden ? `<span class="${badgeClass("secondary")}">${t("branding.hiddenLabel", "Hidden")}</span>` : ""}
             </div>
-            <div data-category-input-mount="${c}" style="margin-top:0.375rem;max-width:24rem"></div>
           </div>
-          <button type="button" class="${btnClass("outline", "sm")}" data-replace-category="${c}">${t("branding.replaceImage")}</button>
-          <button type="button" class="${btnClass("outline", "sm")}" data-toggle-category-hidden="${c}" data-hidden="${isHidden}">${isHidden ? t("branding.showCategory", "Show") : t("branding.hideCategory", "Hide")}</button>
+        `,
+        ).join("")}
+        <span id="content-saved" class="success-text" style="display:none">${t("branding.saved")}</span>
+        <button type="submit" class="${btnClass("default", "sm")}" style="align-self:flex-start">${t("branding.saveChanges", "Save")}</button>
+      </form>
+    </div>
+    <div>
+      <h3 class="card-title" style="font-size:0.95rem">${t("branding.aboutContentTitle", "About Page Text")}</h3>
+      <form id="about-content-form" class="form-stack" style="margin-top:0.5rem">
+        ${ABOUT_CONTENT_FIELDS.map(
+          (f) => `
+          <div class="field">
+            <label class="label">${t(f.labelKey, f.fallback)}</label>
+            <div class="grid-2" style="gap:0.5rem">
+              ${
+                f.key === "aboutMissionBody"
+                  ? `
+                <textarea class="textarea" rows="3" data-content-ar="${f.key}" placeholder="${t("branding.arabicPlaceholder", "Arabic")}">${siteContent.ar?.[f.key] ?? ""}</textarea>
+                <textarea class="textarea force-ltr" dir="ltr" rows="3" data-content-en="${f.key}" placeholder="${t("branding.englishPlaceholder", "English")}">${siteContent.en?.[f.key] ?? ""}</textarea>
+              `
+                  : `
+                <input class="input" data-content-ar="${f.key}" placeholder="${t("branding.arabicPlaceholder", "Arabic")}" value="${siteContent.ar?.[f.key] ?? ""}">
+                <input class="input force-ltr" dir="ltr" data-content-en="${f.key}" placeholder="${t("branding.englishPlaceholder", "English")}" value="${siteContent.en?.[f.key] ?? ""}">
+              `
+              }
+            </div>
+          </div>
+        `,
+        ).join("")}
+        <span id="about-content-saved" class="success-text" style="display:none">${t("branding.saved")}</span>
+        <button type="submit" class="${btnClass("default", "sm")}" style="align-self:flex-start">${t("branding.saveChanges", "Save")}</button>
+      </form>
+    </div>
+  `;
+
+  const contactGroup = `
+    <div>
+      <h3 class="card-title" style="font-size:0.95rem">${t("branding.contactTitle")}</h3>
+      <div class="form-stack" style="margin-top:0.5rem">
+        <div class="field">
+          <label class="label" for="contact-phone-input">${t("branding.contactPhoneLabel")}</label>
+          <input class="input force-ltr" dir="ltr" id="contact-phone-input" value="${socialLinks.phone || ""}">
         </div>
-      `;
-      }).join("")}
-      ${(categoriesConfig.extra || [])
-        .map((c) => {
-          const isHidden = (categoriesConfig.hidden || []).includes(c.id);
+        <div class="field">
+          <label class="label" for="contact-whatsapp-input">${t("branding.contactWhatsappLabel")}</label>
+          <input class="input force-ltr" dir="ltr" id="contact-whatsapp-input" value="${socialLinks.whatsapp || ""}">
+        </div>
+        <div class="field">
+          <label class="label" for="contact-email-input">${t("branding.contactEmailLabel")}</label>
+          <input class="input force-ltr" dir="ltr" type="email" id="contact-email-input" value="${socialLinks.email || ""}">
+        </div>
+        <div class="field">
+          <label class="label" for="contact-policy-input">${t("branding.contactPolicyLabel")}</label>
+          <input class="input force-ltr" dir="ltr" id="contact-policy-input" placeholder="terms.html" value="${socialLinks.policyLink || ""}">
+        </div>
+        <span id="contact-saved" class="success-text" style="display:none">${t("branding.saved")}</span>
+        <button type="button" class="${btnClass("default", "sm")}" id="save-contact-btn" style="align-self:flex-start">${t("branding.saveChanges", "Save")}</button>
+      </div>
+    </div>
+    <div>
+      <h3 class="card-title" style="font-size:0.95rem">${t("branding.socialTitle", "Social Media")}</h3>
+      <div style="margin-top:0.5rem">
+        <div id="social-list" style="display:flex;flex-direction:column;gap:0.5rem"></div>
+        <div style="display:grid;grid-template-columns:auto 1fr auto;gap:0.5rem;margin-top:0.75rem;align-items:center">
+          <select class="select" id="social-platform">
+            ${SOCIAL_PLATFORMS.map((p) => `<option value="${p}">${t(`branding.platform${p[0].toUpperCase()}${p.slice(1)}`, p)}</option>`).join("")}
+          </select>
+          <input class="input force-ltr" id="social-url" dir="ltr" placeholder="https://...">
+          <button type="button" class="${btnClass("outline", "sm")}" id="social-add-btn">${t("branding.socialAdd", "Add")}</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  const imagesGroup = `
+    <div>
+      <h3 class="card-title" style="font-size:0.95rem">${t("branding.heroImagesTitle")}</h3>
+      <div style="display:flex;flex-wrap:wrap;gap:0.75rem;margin-top:0.75rem" id="hero-image-list">
+        ${siteImages.heroImages
+          .map(
+            (url, i) => `
+          <div style="position:relative;width:8rem;height:5rem;border-radius:var(--radius-lg);overflow:hidden;background:var(--muted)">
+            <img src="${safeUrl(url)}" alt="" style="width:100%;height:100%;object-fit:cover">
+            <button type="button" class="btn btn-destructive btn-icon-sm" data-remove-hero="${i}" style="position:absolute;top:2px;inset-inline-end:2px;width:1.5rem;height:1.5rem;padding:0" aria-label="${t("branding.removeImage")}">${icon("x")}</button>
+          </div>
+        `,
+          )
+          .join("")}
+      </div>
+      <div id="hero-input-mount" style="margin-top:0.75rem"></div>
+      <button type="button" class="${btnClass("outline", "sm")}" id="add-hero-btn" style="margin-top:0.5rem">${t("branding.addImage")}</button>
+    </div>
+  `;
+
+  const categoriesGroup = `
+    <div>
+      <p class="text-muted" style="font-size:0.8rem">${t("branding.categoriesHint", "Hiding a category only removes it from browsing — existing products keep their category.")}</p>
+      <div class="card" style="margin-top:0.75rem;padding:0 1rem">
+        ${CATEGORIES.map((c) => {
+          const isHidden = (categoriesConfig.hidden || []).includes(c);
+          const current = siteImages.categoryImages[c] || CATEGORY_IMAGES[c];
           return `
-        <div class="list-row">
-          ${
-            c.imageUrl
-              ? `<img src="${safeUrl(c.imageUrl)}" alt="" style="width:3.5rem;height:3.5rem;object-fit:cover;border-radius:var(--radius-lg);flex-shrink:0;background:var(--muted)">`
-              : `<div style="width:3.5rem;height:3.5rem;border-radius:var(--radius-lg);flex-shrink:0;background:var(--muted);display:flex;align-items:center;justify-content:center;color:var(--muted-foreground)">${icon("image")}</div>`
-          }
-          <div class="list-row-main">
-            <div style="display:flex;align-items:center;gap:0.4rem">
-              <span style="font-weight:600">${escapeHtml(c[getLocale()] || c.en)}</span>
-              <span class="${badgeClass("outline")}">${t("branding.customLabel", "Custom")}</span>
-              ${isHidden ? `<span class="${badgeClass("secondary")}">${t("branding.hiddenLabel", "Hidden")}</span>` : ""}
+          <div class="list-row">
+            <img src="${safeUrl(current)}" alt="" style="width:3.5rem;height:3.5rem;object-fit:cover;border-radius:var(--radius-lg);flex-shrink:0">
+            <div class="list-row-main">
+              <div style="display:flex;align-items:center;gap:0.4rem">
+                <span style="font-weight:600">${t(`categories.${c}`)}</span>
+                ${isHidden ? `<span class="${badgeClass("secondary")}">${t("branding.hiddenLabel", "Hidden")}</span>` : ""}
+              </div>
+              <div data-category-input-mount="${c}" style="margin-top:0.375rem;max-width:24rem"></div>
             </div>
+            <button type="button" class="${btnClass("outline", "sm")}" data-replace-category="${c}">${t("branding.replaceImage")}</button>
+            <button type="button" class="${btnClass("outline", "sm")}" data-toggle-category-hidden="${c}" data-hidden="${isHidden}">${isHidden ? t("branding.showCategory", "Show") : t("branding.hideCategory", "Hide")}</button>
           </div>
-          <button type="button" class="${btnClass("outline", "sm")}" data-toggle-category-hidden="${c.id}" data-hidden="${isHidden}">${isHidden ? t("branding.showCategory", "Show") : t("branding.hideCategory", "Hide")}</button>
-          <button type="button" class="${btnClass("destructive", "icon-sm")}" data-delete-category="${c.id}" aria-label="${t("branding.deleteCategory", "Delete")}">${icon("trash")}</button>
-        </div>
-      `;
-        })
-        .join("")}
-    </div>
-
-    <h3 class="heading" style="font-size:1rem;margin-top:1.5rem">${t("branding.addCategoryTitle", "Add a Category")}</h3>
-    <form id="add-category-form" class="form-stack card" style="padding:1.5rem;margin-top:0.75rem">
-      <div class="grid-2" style="gap:0.5rem">
-        <input class="input" id="new-category-ar" placeholder="${t("branding.arabicPlaceholder", "Arabic")}">
-        <input class="input force-ltr" dir="ltr" id="new-category-en" placeholder="${t("branding.englishPlaceholder", "English")}">
+        `;
+        }).join("")}
+        ${(categoriesConfig.extra || [])
+          .map((c) => {
+            const isHidden = (categoriesConfig.hidden || []).includes(c.id);
+            return `
+          <div class="list-row">
+            ${
+              c.imageUrl
+                ? `<img src="${safeUrl(c.imageUrl)}" alt="" style="width:3.5rem;height:3.5rem;object-fit:cover;border-radius:var(--radius-lg);flex-shrink:0;background:var(--muted)">`
+                : `<div style="width:3.5rem;height:3.5rem;border-radius:var(--radius-lg);flex-shrink:0;background:var(--muted);display:flex;align-items:center;justify-content:center;color:var(--muted-foreground)">${icon("image")}</div>`
+            }
+            <div class="list-row-main">
+              <div style="display:flex;align-items:center;gap:0.4rem">
+                <span style="font-weight:600">${escapeHtml(c[getLocale()] || c.en)}</span>
+                <span class="${badgeClass("outline")}">${t("branding.customLabel", "Custom")}</span>
+                ${isHidden ? `<span class="${badgeClass("secondary")}">${t("branding.hiddenLabel", "Hidden")}</span>` : ""}
+              </div>
+            </div>
+            <button type="button" class="${btnClass("outline", "sm")}" data-toggle-category-hidden="${c.id}" data-hidden="${isHidden}">${isHidden ? t("branding.showCategory", "Show") : t("branding.hideCategory", "Hide")}</button>
+            <button type="button" class="${btnClass("destructive", "icon-sm")}" data-delete-category="${c.id}" aria-label="${t("branding.deleteCategory", "Delete")}">${icon("trash")}</button>
+          </div>
+        `;
+          })
+          .join("")}
       </div>
-      <div id="new-category-image-mount"></div>
-      <p id="add-category-error" class="error-text" style="display:none"></p>
-      <button type="submit" class="${btnClass("default", "sm")}" style="align-self:flex-start">${t("branding.socialAdd", "Add")}</button>
-    </form>
+      <h4 class="card-title" style="font-size:0.9rem;margin-top:1.25rem">${t("branding.addCategoryTitle", "Add a Category")}</h4>
+      <form id="add-category-form" class="form-stack" style="margin-top:0.5rem">
+        <div class="grid-2" style="gap:0.5rem">
+          <input class="input" id="new-category-ar" placeholder="${t("branding.arabicPlaceholder", "Arabic")}">
+          <input class="input force-ltr" dir="ltr" id="new-category-en" placeholder="${t("branding.englishPlaceholder", "English")}">
+        </div>
+        <div id="new-category-image-mount"></div>
+        <p id="add-category-error" class="error-text" style="display:none"></p>
+        <button type="submit" class="${btnClass("default", "sm")}" style="align-self:flex-start">${t("branding.socialAdd", "Add")}</button>
+      </form>
+    </div>
+  `;
+
+  contentEl.innerHTML = `
+    <h1 class="heading" style="font-size:1.5rem">${t("branding.title")}</h1>
+    <p class="text-muted" style="font-size:0.85rem;margin-top:0.25rem">${t("branding.groupsHint", "Organized into four sections: identity, text content, contact channels, and images.")}</p>
+    ${sectionGroup("branding.groupIdentity", "Identity & Appearance", identityGroup)}
+    ${sectionGroup("branding.groupText", "Site Text", textGroup)}
+    ${sectionGroup("branding.groupContact", "Contact & Social", contactGroup)}
+    ${sectionGroup("branding.groupImages", "Homepage Images", imagesGroup)}
+    ${sectionGroup("branding.categoriesTitle", "Categories", categoriesGroup)}
   `;
 
   // Logo
@@ -234,17 +262,6 @@ function render() {
   });
   contentEl.querySelector("#save-logo-btn").addEventListener("click", async () => {
     await SiteSettings.updateLogoUrl(logoInput.getValue());
-  });
-
-  // Floating contact widget + toast notification icon (falls back to the
-  // main logo, then the static default, if never set — see layout.js/ui.js)
-  widgetIconInput = renderImageInput(contentEl.querySelector("#widget-icon-input-mount"), {
-    value: siteImages.widgetIconUrl || "",
-    uploadPathPrefix: "site/",
-    accept: "image/*",
-  });
-  contentEl.querySelector("#save-widget-icon-btn").addEventListener("click", async () => {
-    await SiteSettings.updateWidgetIconUrl(widgetIconInput.getValue());
   });
 
   // Brand color

@@ -387,8 +387,9 @@ function renderContactWidget() {
       renderContactWidgetPanel();
     });
     SiteSettings.subscribeSiteImages((images) => {
-      const url = images.widgetIconUrl || images.logoUrl;
-      if (url) trigger.querySelector("img").src = url;
+      // The floating contact widget always mirrors the one site logo now --
+      // there's no separate "widget icon" setting to fall back through.
+      if (images.logoUrl) trigger.querySelector("img").src = images.logoUrl;
     });
     return;
   }
@@ -403,6 +404,9 @@ function renderContactWidget() {
 // client-side gating alone is never real security).
 // ---------------------------------------------------------------------------
 let killSwitchOverlay = null;
+let maintenanceOverlay = null;
+let maintenanceModeActive = false;
+let supportContactHref = null;
 
 function renderKillSwitchOverlay() {
   if (killSwitchOverlay) return;
@@ -543,6 +547,90 @@ function removeKillSwitchOverlay() {
   }
 }
 
+// Softer, calmer sibling of the kill-switch overlay -- see
+// settings/maintenanceMode in firebase.js for why this is a separate
+// mechanism (no unlock form here; the owner just flips it off from the
+// admin panel, which is why authState.isAdmin exempts this overlay
+// entirely rather than showing it and blocking access to that toggle).
+function renderMaintenanceOverlay() {
+  if (maintenanceOverlay) return;
+  maintenanceOverlay = document.createElement("div");
+  maintenanceOverlay.id = "maintenance-overlay";
+  maintenanceOverlay.innerHTML = `
+    <style>
+      #maintenance-overlay {
+        position: fixed; inset: 0; z-index: 2147483646;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        gap: 1.5rem; text-align: center; padding: 2rem;
+        background:
+          radial-gradient(circle at 50% 35%, rgba(46,125,50,0.12), transparent 60%),
+          var(--background, #fbfbf9);
+        color: var(--foreground, #1a1a1a);
+        font-family: inherit;
+      }
+      #maintenance-overlay img {
+        width: min(40vw, 9rem); height: min(40vw, 9rem); object-fit: contain;
+        filter: drop-shadow(0 4px 24px rgba(46,125,50,0.25));
+        animation: maint-breathe 3s ease-in-out infinite;
+      }
+      @keyframes maint-breathe {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.04); }
+      }
+      #maintenance-overlay h1 {
+        font-size: 1.15rem; font-weight: 700; margin: 0; max-width: 26rem;
+      }
+      #maintenance-overlay .maint-support-btn {
+        position: fixed; inset-inline-end: 1.25rem; inset-block-end: 1.25rem;
+        padding: 0.65rem 1.1rem; border-radius: 999px; border: none;
+        background: var(--primary, #2e7d32); color: #fff; font-weight: 600;
+        font-size: 0.85rem; cursor: pointer; box-shadow: 0 4px 18px rgba(0,0,0,0.18);
+        text-decoration: none;
+      }
+    </style>
+    <img src="images/logo-icon.png" alt="">
+    <h1>${t("maintenance.message", "Something went wrong on our end. We're fixing it, check back soon.")}</h1>
+    ${supportContactHref ? `<a class="maint-support-btn" href="${supportContactHref}" target="_blank" rel="noopener noreferrer">${t("maintenance.contactSupport", "Contact support")}</a>` : ""}
+  `;
+  document.body.appendChild(maintenanceOverlay);
+}
+
+function removeMaintenanceOverlay() {
+  if (maintenanceOverlay) {
+    maintenanceOverlay.remove();
+    maintenanceOverlay = null;
+  }
+}
+
+function updateMaintenanceOverlay() {
+  if (maintenanceModeActive && !authState.isAdmin) {
+    renderMaintenanceOverlay();
+  } else {
+    removeMaintenanceOverlay();
+  }
+}
+
+function guardMaintenanceMode() {
+  SiteSettings.subscribeSocialLinks((data) => {
+    supportContactHref = data.whatsapp
+      ? `https://wa.me/${data.whatsapp.replace(/[^\d]/g, "")}`
+      : data.email
+        ? `mailto:${data.email}`
+        : null;
+    // Re-render if already showing, so a support link that loads in after
+    // the overlay does still ends up on screen.
+    if (maintenanceOverlay) {
+      removeMaintenanceOverlay();
+      renderMaintenanceOverlay();
+    }
+  });
+  SiteSettings.subscribeMaintenanceMode((active) => {
+    maintenanceModeActive = active;
+    updateMaintenanceOverlay();
+  });
+  subscribe(updateMaintenanceOverlay);
+}
+
 function guardKillSwitch() {
   // Picks up the result if the Google sign-in on the lock screen had to
   // fall back to a full-page redirect (popup blocked) -- the page reloads
@@ -630,6 +718,7 @@ export async function initLayout() {
   guardProfileCompletion();
   guardKillSwitch();
   wireKillSwitchShortcut();
+  guardMaintenanceMode();
   wireHeaderSearch();
   subscribe(() => {
     renderHeaderAuthArea();

@@ -24,8 +24,16 @@ function renderOverview(profile) {
   const totalViews = myProducts.reduce((sum, p) => sum + (p.viewsCount || 0), 0);
   const totalOffers = myProducts.reduce((sum, p) => sum + (p.offersCount || 0), 0);
   const activeCount = myProducts.filter((p) => p.status === "active").length;
+  const hasNoProducts = myProducts.length === 0;
 
   contentEl.innerHTML = `
+    <div class="card" id="add-product-cta" style="margin-top:1.5rem;padding:1.5rem;display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;justify-content:space-between;background:linear-gradient(135deg,var(--primary) 0%,color-mix(in srgb,var(--primary) 70%,black) 100%);color:#fff">
+      <div style="max-width:32rem">
+        <h2 style="font-size:1.15rem;font-weight:700;margin:0">${t(hasNoProducts ? "dashboardOverview.addProductCtaTitleEmpty" : "dashboardOverview.addProductCtaTitle")}</h2>
+        <p style="font-size:0.85rem;opacity:0.9;margin-top:0.4rem;line-height:1.6">${t("dashboardOverview.addProductCtaSteps")}</p>
+      </div>
+      <a href="dashboard-product-new.html" class="btn" style="background:#fff;color:var(--primary);font-weight:700;white-space:nowrap;flex-shrink:0">${icon("plus")} ${t("products.addProduct")}</a>
+    </div>
     <div class="stat-grid" id="stat-grid" style="margin-top:1.5rem">
       <div class="card stat-card">
         <div class="stat-value">${totalViews}</div>

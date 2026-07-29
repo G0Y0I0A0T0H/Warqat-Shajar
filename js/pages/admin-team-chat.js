@@ -3,7 +3,7 @@ import { guardAdmin } from "../admin-shell.js";
 import { t, getLocale, onLocaleChange } from "../i18n.js";
 import { AdminChat, Storage } from "../firebase.js";
 import { authState } from "../state.js";
-import { btnClass, showMessage, escapeHtml, safeUrl, icon } from "../ui.js";
+import { btnClass, showMessage, escapeHtml, safeUrl, icon, renderAvatar } from "../ui.js";
 
 let contentEl;
 let messages = [];
@@ -21,10 +21,14 @@ function render() {
   contentEl.innerHTML = `
     <h1 class="heading" style="font-size:1.5rem">${t("admin.teamChat")}</h1>
     <p class="text-muted" style="font-size:0.85rem;margin-top:0.25rem">${t("teamChat.hint")}</p>
-    <div class="chat-shell" style="margin-top:1rem">
-      <div class="chat-messages" id="team-chat-messages"></div>
+    <div class="chat-shell team-chat-shell" style="margin-top:1rem">
+      <div class="team-chat-header">
+        <span class="team-chat-live-dot"></span>
+        <span>${t("teamChat.liveLabel", "Admins only — live")}</span>
+      </div>
+      <div class="chat-messages team-chat-messages" id="team-chat-messages"></div>
       <p id="team-chat-error" class="error-text" style="display:none;padding:0 0.75rem"></p>
-      <div class="chat-composer">
+      <div class="chat-composer team-chat-composer">
         <label class="${btnClass("ghost", "icon")}" style="cursor:pointer" title="${t("teamChat.attach")}">
           ${icon("image")}
           <input type="file" id="team-chat-file" accept="image/*" style="display:none">
@@ -189,12 +193,14 @@ function renderMessages() {
               </div>`
                 : "";
             return `
-            <div class="chat-row ${isMine ? "is-mine" : ""}">
+            <div class="chat-row team-chat-row ${isMine ? "is-mine" : ""}">
+              ${!isMine ? `<span class="team-chat-avatar">${renderAvatar(m.senderName)}</span>` : ""}
               <div>
                 <div class="text-muted" style="font-size:0.7rem;margin-bottom:0.15rem">${escapeHtml(m.senderName)} · ${formatTime(m.createdAt)}</div>
-                <div class="chat-bubble">${body}</div>
+                <div class="chat-bubble team-chat-bubble">${body}</div>
                 ${actions}
               </div>
+              ${isMine ? `<span class="team-chat-avatar">${renderAvatar(m.senderName)}</span>` : ""}
             </div>`;
           })
           .join("");
