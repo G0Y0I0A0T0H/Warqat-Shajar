@@ -144,6 +144,7 @@
     "close": "قفل"
   },
   "notif": {
+    "cartItemAdded": { "title": "اتضاف للسلة", "body": "ضفت {product} لسلتك" },
     "newMessage": { "title": "رسالة جديدة", "body": "{name} بعتلك رسالة" },
     "newOffer": { "title": "عرض جديد", "body": "{name} بعتلك عرض على {product}" },
     "offerAccepted": { "title": "اتقبل عرضك", "body": "{name} وافق على عرضك" },

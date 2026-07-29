@@ -604,6 +604,7 @@
     "newReview": { "title": "تقييم جديد", "body": "{name} قيّمك بعد التعامل معك" },
     "offerCancelled": { "title": "تم إلغاء العرض", "body": "{name} ألغى العرض" },
     "adminMessage": { "title": "رسالة من إدارة ورقة شجر", "body": "{text}" },
+    "cartItemAdded": { "title": "تمت الإضافة للسلة", "body": "أضفت {product} لسلتك" },
     "productAddedToCart": { "title": "منتجك بالسلة", "body": "{name} ضاف {product} لسلته" },
     "newProductComment": { "title": "تعليق جديد", "body": "{name} علّق على منتجك" }
   },
