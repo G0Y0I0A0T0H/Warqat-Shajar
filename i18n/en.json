@@ -321,6 +321,7 @@
     "calcTotalLabel": "Total Price",
     "currency": "EGP",
     "orderNow": "Order Now",
+    "orderConfirmed": "Order confirmed",
     "harvestDateLabel": "Harvest Start Date",
     "governorateLabel": "Governorate",
     "photosLabel": "Photos (up to 3)",
@@ -605,6 +606,8 @@
     "offerCancelled": { "title": "Offer cancelled", "body": "{name} cancelled the offer" },
     "adminMessage": { "title": "Message from Waraqat Shajar", "body": "{text}" },
     "cartItemAdded": { "title": "Added to your cart", "body": "You added {product} to your cart" },
+    "orderConfirmed": { "title": "Order confirmed", "body": "Your order for {product} was confirmed and reached the farmer" },
+    "newOrderRequest": { "title": "New order", "body": "{name} requested {product}" },
     "productAddedToCart": { "title": "Your product was added to a cart", "body": "{name} added {product} to their cart" },
     "newProductComment": { "title": "New comment", "body": "{name} commented on your product" }
   },

@@ -89,6 +89,7 @@
   },
   "products": {
     "titleLabel": "اسم المنتج",
+    "orderConfirmed": "اتأكد الطلب",
     "calcQuantityLabel": "حدد الكمية اللي عايزها",
     "confirmDelete": "متأكد إنك عايز تمسح المنتج ده؟",
     "noProducts": "معندكش أي منتجات لسه",
@@ -145,6 +146,8 @@
   },
   "notif": {
     "cartItemAdded": { "title": "اتضاف للسلة", "body": "ضفت {product} لسلتك" },
+    "orderConfirmed": { "title": "اتأكد الطلب", "body": "طلبك على {product} اتأكد، وصل للمزارع" },
+    "newOrderRequest": { "title": "طلب جديد", "body": "{name} طلب {product}" },
     "newMessage": { "title": "رسالة جديدة", "body": "{name} بعتلك رسالة" },
     "newOffer": { "title": "عرض جديد", "body": "{name} بعتلك عرض على {product}" },
     "offerAccepted": { "title": "اتقبل عرضك", "body": "{name} وافق على عرضك" },

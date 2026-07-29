@@ -321,6 +321,7 @@
     "calcTotalLabel": "السعر الإجمالي",
     "currency": "جنيه",
     "orderNow": "اطلب الآن",
+    "orderConfirmed": "تم تأكيد الطلب",
     "harvestDateLabel": "تاريخ بداية الحصاد",
     "governorateLabel": "المحافظة",
     "photosLabel": "الصور (حتى 3)",
@@ -605,6 +606,8 @@
     "offerCancelled": { "title": "تم إلغاء العرض", "body": "{name} ألغى العرض" },
     "adminMessage": { "title": "رسالة من إدارة ورقة شجر", "body": "{text}" },
     "cartItemAdded": { "title": "تمت الإضافة للسلة", "body": "أضفت {product} لسلتك" },
+    "orderConfirmed": { "title": "تم تأكيد الطلب", "body": "طلبك على {product} تأكد، وصل للمزارع" },
+    "newOrderRequest": { "title": "طلب جديد", "body": "{name} طلب {product}" },
     "productAddedToCart": { "title": "منتجك بالسلة", "body": "{name} ضاف {product} لسلته" },
     "newProductComment": { "title": "تعليق جديد", "body": "{name} علّق على منتجك" }
   },

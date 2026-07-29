@@ -1,6 +1,6 @@
 import { initLayout } from "../layout.js";
 import { t, getLocale, onLocaleChange } from "../i18n.js";
-import { Products, Chat } from "../firebase.js";
+import { Products, Chat, Notifications, SiteSettings } from "../firebase.js";
 import { categoryLabelById, onCategoriesChange } from "../constants.js";
 import { authState, cartState, subscribe, updateCartQuantity, removeFromCart } from "../state.js";
 import { btnClass, icon, showMessage, escapeHtml, safeUrl } from "../ui.js";
@@ -8,6 +8,9 @@ import { btnClass, icon, showMessage, escapeHtml, safeUrl } from "../ui.js";
 const contentEl = document.getElementById("cart-content");
 const productCache = new Map();
 let starting = false;
+// See product.js for the full explanation -- same owner-only sitewide
+// switch, same behavior: skip chats/messages entirely and just confirm.
+let chatDisabled = false;
 
 async function loadProducts(productIds) {
   await Promise.all(
@@ -116,6 +119,22 @@ async function handleOrderNow(productId) {
   try {
     const product = productCache.get(productId);
     const quantity = cartState.items.get(productId) || product.minOrderQuantity;
+    const productLabel = product.title || categoryLabelById(product.category, getLocale());
+
+    if (chatDisabled) {
+      // Chat is down sitewide -- don't touch chats/messages at all (it
+      // would be rejected by firestore.rules anyway), just confirm the
+      // request directly to both sides and stay on this page.
+      Notifications.create({ uid: authState.user.uid, key: "orderConfirmed", params: { product: productLabel } }).catch(() => {});
+      Notifications.create({
+        uid: product.ownerId,
+        key: "newOrderRequest",
+        params: { name: authState.profile.fullName, product: productLabel },
+      }).catch(() => {});
+      await removeFromCart(productId);
+      return;
+    }
+
     const chatId = await Chat.findOrCreateChat({
       currentUid: authState.user.uid,
       currentName: authState.profile.fullName,
@@ -125,7 +144,7 @@ async function handleOrderNow(productId) {
       otherPhone: product.ownerPhone,
       contextType: "product",
       contextId: product.id,
-      contextLabel: product.title || categoryLabelById(product.category, getLocale()),
+      contextLabel: productLabel,
     });
     await Chat.sendOfferMessage(chatId, authState.user.uid, {
       quantity,
@@ -150,6 +169,9 @@ async function main() {
   subscribe(render);
   onLocaleChange(render);
   onCategoriesChange(render);
+  SiteSettings.subscribeChatDisabled((active) => {
+    chatDisabled = active;
+  });
 }
 
 main();

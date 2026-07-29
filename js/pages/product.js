@@ -1,6 +1,6 @@
 import { initLayout } from "../layout.js";
 import { t, getLocale, onLocaleChange } from "../i18n.js";
-import { Products, Chat, Ads, Notifications } from "../firebase.js";
+import { Products, Chat, Ads, Notifications, SiteSettings } from "../firebase.js";
 import { governorateLabel, categoryLabelById, onCategoriesChange, computeFreshness } from "../constants.js";
 import { renderAdSlot, favoriteButtonHTML, wireFavoriteButtons, initReportDialog, initProductComments, icon, showMessage, escapeHtml, safeUrl, badgeClass } from "../ui.js";
 import { authState, subscribe, addToCart } from "../state.js";
@@ -12,6 +12,12 @@ const detailEl = document.getElementById("product-detail");
 let product = null;
 let starting = false;
 let activePhotoIndex = 0;
+// Owner-only sitewide switch (see admin-admins.js / settings/chatDisabled) --
+// while active, the "contact the farmer" button (the only one that opens
+// chat) hides entirely, and "Order Now" confirms the request without ever
+// touching the chats/messages collection (which would be rejected by
+// firestore.rules anyway while this is on).
+let chatDisabled = false;
 
 function renderGallery() {
   const photos = product.photoUrls || [];
@@ -150,7 +156,7 @@ function render() {
         isOwner
           ? ""
           : `<div class="product-detail-actions" style="margin-top:1.5rem">
-              <button type="button" class="btn btn-default" id="negotiate-btn">${icon("message-square")} ${t("featured.negotiateNow")}</button>
+              ${chatDisabled ? "" : `<button type="button" class="btn btn-default" id="negotiate-btn">${icon("message-square")} ${t("featured.negotiateNow")}</button>`}
               <span id="report-mount"></span>
             </div>`
       }
@@ -173,8 +179,7 @@ function render() {
   wireGallery();
 
   if (!isOwner) {
-    const negotiateBtn = document.getElementById("negotiate-btn");
-    negotiateBtn.addEventListener("click", handleNegotiate);
+    document.getElementById("negotiate-btn")?.addEventListener("click", handleNegotiate);
     document.getElementById("order-now-btn").addEventListener("click", () => handleOrderNow(Number(qtyInput.value)));
     document.getElementById("add-to-cart-btn").addEventListener("click", () => handleAddToCart(Number(qtyInput.value)));
     initReportDialog(document.getElementById("report-mount"), product.ownerId, product.ownerName);
@@ -253,6 +258,33 @@ async function handleOrderNow(quantity) {
   starting = true;
   try {
     const qty = quantity || product.minOrderQuantity;
+    const productLabel = product.title || categoryLabelById(product.category, getLocale());
+
+    if (chatDisabled) {
+      // Chat is down sitewide -- don't touch chats/messages at all (it
+      // would be rejected by firestore.rules anyway), just confirm the
+      // request directly to both sides and stay on this page.
+      Notifications.create({
+        uid: authState.user.uid,
+        key: "orderConfirmed",
+        params: { product: productLabel },
+      }).catch(() => {});
+      Notifications.create({
+        uid: product.ownerId,
+        key: "newOrderRequest",
+        params: { name: authState.profile.fullName, product: productLabel },
+      }).catch(() => {});
+      const btn = document.getElementById("order-now-btn");
+      if (btn) {
+        const original = btn.innerHTML;
+        btn.innerHTML = `${icon("check")} ${t("products.orderConfirmed", "Order confirmed")}`;
+        setTimeout(() => {
+          btn.innerHTML = original;
+        }, 1800);
+      }
+      return;
+    }
+
     const chatId = await Chat.findOrCreateChat({
       currentUid: authState.user.uid,
       currentName: authState.profile.fullName,
@@ -262,7 +294,7 @@ async function handleOrderNow(quantity) {
       otherPhone: product.ownerPhone,
       contextType: "product",
       contextId: product.id,
-      contextLabel: product.title || categoryLabelById(product.category, getLocale()),
+      contextLabel: productLabel,
     });
     await Chat.sendOfferMessage(chatId, authState.user.uid, {
       quantity: qty,
@@ -334,6 +366,10 @@ async function main() {
   subscribe(render);
   onLocaleChange(render);
   onCategoriesChange(render);
+  SiteSettings.subscribeChatDisabled((active) => {
+    chatDisabled = active;
+    render();
+  });
 }
 
 main();
