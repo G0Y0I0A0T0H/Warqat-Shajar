@@ -15,6 +15,18 @@ export const CATEGORIES = [
 
 export const ACCOUNT_TYPES = ["farmer", "trader", "factory", "consumer"];
 
+// Dialect groups the interface can display, on top of the base Arabic
+// dictionary in i18n/ar.json (which stays untouched as the fallback layer --
+// it's the site's original wording, so "levant" needs no override file at
+// all). Deliberately starting with just one real, reviewed dialect
+// (Egyptian, since every current user is in Egypt) rather than all 7 groups
+// from the design doc at once -- more groups can be added later by dropping
+// another i18n/dialects/{id}.json file in and adding one line here.
+export const DIALECTS = [
+  { id: "levant", ar: "الشامية", en: "Levantine" },
+  { id: "egyptian", ar: "المصرية", en: "Egyptian" },
+];
+
 export const GOVERNORATES = [
   { id: "cairo", ar: "القاهرة", en: "Cairo" },
   { id: "giza", ar: "الجيزة", en: "Giza" },

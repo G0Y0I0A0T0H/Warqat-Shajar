@@ -1,6 +1,6 @@
 // Shared widgets for register.js + complete-profile.js: role selector,
 // governorate select, category checkbox grid. Ported from src/components/auth.tsx.
-import { ACCOUNT_TYPES, GOVERNORATES, mergeCategories, categoryLabel, onCategoriesChange } from "../constants.js";
+import { ACCOUNT_TYPES, GOVERNORATES, DIALECTS, mergeCategories, categoryLabel, onCategoriesChange } from "../constants.js";
 import { t, getLocale, onLocaleChange } from "../i18n.js";
 
 export function renderRoleSelector(container, value, onChange) {
@@ -27,6 +27,19 @@ export function populateGovernorateSelect(selectEl, placeholder) {
       `<option value="">${placeholder || t("auth.register.governoratePlaceholder", "Select governorate")}</option>` +
       GOVERNORATES.map((g) => `<option value="${g.id}">${g[getLocale()]}</option>`).join("");
     if (current) selectEl.value = current;
+  }
+  render();
+  onLocaleChange(render);
+}
+
+// Defaults new registrations to "egyptian" (every real user on this
+// marketplace is in Egypt) rather than "levant" -- see constants.js DIALECTS
+// for why levant needs no separate translation file.
+export function populateDialectSelect(selectEl, defaultId = "egyptian") {
+  function render() {
+    const current = selectEl.value || defaultId;
+    selectEl.innerHTML = DIALECTS.map((d) => `<option value="${d.id}">${d[getLocale()] || d.ar}</option>`).join("");
+    selectEl.value = current;
   }
   render();
   onLocaleChange(render);

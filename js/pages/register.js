@@ -1,9 +1,9 @@
 import { initLayout } from "../layout.js";
-import { t } from "../i18n.js";
+import { t, setDialect } from "../i18n.js";
 import { Auth, Profile } from "../firebase.js";
 import { showMessage } from "../ui.js";
 import { ACCOUNT_TYPES } from "../constants.js";
-import { renderRoleSelector, populateGovernorateSelect, renderCategoryCheckboxGrid, updateCategoriesVisibility } from "./auth-shared.js";
+import { renderRoleSelector, populateGovernorateSelect, populateDialectSelect, renderCategoryCheckboxGrid, updateCategoriesVisibility } from "./auth-shared.js";
 
 async function main() {
   await initLayout();
@@ -17,6 +17,7 @@ async function main() {
   const categoriesLabel = document.getElementById("categories-label");
   const categoriesGrid = document.getElementById("categories-grid");
   const governorateSelect = document.getElementById("governorate");
+  const dialectSelect = document.getElementById("dialect");
 
   renderRoleSelector(
     document.getElementById("role-selector"),
@@ -28,6 +29,7 @@ async function main() {
   );
   updateCategoriesVisibility(categoriesField, categoriesLabel, accountType);
   populateGovernorateSelect(governorateSelect);
+  populateDialectSelect(dialectSelect);
   renderCategoryCheckboxGrid(categoriesGrid, categories, (v) => (categories = v));
 
   const form = document.getElementById("register-form");
@@ -89,7 +91,9 @@ async function main() {
         email: user.email,
         photoURL: user.photoURL,
         authProvider: "password",
+        dialectGroup: dialectSelect.value,
       });
+      setDialect(dialectSelect.value);
       location.href = "index.html";
     } catch (error) {
       showMessage(formError, t(`auth.errors.${Auth.getAuthErrorKey(error)}`));

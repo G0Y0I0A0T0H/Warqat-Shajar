@@ -2,6 +2,7 @@
 // Ported 1:1 from src/contexts/{auth-context,favorites-context}.tsx.
 import { auth, db, Auth, Admin, Favorites, Cart, Profile, Notifications, OWNER_EMAIL } from "./firebase.js";
 import { doc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
+import { getDialect, setDialect } from "./i18n.js";
 
 const listeners = new Set();
 
@@ -119,6 +120,12 @@ Auth.onChange((nextUser) => {
       const p = authState.profile;
       if (p?.status === "suspended" && p.suspendedUntil?.toDate?.() <= new Date()) {
         Profile.clearExpiredSuspension(nextUser.uid).catch(() => {});
+      }
+      // A signed-in user's saved dialect preference wins over whatever was
+      // in localStorage (e.g. they registered on this device with one
+      // dialect, then changed it from another device).
+      if (p?.dialectGroup && p.dialectGroup !== getDialect()) {
+        setDialect(p.dialectGroup);
       }
     },
     () => {
