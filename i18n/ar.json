@@ -684,6 +684,12 @@
     "confirmRefund": "متأكد إنك بدك ترجع المبلغ للمشتري؟"
   },
   "escrow": {
+    "title": "تتبع حالة الطلب",
+    "stepAwaitingPayment": "بانتظار الدفع",
+    "stepPaymentClaimed": "تم الدفع",
+    "stepPaymentConfirmed": "مؤكد",
+    "stepDeliveryConfirmed": "تم التسليم",
+    "stepReleased": "تم الإفراج عنه",
     "statusAwaitingPayment": "بانتظار الدفع",
     "statusPaymentClaimed": "المشتري بلّغ إنه دفع — بانتظار تأكيد الإدارة",
     "statusPaymentConfirmed": "تم تأكيد استلام الدفعة، الأموال محجوزة وآمنة",

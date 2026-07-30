@@ -389,6 +389,66 @@ export function renderImageInput(mountEl, { value = "", uploadPathPrefix, accept
 // ---------------------------------------------------------------------------
 // Product card — shared by home/products/favorites pages
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Escrow order stepper — rich 5-step horizontal progress tracker for an
+// accepted-offer order (see js/firebase.js's Escrow module). Deliberately
+// self-contained dark styling regardless of site theme, same reasoning as
+// the kill-switch overlay: this is a distinct, always-the-same-look widget,
+// not page content that should follow light/dark mode.
+// ---------------------------------------------------------------------------
+const ESCROW_STEPS = [
+  { status: "awaiting_payment", icon: "credit-card", labelKey: "escrow.stepAwaitingPayment" },
+  { status: "payment_claimed", icon: "check", labelKey: "escrow.stepPaymentClaimed" },
+  { status: "payment_confirmed", icon: "shield-check", labelKey: "escrow.stepPaymentConfirmed" },
+  { status: "delivery_confirmed", icon: "package", labelKey: "escrow.stepDeliveryConfirmed" },
+  { status: "released", icon: "star", labelKey: "escrow.stepReleased" },
+];
+
+export function escrowStepperHTML(order) {
+  const total = `${order.totalAmount} ${t("products.currency", "EGP")}`;
+
+  if (order.status === "disputed" || order.status === "refunded") {
+    const isDisputed = order.status === "disputed";
+    return `
+      <div class="escrow-stepper">
+        <div class="escrow-stepper-header">
+          <span>${t("escrow.title", "Order status")}</span>
+          <span class="escrow-stepper-price">${total}</span>
+        </div>
+        <div class="escrow-stepper-banner ${isDisputed ? "is-dispute" : "is-refund"}">
+          ${icon(isDisputed ? "alert-triangle" : "log-out")}
+          <div>
+            <div class="escrow-stepper-banner-title">${t(isDisputed ? "escrow.statusDisputed" : "escrow.statusRefunded")}</div>
+            ${isDisputed && order.disputeNote ? `<div class="escrow-stepper-banner-note">${escapeHtml(order.disputeNote)}</div>` : ""}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  const currentIndex = ESCROW_STEPS.findIndex((s) => s.status === order.status);
+  return `
+    <div class="escrow-stepper">
+      <div class="escrow-stepper-header">
+        <span>${t("escrow.title", "Order status")}</span>
+        <span class="escrow-stepper-price">${total}</span>
+      </div>
+      <div class="escrow-stepper-steps">
+        ${ESCROW_STEPS.map((step, i) => {
+          const state = i < currentIndex ? "is-done" : i === currentIndex ? "is-current" : "is-upcoming";
+          return `
+            <div class="escrow-step ${state}">
+              <span class="escrow-step-icon">${icon(step.icon)}</span>
+              <span class="escrow-step-label">${t(step.labelKey)}</span>
+            </div>
+            ${i < ESCROW_STEPS.length - 1 ? `<span class="escrow-step-line ${i < currentIndex ? "is-done" : ""}"></span>` : ""}
+          `;
+        }).join("")}
+      </div>
+    </div>
+  `;
+}
+
 export function productCardHTML(product, categoryLabel, governorateLabel, perKgLabel) {
   const photo = product.photoUrls?.[0];
   const freshness = product.harvestDate ? computeFreshness(product.harvestDate, product.category) : null;
