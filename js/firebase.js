@@ -681,6 +681,16 @@ export const Escrow = {
     const snap = await getDocs(escrowOrdersCol);
     return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
   },
+
+  // Every order a buyer has ever placed -- single equality filter (no
+  // composite index needed, unlike buyerId+productId together), so
+  // cart.js filters the small result by productId itself to find the one
+  // relevant to each row.
+  async listMyOrdersOnce(buyerId) {
+    const q = query(escrowOrdersCol, where("buyerId", "==", buyerId));
+    const snap = await getDocs(q);
+    return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  },
 };
 
 // ===========================================================================
