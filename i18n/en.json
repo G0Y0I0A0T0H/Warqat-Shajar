@@ -684,6 +684,12 @@
     "confirmRefund": "Are you sure you want to refund the buyer?"
   },
   "escrow": {
+    "title": "Track order status",
+    "stepAwaitingPayment": "Awaiting payment",
+    "stepPaymentClaimed": "Paid",
+    "stepPaymentConfirmed": "Confirmed",
+    "stepDeliveryConfirmed": "Delivered",
+    "stepReleased": "Released",
     "statusAwaitingPayment": "Awaiting payment",
     "statusPaymentClaimed": "Buyer says they paid — awaiting confirmation",
     "statusPaymentConfirmed": "Payment confirmed received, funds held safely",

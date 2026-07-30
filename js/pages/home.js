@@ -2,7 +2,7 @@ import { initLayout } from "../layout.js";
 import { t, getLocale, onLocaleChange } from "../i18n.js";
 import { SiteSettings, Products, Ads } from "../firebase.js";
 import { mergeCategories, categoryLabel, categoryLabelById, onCategoriesChange, governorateLabel } from "../constants.js";
-import { renderAdSlot, wireFavoriteButtons, productCardHTML, icon, escapeHtml, safeUrl } from "../ui.js";
+import { renderAdSlot, wireFavoriteButtons, productCardHTML, icon, escapeHtml, safeUrl, btnClass } from "../ui.js";
 import { authState, subscribe } from "../state.js";
 
 const TRUST_ITEMS = [
@@ -130,6 +130,20 @@ function applyAuthAwareCTAs() {
     heroBtn.textContent = t("hero.registerFarmer");
     heroBtn.href = "register.html?type=farmer";
     ctaSection.style.display = "";
+  }
+  renderHeaderAddProductBtn();
+}
+
+// A logged-in farmer sees an "Add Product" button in the header the moment
+// the homepage loads, right before the language switch -- getting to their
+// most common action shouldn't require finding the dashboard first.
+function renderHeaderAddProductBtn() {
+  const mount = document.getElementById("header-add-product-mount");
+  if (!mount) return;
+  if (authState.profile?.accountType === "farmer") {
+    mount.innerHTML = `<a href="dashboard-product-new.html" class="${btnClass("default", "sm")}">${icon("plus")} ${t("products.addProduct")}</a>`;
+  } else {
+    mount.innerHTML = "";
   }
 }
 
