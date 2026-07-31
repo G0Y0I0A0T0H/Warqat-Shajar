@@ -1,6 +1,6 @@
 import { initLayout } from "../layout.js";
 import { t, getLocale, onLocaleChange } from "../i18n.js";
-import { Products, Chat, Ads, Notifications, SiteSettings } from "../firebase.js";
+import { Products, Chat, Ads, Notifications, SiteSettings, Escrow } from "../firebase.js";
 import { governorateLabel, categoryLabelById, onCategoriesChange, computeFreshness } from "../constants.js";
 import { renderAdSlot, favoriteButtonHTML, wireFavoriteButtons, initReportDialog, initProductComments, icon, showMessage, escapeHtml, safeUrl, badgeClass } from "../ui.js";
 import { authState, subscribe, addToCart } from "../state.js";
@@ -262,8 +262,25 @@ async function handleOrderNow(quantity) {
 
     if (chatDisabled) {
       // Chat is down sitewide -- don't touch chats/messages at all (it
-      // would be rejected by firestore.rules anyway), just confirm the
-      // request directly to both sides and stay on this page.
+      // would be rejected by firestore.rules anyway). There's no offer to
+      // accept in this path, so the escrow order is created directly
+      // (orderId self-tagged "direct_" -- see the matching firestore.rules
+      // branch), starting straight at awaiting_payment -- this is what lets
+      // the cart page show real tracking for it afterwards.
+      const orderId = `direct_${authState.user.uid}_${product.id}_${Date.now()}`;
+      await Escrow.createOrder({
+        orderId,
+        chatId: null,
+        productId: product.id,
+        productLabel,
+        buyerId: authState.user.uid,
+        buyerName: authState.profile.fullName,
+        sellerId: product.ownerId,
+        sellerName: product.ownerName,
+        quantity: qty,
+        unit: product.unit,
+        pricePerUnit: product.price,
+      });
       Notifications.create({
         uid: authState.user.uid,
         key: "orderConfirmed",

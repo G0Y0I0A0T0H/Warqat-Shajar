@@ -291,14 +291,33 @@ service cloud.firestore {
       // references may create it, and buyerId/sellerId must be the chat's
       // real two participants (not an arbitrary third uid) -- checked
       // against the real chat/message docs, never trusted from the
-      // client's own claim alone.
+      // client's own claim alone. The second branch covers the sitewide
+      // chat-disabled path (see settings/chatDisabled): there's no chat or
+      // offer message to check against at all there, so instead the buyer
+      // is verified directly, the order id must be self-tagged 'direct_'
+      // (so it can never collide with a real chatId/messageId pair from the
+      // first branch), and the sellerId is checked against the product's
+      // own real owner, not just trusted from the client's claim.
       allow create: if isSignedIn() &&
         request.resource.data.buyerId != request.resource.data.sellerId &&
         (request.auth.uid == request.resource.data.buyerId || request.auth.uid == request.resource.data.sellerId) &&
         request.resource.data.status == 'awaiting_payment' &&
-        get(/databases/$(database)/documents/chats/$(request.resource.data.chatId)).data.participantIds
-          .hasAll([request.resource.data.buyerId, request.resource.data.sellerId]) &&
-        get(/databases/$(database)/documents/chats/$(request.resource.data.chatId)/messages/$(orderId)).data.offer.status == 'accepted';
+        (
+          (
+            request.resource.data.chatId != null &&
+            get(/databases/$(database)/documents/chats/$(request.resource.data.chatId)).data.participantIds
+              .hasAll([request.resource.data.buyerId, request.resource.data.sellerId]) &&
+            get(/databases/$(database)/documents/chats/$(request.resource.data.chatId)/messages/$(orderId)).data.offer.status == 'accepted'
+          )
+          ||
+          (
+            request.resource.data.chatId == null &&
+            orderId.matches('^direct_.*$') &&
+            request.auth.uid == request.resource.data.buyerId &&
+            get(/databases/$(database)/documents/settings/chatDisabled).data.get('active', false) == true &&
+            get(/databases/$(database)/documents/products/$(request.resource.data.productId)).data.ownerId == request.resource.data.sellerId
+          )
+        );
 
       // Every branch below is a narrow, one-directional jump gated to one
       // specific role -- see js/pages/dashboard-chat.js and
