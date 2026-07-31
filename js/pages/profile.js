@@ -1,7 +1,7 @@
 import { initLayout } from "../layout.js";
-import { t, getLocale, onLocaleChange, setDialect } from "../i18n.js";
+import { t, getLocale, onLocaleChange } from "../i18n.js";
 import { Reviews, Profile } from "../firebase.js";
-import { governorateLabel, categoryLabelById, onCategoriesChange, DIALECTS } from "../constants.js";
+import { governorateLabel, categoryLabelById, onCategoriesChange } from "../constants.js";
 import { renderAvatar, renderStars, badgeClass, icon, escapeHtml, renderImageInput } from "../ui.js";
 import { authState, subscribe } from "../state.js";
 
@@ -62,12 +62,6 @@ async function render() {
         <div class="label">${t("auth.register.governorateLabel")}</div>
         <div>${governorateLabel(profile.governorate, getLocale())}</div>
       </div>
-      <div class="field" style="max-width:16rem">
-        <label class="label" for="dialect-select">${t("auth.register.dialectLabel")}</label>
-        <select class="select" id="dialect-select">
-          ${DIALECTS.map((d) => `<option value="${d.id}" ${(profile.dialectGroup || "levant") === d.id ? "selected" : ""}>${d[getLocale()]}</option>`).join("")}
-        </select>
-      </div>
       ${
         categories.length
           ? `<div>
@@ -88,12 +82,6 @@ async function render() {
       onChange: (url) => Profile.updatePhotoURL(profile.uid, url),
     });
   }
-
-  viewEl.querySelector("#dialect-select").addEventListener("change", async (e) => {
-    const group = e.target.value;
-    await Profile.updateDialect(profile.uid, group);
-    setDialect(group);
-  });
 }
 
 async function main() {
