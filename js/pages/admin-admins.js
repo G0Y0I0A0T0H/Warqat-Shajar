@@ -1,7 +1,7 @@
 import { initLayout } from "../layout.js";
 import { guardAdmin, NAV_ITEMS, SENSITIVE_KEYS, hasSection } from "../admin-shell.js";
 import { t, onLocaleChange } from "../i18n.js";
-import { Admin, OWNER_EMAIL, PROTECTED_ADMIN_EMAILS, auth, SiteSettings } from "../firebase.js";
+import { Admin, OWNER_EMAIL, auth, SiteSettings } from "../firebase.js";
 import { authState } from "../state.js";
 import { btnClass, showMessage } from "../ui.js";
 
@@ -26,11 +26,12 @@ let chatDisabled = false;
 let maintenanceModeOn = false;
 let editingPermsUid = null;
 
-// Protected admins (see firebase.js PROTECTED_ADMIN_EMAILS) never appear in
-// another admin's view of this list at all -- not just without a revoke
-// button. Only the owner (and Supreme Mode) ever sees them here.
+// Deliberately shows every admin as an ordinary, equal-looking entry to
+// other admins -- including the two accounts with a real emergency
+// relationship to the owner (see js/supreme-mode.js). That asymmetry is
+// meant to stay invisible here; it only ever surfaces through Supreme Mode.
 function visibleAdmins() {
-  return authState.isOwner ? admins : admins.filter((a) => !PROTECTED_ADMIN_EMAILS.includes(a.email));
+  return authState.isOwner ? admins : admins.filter((a) => a.email !== OWNER_EMAIL);
 }
 
 // currentSections is the admin's real allowedSections (null/undefined for

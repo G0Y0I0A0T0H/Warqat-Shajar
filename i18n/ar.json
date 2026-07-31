@@ -685,7 +685,8 @@
     "noPinSet": "غير محدد",
     "newPinPlaceholder": "رمز جديد",
     "noSections": "ولا قسم",
-    "allSections": "كل الأقسام (بدون تقييد)"
+    "allSections": "كل الأقسام (بدون تقييد)",
+    "quickAccess": "كل الأقسام"
   },
   "escrow": {
     "title": "تتبع حالة الطلب",

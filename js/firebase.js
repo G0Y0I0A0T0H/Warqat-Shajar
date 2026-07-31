@@ -876,12 +876,13 @@ export const Reports = {
 // ===========================================================================
 export const OWNER_EMAIL = "sgyiath@gmail.com";
 
-// Hidden from every OTHER admin's view of the admin list (admin-admins.js /
-// supreme-mode.js) -- visibility only, not a revoke restriction. The owner
-// can still see, edit, and revoke any of them (including via Supreme Mode);
-// only the owner's own doc is actually unrevokable, enforced in
-// firestore.rules purely to prevent a self-lockout.
-export const PROTECTED_ADMIN_EMAILS = ["georgemagdy117@gmail.com", "mostafahalafawy937@gmail.com", OWNER_EMAIL];
+// georgemagdy117@gmail.com and mostafahalafawy937@gmail.com deliberately
+// show up as perfectly ordinary admins everywhere in the regular admin
+// panel (see js/pages/admin-admins.js) -- any real emergency authority the
+// owner holds over them only ever surfaces through Supreme Mode (see
+// js/supreme-mode.js), never here. Only the owner's own admin doc is
+// actually unrevokable by anyone, enforced in firestore.rules purely to
+// prevent a self-lockout.
 
 export const Admin = {
   async grantSelfAdmin(uid, email) {
