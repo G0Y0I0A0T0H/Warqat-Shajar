@@ -164,16 +164,32 @@ async function handleOrderNow(productId) {
 
     if (chatDisabled) {
       // Chat is down sitewide -- don't touch chats/messages at all (it
-      // would be rejected by firestore.rules anyway), just confirm the
-      // request directly to both sides and stay on this page. There's no
-      // offer/escrow order to track in this path, so the row just stays as
-      // a normal cart item.
+      // would be rejected by firestore.rules anyway). There's no offer to
+      // accept in this path, so the escrow order is created directly
+      // (orderId self-tagged "direct_" -- see the matching firestore.rules
+      // branch), starting straight at awaiting_payment, so the row still
+      // gets to show real tracking instead of just a confirmation toast.
+      const orderId = `direct_${authState.user.uid}_${productId}_${Date.now()}`;
+      await Escrow.createOrder({
+        orderId,
+        chatId: null,
+        productId,
+        productLabel,
+        buyerId: authState.user.uid,
+        buyerName: authState.profile.fullName,
+        sellerId: product.ownerId,
+        sellerName: product.ownerName,
+        quantity,
+        unit: product.unit,
+        pricePerUnit: product.price,
+      });
       Notifications.create({ uid: authState.user.uid, key: "orderConfirmed", params: { product: productLabel } }).catch(() => {});
       Notifications.create({
         uid: product.ownerId,
         key: "newOrderRequest",
         params: { name: authState.profile.fullName, product: productLabel },
       }).catch(() => {});
+      await loadOrderState();
       return;
     }
 
