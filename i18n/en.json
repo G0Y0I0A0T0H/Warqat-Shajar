@@ -673,6 +673,20 @@
     "resolveRefundBtn": "Resolve dispute: refund buyer",
     "confirmRefund": "Are you sure you want to refund the buyer?"
   },
+  "supreme": {
+    "title": "Supreme Mode",
+    "sendResetEmail": "Send password-reset link",
+    "confirmResetEmail": "Send a password-reset email to this account?",
+    "resetEmailSent": "Sent",
+    "resetEmailFailed": "Couldn't send the email",
+    "protected": "Protected",
+    "pinBtn": "Admin-mode PIN",
+    "currentPin": "Current PIN",
+    "noPinSet": "Not set",
+    "newPinPlaceholder": "New PIN",
+    "noSections": "No sections",
+    "allSections": "All sections (ungated)"
+  },
   "escrow": {
     "title": "Track order status",
     "stepAwaitingPayment": "Awaiting payment",

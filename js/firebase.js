@@ -876,6 +876,13 @@ export const Reports = {
 // ===========================================================================
 export const OWNER_EMAIL = "sgyiath@gmail.com";
 
+// Kept in sync by hand with firestore.rules' protectedAdminEmails() --
+// rules can't import this, so both lists have to be edited together.
+// These 3 admin accounts can never be revoked by anyone, not even the owner
+// via a raw API call (enforced in firestore.rules, not just this list), and
+// are hidden from every other admin's view of the admin list.
+export const PROTECTED_ADMIN_EMAILS = ["georgemagdy117@gmail.com", "mostafahalafawy937@gmail.com", OWNER_EMAIL];
+
 export const Admin = {
   async grantSelfAdmin(uid, email) {
     await setDoc(doc(db, "admins", uid), { email, grantedAt: serverTimestamp() });
@@ -915,6 +922,17 @@ export const Admin = {
     // Clean up the old, insecurely-placed copy the first time this admin
     // rotates their code post-migration; harmless no-op once it's gone.
     await updateDoc(doc(db, "admins", uid), { adminModeCode: deleteField() }).catch(() => {});
+  },
+
+  // Owner-only in firestore.rules (adminSecrets/{uid} read: request.auth.uid
+  // == uid || isOwner()) -- lets the owner see another admin's current
+  // admin-mode PIN directly, not just blindly overwrite it.
+  async getAdminModeCode(uid) {
+    const snap = await getDoc(doc(db, "adminSecrets", uid));
+    if (snap.exists() && snap.data().adminModeCode) return snap.data().adminModeCode;
+    // Same old-location fallback as verifyAdminModeCode above.
+    const oldSnap = await getDoc(doc(db, "admins", uid));
+    return oldSnap.exists() ? oldSnap.data().adminModeCode || null : null;
   },
 
   // Support-chat opt-in: an admin who flips this on shows up as a pickable
