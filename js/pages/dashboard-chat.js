@@ -3,7 +3,7 @@ import { guardDashboard } from "../dashboard-shell.js";
 import { t, onLocaleChange } from "../i18n.js";
 import { Chat, Products, Reviews, PhoneAttempts, Notifications, SiteSettings, Escrow } from "../firebase.js";
 import { authState } from "../state.js";
-import { btnClass, badgeClass, icon, initReportDialog, renderStarButtons, showMessage, containsPhoneNumber, escapeHtml } from "../ui.js";
+import { btnClass, badgeClass, icon, initReportDialog, renderStarButtons, showMessage, containsPhoneNumber, escapeHtml, escrowPaymentMethodsHTML } from "../ui.js";
 import { initHelpTour } from "../help-tour.js";
 
 const params = new URLSearchParams(location.search);
@@ -28,6 +28,10 @@ let escrowOrderId = null;
 let escrowOrder = null;
 let escrowUnsub = null;
 let disputeFormOpen = false;
+// The platform's own payment-receiving details -- fetched once in main(),
+// shown to the buyer while awaiting_payment so they actually know where to
+// send money (see escrowPaymentMethodsHTML in ui.js).
+let paymentInfo = null;
 
 const ESCROW_STATUS_KEY = {
   awaiting_payment: "escrow.statusAwaitingPayment",
@@ -181,7 +185,8 @@ function renderEscrowTracker() {
 
   let actionsHtml = "";
   if (isBuyer && escrowOrder.status === "awaiting_payment") {
-    actionsHtml = `<button type="button" class="${btnClass("default", "sm")}" id="escrow-mark-paid-btn">${t("escrow.markPaidBtn")}</button>`;
+    const hasMethods = Boolean(paymentInfo?.vodafoneCash || paymentInfo?.instapay || paymentInfo?.bankAccountNumber);
+    actionsHtml = `<button type="button" class="${btnClass("default", "sm")}" id="escrow-mark-paid-btn" ${hasMethods ? "disabled" : ""}>${t("escrow.markPaidBtn")}</button>`;
   } else if (isBuyer && escrowOrder.status === "payment_confirmed") {
     actionsHtml = `<button type="button" class="${btnClass("default", "sm")}" id="escrow-confirm-delivery-btn">${t("escrow.confirmDeliveryBtn")}</button>`;
   }
@@ -192,7 +197,7 @@ function renderEscrowTracker() {
         <span class="${badgeClass(escrowOrder.status === "released" ? "default" : escrowOrder.status === "disputed" ? "destructive" : "outline")}">${t(ESCROW_STATUS_KEY[escrowOrder.status])}</span>
         <span class="text-muted" style="font-size:0.8rem">${t("escrow.totalLabel")}: ${escrowOrder.totalAmount}</span>
       </div>
-      ${escrowOrder.status === "awaiting_payment" && isBuyer ? `<p class="text-muted" style="font-size:0.8rem">${t("escrow.awaitingPaymentBuyerHint")}</p>` : ""}
+      ${escrowOrder.status === "awaiting_payment" && isBuyer ? escrowPaymentMethodsHTML(escrowOrder.id, paymentInfo) : ""}
       ${escrowOrder.status === "disputed" ? `<p class="error-text" style="font-size:0.8rem">${escapeHtml(escrowOrder.disputeNote || "")}</p>` : ""}
       ${actionsHtml ? `<div style="display:flex;gap:0.5rem;flex-wrap:wrap">${actionsHtml}</div>` : ""}
       ${
@@ -213,8 +218,16 @@ function renderEscrowTracker() {
     </div>
   `;
 
-  document.getElementById("escrow-mark-paid-btn")?.addEventListener("click", async () => {
-    await Escrow.markPaymentClaimed(escrowOrder.id);
+  const markPaidBtn = document.getElementById("escrow-mark-paid-btn");
+  document.querySelectorAll(`input[name="escrow-payment-method-${escrowOrder.id}"]`).forEach((r) => {
+    r.addEventListener("change", () => {
+      if (markPaidBtn) markPaidBtn.disabled = false;
+    });
+  });
+  markPaidBtn?.addEventListener("click", async () => {
+    const chosen = document.querySelector(`input[name="escrow-payment-method-${escrowOrder.id}"]:checked`);
+    markPaidBtn.disabled = true;
+    await Escrow.markPaymentClaimed(escrowOrder.id, chosen ? chosen.value : null);
   });
   document.getElementById("escrow-confirm-delivery-btn")?.addEventListener("click", async () => {
     await Escrow.confirmDelivery(escrowOrder.id);
@@ -438,6 +451,7 @@ function renderOfferForm() {
 async function main() {
   await initLayout();
   profile = await guardDashboard("dashboard-messages.html");
+  paymentInfo = await SiteSettings.getPaymentInfoOnce().catch(() => null);
 
   if (!chatId) return;
   chat = await Chat.getChat(chatId);

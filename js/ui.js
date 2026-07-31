@@ -4,7 +4,7 @@
 // render helper.
 import { authState, favoritesState, toggleFavorite } from "./state.js";
 import { t, getLocale } from "./i18n.js";
-import { Reports, Comments, SiteSettings, Storage, PhoneAttempts, Notifications } from "./firebase.js";
+import { Reports, Comments, SiteSettings, Storage, PhoneAttempts, Notifications, Escrow } from "./firebase.js";
 import { computeFreshness } from "./constants.js";
 
 export function btnClass(variant = "default", size = "default", extra = "") {
@@ -447,6 +447,116 @@ export function escrowStepperHTML(order) {
       </div>
     </div>
   `;
+}
+
+function paymentMethodRow(orderId, labelKey, value) {
+  if (!value) return "";
+  return `
+    <label class="escrow-payment-method">
+      <input type="radio" name="escrow-payment-method-${orderId}" value="${escapeHtml(value)}">
+      <span class="escrow-payment-method-label">${t(labelKey)}</span>
+      <span class="escrow-payment-method-value force-ltr" dir="ltr">${escapeHtml(value)}</span>
+    </label>
+  `;
+}
+
+// Shared by renderEscrowActions below and dashboard-chat.js's own escrow
+// tracker -- the platform's real payment methods (settings/paymentInfo) as
+// selectable radio rows (grouped per orderId so multiple orders on the same
+// page never share a radio group), so the buyer actually knows where to
+// send money instead of a generic "wait for instructions" hint.
+export function escrowPaymentMethodsHTML(orderId, paymentInfo) {
+  const bankValue = [paymentInfo?.bankName, paymentInfo?.bankAccountName, paymentInfo?.bankAccountNumber].filter(Boolean).join(" — ");
+  const methodsHtml = [
+    paymentMethodRow(orderId, "escrow.methodVodafoneCash", paymentInfo?.vodafoneCash),
+    paymentMethodRow(orderId, "escrow.methodInstapay", paymentInfo?.instapay),
+    paymentMethodRow(orderId, "escrow.methodBankTransfer", bankValue || null),
+  ].join("");
+  if (!methodsHtml) {
+    return `<p class="text-muted" style="font-size:0.8rem">${t("escrow.noPaymentMethodsYet")}</p>`;
+  }
+  return `
+    <p class="escrow-payment-methods-title">${t("escrow.choosePaymentMethod")}</p>
+    <div class="escrow-payment-methods">${methodsHtml}</div>
+    ${paymentInfo?.notes ? `<p class="escrow-payment-methods-note">${escapeHtml(paymentInfo.notes)}</p>` : ""}
+  `;
+}
+
+// The interactive counterpart to escrowStepperHTML above -- shows the
+// platform's actual payment methods (settings/paymentInfo) so the buyer
+// knows where to send money, lets them pick which one they used and mark
+// the order paid, confirm delivery once payment's confirmed, or either side
+// raise a dispute. Self-contained like initProductComments/initReportDialog
+// above: renders into containerEl and wires its own listeners; call again
+// via onChange once the order's status actually changes.
+export function renderEscrowActions(containerEl, { order, viewerUid, paymentInfo, onChange }) {
+  const isBuyer = viewerUid === order.buyerId;
+  const isSeller = viewerUid === order.sellerId;
+  const isFinal = order.status === "released" || order.status === "refunded" || order.status === "disputed";
+  const canDispute = !isFinal && (isBuyer || isSeller);
+
+  let topHtml = "";
+  let primaryBtnHtml = "";
+  if (isBuyer && order.status === "awaiting_payment") {
+    topHtml = escrowPaymentMethodsHTML(order.id, paymentInfo);
+    const hasMethods = Boolean(paymentInfo?.vodafoneCash || paymentInfo?.instapay || paymentInfo?.bankAccountNumber);
+    primaryBtnHtml = `<button type="button" class="${btnClass("default", "sm")}" id="escrow-mark-paid-btn" ${hasMethods ? "disabled" : ""}>${icon("check")} ${t("escrow.markPaidBtn")}</button>`;
+  } else if (isBuyer && order.status === "payment_confirmed") {
+    primaryBtnHtml = `<button type="button" class="${btnClass("default", "sm")}" id="escrow-confirm-delivery-btn">${icon("package")} ${t("escrow.confirmDeliveryBtn")}</button>`;
+  }
+
+  if (!topHtml && !primaryBtnHtml && !canDispute) {
+    containerEl.innerHTML = "";
+    return;
+  }
+
+  containerEl.innerHTML = `
+    <div class="escrow-actions">
+      ${topHtml}
+      ${primaryBtnHtml ? `<div class="escrow-actions-buttons">${primaryBtnHtml}</div>` : ""}
+      ${
+        canDispute
+          ? `<div>
+              <button type="button" class="${btnClass("ghost", "sm")}" id="escrow-dispute-toggle-btn">${t("escrow.raiseDisputeBtn")}</button>
+              <div id="escrow-dispute-form" style="display:none;flex-direction:column;gap:0.4rem;margin-top:0.5rem">
+                <textarea class="textarea" id="escrow-dispute-note" rows="2" placeholder="${t("escrow.disputeNotePlaceholder")}"></textarea>
+                <button type="button" class="${btnClass("destructive", "sm")}" id="escrow-dispute-submit-btn" style="align-self:flex-start">${t("escrow.disputeSubmitBtn")}</button>
+              </div>
+            </div>`
+          : ""
+      }
+    </div>
+  `;
+
+  const markPaidBtn = containerEl.querySelector("#escrow-mark-paid-btn");
+  if (markPaidBtn) {
+    containerEl.querySelectorAll('input[name="escrow-payment-method-' + order.id + '"]').forEach((r) => {
+      r.addEventListener("change", () => {
+        markPaidBtn.disabled = false;
+      });
+    });
+    markPaidBtn.addEventListener("click", async () => {
+      const chosen = containerEl.querySelector(`input[name="escrow-payment-method-${order.id}"]:checked`);
+      markPaidBtn.disabled = true;
+      await Escrow.markPaymentClaimed(order.id, chosen ? chosen.value : null);
+      onChange?.();
+    });
+  }
+  containerEl.querySelector("#escrow-confirm-delivery-btn")?.addEventListener("click", async (e) => {
+    e.target.disabled = true;
+    await Escrow.confirmDelivery(order.id);
+    onChange?.();
+  });
+  containerEl.querySelector("#escrow-dispute-toggle-btn")?.addEventListener("click", () => {
+    const form = containerEl.querySelector("#escrow-dispute-form");
+    form.style.display = form.style.display === "none" ? "flex" : "none";
+  });
+  containerEl.querySelector("#escrow-dispute-submit-btn")?.addEventListener("click", async () => {
+    const note = containerEl.querySelector("#escrow-dispute-note").value.trim();
+    if (!note) return;
+    await Escrow.raiseDispute(order.id, viewerUid, note);
+    onChange?.();
+  });
 }
 
 export function productCardHTML(product, categoryLabel, governorateLabel, perKgLabel) {

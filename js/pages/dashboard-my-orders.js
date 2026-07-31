@@ -4,8 +4,8 @@
 import { initLayout } from "../layout.js";
 import { guardDashboard } from "../dashboard-shell.js";
 import { t, onLocaleChange } from "../i18n.js";
-import { Chat, Notifications, Escrow } from "../firebase.js";
-import { badgeClass, btnClass, escapeHtml, escrowStepperHTML } from "../ui.js";
+import { Chat, Notifications, Escrow, SiteSettings } from "../firebase.js";
+import { badgeClass, btnClass, escapeHtml, escrowStepperHTML, renderEscrowActions } from "../ui.js";
 
 const listEl = document.getElementById("my-orders-list");
 let orders = [];
@@ -13,6 +13,10 @@ let profileRef = null;
 // messageId -> full escrow order doc, so the buyer sees the rich payment
 // progress stepper without opening the chat -- see loadEscrowStatuses.
 let escrowOrders = {};
+// The platform's own payment-receiving details -- shown alongside the
+// stepper once an order is awaiting payment. See renderEscrowActions in
+// ui.js. Fetched once; it rarely changes.
+let paymentInfo = null;
 
 const STATUS_KEY = {
   pending: "chat.offerStatusPending",
@@ -54,11 +58,30 @@ function render() {
             <a href="dashboard-chat.html?id=${o.chatId}" class="${btnClass("outline", "sm")}">${t("orders.openChat")}</a>
           </div>
         </div>
-        ${escrowOrder ? `<div style="margin-top:0.85rem">${escrowStepperHTML(escrowOrder)}</div>` : ""}
+        ${
+          escrowOrder
+            ? `<div style="margin-top:0.85rem">
+                 ${escrowStepperHTML(escrowOrder)}
+                 <div data-escrow-actions="${o.messageId}" style="margin-top:0.75rem"></div>
+               </div>`
+            : ""
+        }
       </div>
     `;
     })
     .join("");
+
+  listEl.querySelectorAll("[data-escrow-actions]").forEach((mountEl) => {
+    const messageId = mountEl.dataset.escrowActions;
+    const order = escrowOrders[messageId];
+    if (!order) return;
+    renderEscrowActions(mountEl, {
+      order,
+      viewerUid: profileRef.uid,
+      paymentInfo,
+      onChange: reload,
+    });
+  });
 
   listEl.querySelectorAll("[data-cancel]").forEach((btn) => {
     btn.addEventListener("click", async () => {
@@ -93,6 +116,7 @@ async function reload() {
 async function main() {
   await initLayout();
   profileRef = await guardDashboard("dashboard-my-orders.html");
+  paymentInfo = await SiteSettings.getPaymentInfoOnce().catch(() => null);
   await reload();
   onLocaleChange(render);
 }
