@@ -1,7 +1,7 @@
 import { initLayout } from "../layout.js";
 import { guardAdmin, NAV_ITEMS, SENSITIVE_KEYS, hasSection } from "../admin-shell.js";
 import { t, onLocaleChange } from "../i18n.js";
-import { Admin, OWNER_EMAIL, auth, SiteSettings } from "../firebase.js";
+import { Admin, OWNER_EMAIL, PROTECTED_ADMIN_EMAILS, auth, SiteSettings } from "../firebase.js";
 import { authState } from "../state.js";
 import { btnClass, showMessage } from "../ui.js";
 
@@ -26,8 +26,11 @@ let chatDisabled = false;
 let maintenanceModeOn = false;
 let editingPermsUid = null;
 
+// Protected admins (see firebase.js PROTECTED_ADMIN_EMAILS) never appear in
+// another admin's view of this list at all -- not just without a revoke
+// button. Only the owner (and Supreme Mode) ever sees them here.
 function visibleAdmins() {
-  return authState.isOwner ? admins : admins.filter((a) => a.email !== OWNER_EMAIL);
+  return authState.isOwner ? admins : admins.filter((a) => !PROTECTED_ADMIN_EMAILS.includes(a.email));
 }
 
 // currentSections is the admin's real allowedSections (null/undefined for
@@ -145,7 +148,7 @@ function render() {
                         : ""
                     }
                     ${
-                      authState.isOwner && a.uid !== currentUid && a.email !== OWNER_EMAIL
+                      authState.isOwner && a.uid !== currentUid && !PROTECTED_ADMIN_EMAILS.includes(a.email)
                         ? `<button type="button" class="${btnClass("destructive", "sm")}" data-revoke="${a.uid}">${t("admin.revokeAdmin")}</button>`
                         : ""
                     }

@@ -647,6 +647,14 @@ function guardKillSwitch() {
   });
 }
 
+// Step 1 of the hidden Supreme Mode sequence (see wireSupremeModeShortcut
+// below): typing this exact string into the header search and pressing
+// Enter arms a short window instead of actually searching for it. Kept out
+// of any visible UI on purpose -- the owner is the only one told what it is.
+const SUPREME_MODE_ARM_STRING = "200870197920";
+const SUPREME_MODE_ARM_WINDOW_MS = 15000;
+let supremeModeArmedUntil = 0;
+
 // The header search box existed purely as decoration -- no id, no form, no
 // listener anywhere -- so typing and pressing Enter did nothing at all.
 // Wired here (not per-page) since the exact same markup is duplicated
@@ -661,6 +669,11 @@ function wireHeaderSearch() {
   }
   function go() {
     const q = input.value.trim();
+    if (authState.isOwner && q === SUPREME_MODE_ARM_STRING) {
+      supremeModeArmedUntil = Date.now() + SUPREME_MODE_ARM_WINDOW_MS;
+      input.value = "";
+      return;
+    }
     if (onProductsPage) {
       const url = new URL(location.href);
       if (q) url.searchParams.set("q", q);
@@ -691,6 +704,22 @@ function wireKillSwitchShortcut() {
   });
 }
 
+// Step 2: within SUPREME_MODE_ARM_WINDOW_MS of arming (see wireHeaderSearch
+// above), Ctrl+Alt+Shift+Z opens Supreme Mode. Loaded via dynamic import so
+// its code never ships as part of any page's normal bundle -- only fetched
+// the moment it's actually triggered. See js/supreme-mode.js for the
+// honest limit on how "hidden" any of this really is on a static site.
+function wireSupremeModeShortcut() {
+  document.addEventListener("keydown", (e) => {
+    if (!authState.isOwner) return;
+    if (Date.now() > supremeModeArmedUntil) return;
+    if (e.ctrlKey && e.altKey && e.shiftKey && e.key.toLowerCase() === "z") {
+      supremeModeArmedUntil = 0;
+      import("./supreme-mode.js").then((mod) => mod.openSupremeMode());
+    }
+  });
+}
+
 export async function initLayout() {
   await initI18n();
   renderIcons(document);
@@ -711,6 +740,7 @@ export async function initLayout() {
   guardProfileCompletion();
   guardKillSwitch();
   wireKillSwitchShortcut();
+  wireSupremeModeShortcut();
   guardMaintenanceMode();
   wireHeaderSearch();
   subscribe(() => {

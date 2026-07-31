@@ -673,6 +673,20 @@
     "resolveRefundBtn": "حل الخلاف: إرجاع للمشتري",
     "confirmRefund": "متأكد إنك بدك ترجع المبلغ للمشتري؟"
   },
+  "supreme": {
+    "title": "الوضع الفائق",
+    "sendResetEmail": "إرسال رابط تغيير كلمة السر",
+    "confirmResetEmail": "متأكد إنك بدك تبعت إيميل تغيير كلمة السر لهاد الحساب؟",
+    "resetEmailSent": "تم الإرسال",
+    "resetEmailFailed": "تعذّر إرسال الإيميل",
+    "protected": "محمي",
+    "pinBtn": "رمز وضع الأدمن",
+    "currentPin": "الرمز الحالي",
+    "noPinSet": "غير محدد",
+    "newPinPlaceholder": "رمز جديد",
+    "noSections": "ولا قسم",
+    "allSections": "كل الأقسام (بدون تقييد)"
+  },
   "escrow": {
     "title": "تتبع حالة الطلب",
     "stepAwaitingPayment": "بانتظار الدفع",
