@@ -696,7 +696,12 @@ function wireHeaderSearch() {
 function wireKillSwitchShortcut() {
   document.addEventListener("keydown", (e) => {
     if (!authState.isOwner) return;
-    if (e.ctrlKey && e.altKey && e.shiftKey && e.key.toLowerCase() === "k") {
+    // e.code (physical key position, "KeyK") rather than e.key (the
+    // character actually produced) -- e.key depends on the active keyboard
+    // layout, and Ctrl+Alt together reads as AltGr on many layouts
+    // (including common Arabic ones), which can make e.key never actually
+    // come out as a plain letter at all. e.code stays reliable regardless.
+    if (e.ctrlKey && e.altKey && e.shiftKey && e.code === "KeyK") {
       if (confirm(t("killSwitch.confirmActivate", "This will lock the ENTIRE site for every visitor immediately. Are you absolutely sure?"))) {
         SiteSettings.setKillSwitch(true);
       }
@@ -713,7 +718,9 @@ function wireSupremeModeShortcut() {
   document.addEventListener("keydown", (e) => {
     if (!authState.isOwner) return;
     if (Date.now() > supremeModeArmedUntil) return;
-    if (e.ctrlKey && e.altKey && e.shiftKey && e.key.toLowerCase() === "z") {
+    // See the e.code comment on wireKillSwitchShortcut above -- same fix,
+    // same reason.
+    if (e.ctrlKey && e.altKey && e.shiftKey && e.code === "KeyZ") {
       supremeModeArmedUntil = 0;
       import("./supreme-mode.js").then((mod) => mod.openSupremeMode());
     }
