@@ -22,13 +22,30 @@ export const NAV_ITEMS = [
   { href: "admin-payments.html", key: "payments", icon: "credit-card" },
 ];
 
-// Sections that stay hidden/inaccessible to every admin except the owner,
-// regardless of an admin's allowedSections grant -- unlike other sections,
-// these can't be delegated at all. ("admins" itself is NOT owner-only: any
+// Keys that require an EXPLICIT grant in an admin's allowedSections --
+// unlike every other section, an admin with no allowedSections field at all
+// (granted before granular permissions existed) does NOT automatically get
+// these via the grandfather rule below. They touch real money (payments) or
+// sitewide availability (system controls), so access has to be a deliberate,
+// current choice by the owner, never an accident of grandfathering.
+// "systemControls" isn't a NAV_ITEMS page at all (it's a section inside
+// admin-admins.html, not its own route) -- callers check it directly via
+// hasSection("systemControls"). ("admins" itself is NOT gated here: any
 // admin still needs admin-admins.html for their own password/support-toggle
-// self-service, it's only the "add admin" form inside that page which is
-// owner-gated.)
-export const OWNER_ONLY_KEYS = ["payments"];
+// self-service, it's only the "add admin" form + System Controls inside
+// that page which are further gated.)
+export const SENSITIVE_KEYS = ["payments", "systemControls"];
+
+// Owner always has every section. A sensitive key (see SENSITIVE_KEYS)
+// requires explicit inclusion in allowedSections, full stop. Every other
+// section falls back to "no allowedSections field at all == full access"
+// (an admin granted before this feature existed).
+export function hasSection(key) {
+  if (authState.isOwner) return true;
+  if (SENSITIVE_KEYS.includes(key)) return Boolean(authState.allowedSections?.includes(key));
+  if (!authState.allowedSections) return true;
+  return authState.allowedSections.includes(key);
+}
 
 function renderDenied(root) {
   root.innerHTML = `<div class="admin-denied">${t("admin.accessDenied")}</div>`;
@@ -54,14 +71,8 @@ function renderGate(root) {
   });
 }
 
-// Owner always sees every section; an admin with no allowedSections field
-// set (granted before this feature existed) also keeps full access --
-// only an admin with an explicit, non-null allowedSections array is
-// actually restricted.
 function visibleNavItems() {
-  const items = authState.isOwner ? NAV_ITEMS : NAV_ITEMS.filter((item) => !OWNER_ONLY_KEYS.includes(item.key));
-  if (authState.isOwner || !authState.allowedSections) return items;
-  return items.filter((item) => authState.allowedSections.includes(item.key));
+  return NAV_ITEMS.filter((item) => hasSection(item.key));
 }
 
 function renderSidebar(activeHref) {
@@ -128,17 +139,7 @@ export function guardAdmin(activeHref) {
       // its URL directly -- hiding it from the sidebar alone isn't real
       // access control.
       const activeItem = NAV_ITEMS.find((item) => item.href === activeHref);
-      if (!authState.isOwner && activeItem && OWNER_ONLY_KEYS.includes(activeItem.key)) {
-        shellBuilt = false;
-        renderDenied(root);
-        return;
-      }
-      if (
-        !authState.isOwner &&
-        authState.allowedSections &&
-        activeItem &&
-        !authState.allowedSections.includes(activeItem.key)
-      ) {
+      if (activeItem && !hasSection(activeItem.key)) {
         shellBuilt = false;
         renderDenied(root);
         return;

@@ -18,6 +18,27 @@ service cloud.firestore {
       return isSignedIn() && request.auth.token.email == 'sgyiath@gmail.com';
     }
 
+    // Delegated access to a sensitive section (payments, systemControls --
+    // see js/admin-shell.js's SENSITIVE_KEYS) -- the owner always has it;
+    // a regular admin only has it if their own admins/{uid} doc explicitly
+    // lists this section in allowedSections. Deliberately NOT the same
+    // "missing allowedSections == full access" grandfather rule the client
+    // uses for ordinary nav sections -- these touch real money or sitewide
+    // availability, so access must always be a current, explicit grant.
+    function isOwnerOrGranted(section) {
+      return isOwner() || (
+        isAdmin() &&
+        // allowedSections can be absent (old admin, pre-dates this field),
+        // an actual list, or -- from an old grantAdmin() default -- literally
+        // null (present but not a list). .get(key, []) only substitutes the
+        // default for an ABSENT key, so a stored null would otherwise reach
+        // .hasAny() and error out; the explicit "is list" check treats both
+        // "absent" and "present but null" the same way: no grant.
+        get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.get('allowedSections', []) is list &&
+        get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.get('allowedSections', []).hasAny([section])
+      );
+    }
+
     function isParticipant(chatData) {
       return isSignedIn() && request.auth.uid in chatData.participantIds;
     }
@@ -140,31 +161,32 @@ service cloud.firestore {
     // back off from the admin panel, which is why signed-in admins are
     // exempted client-side from ever seeing the overlay. Read stays public
     // for the same reason as killSwitch: every visitor's page needs to
-    // check it.
+    // check it. Write is delegatable to an admin explicitly granted
+    // "systemControls" (see admin-admins.html), not owner-only forever.
     match /settings/maintenanceMode {
       allow read: if true;
-      allow write: if isOwner();
+      allow write: if isOwnerOrGranted('systemControls');
     }
 
-    // Owner-only sitewide chat-disable switch (see the chats/messages
-    // create rule below for the actual enforcement).
+    // Sitewide chat-disable switch (see the chats/messages create rule
+    // below for the actual enforcement). Same delegation as maintenanceMode
+    // above.
     match /settings/chatDisabled {
       allow read: if true;
-      allow write: if isOwner();
+      allow write: if isOwnerOrGranted('systemControls');
     }
 
-    // Owner's own payment-receiving details (Vodafone Cash / InstaPay / bank
-    // account) for the manual-payment flow -- there's no live payment
-    // gateway in this project, so buyers are told where to send money
-    // manually and the owner confirms receipt themselves. Write stays
-    // owner-only (this is personal financial info, not a general admin
-    // setting other admins should edit), but read is open to any signed-in
-    // user -- a buyer with an order awaiting payment needs to see it to
-    // know where to actually send money, same as any storefront publishing
-    // its own receiving details to a customer.
+    // The platform's own payment-receiving details (Vodafone Cash /
+    // InstaPay / bank account) for the manual-payment flow -- there's no
+    // live payment gateway in this project, so buyers are told where to
+    // send money manually and the owner (or an admin explicitly granted
+    // "payments") confirms receipt themselves. Read is open to any
+    // signed-in user -- a buyer with an order awaiting payment needs to see
+    // it to know where to actually send money, same as any storefront
+    // publishing its own receiving details to a customer.
     match /settings/paymentInfo {
       allow read: if isSignedIn();
-      allow write: if isOwner();
+      allow write: if isOwnerOrGranted('payments');
     }
 
     // Real homepage stat counters (registered farmers, completed deals) --
@@ -330,10 +352,16 @@ service cloud.firestore {
       // money movement", per the vulnerabilities guide's principle of not
       // letting general admin access double as financial authority.
       allow update: if isSignedIn() && (
+        // Requires real proof, not just a status flip -- a reference number
+        // and a screenshot of the transfer, both non-empty -- so whoever
+        // reviews this (owner or a "payments"-granted admin) has something
+        // concrete to check, not just the buyer's bare word.
         (request.auth.uid == resource.data.buyerId &&
          resource.data.status == 'awaiting_payment' &&
-         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'paymentClaimedAt', 'paymentMethodChosen']) &&
-         request.resource.data.status == 'payment_claimed')
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'paymentClaimedAt', 'paymentMethodChosen', 'paymentReferenceNumber', 'paymentProofUrl']) &&
+         request.resource.data.status == 'payment_claimed' &&
+         request.resource.data.paymentReferenceNumber is string && request.resource.data.paymentReferenceNumber.size() > 0 &&
+         request.resource.data.paymentProofUrl is string && request.resource.data.paymentProofUrl.size() > 0)
         ||
         (request.auth.uid == resource.data.buyerId &&
          resource.data.status == 'payment_confirmed' &&
@@ -346,22 +374,22 @@ service cloud.firestore {
          request.resource.data.status == 'disputed' &&
          request.resource.data.disputedBy == request.auth.uid)
         ||
-        (isOwner() &&
+        (isOwnerOrGranted('payments') &&
          resource.data.status == 'payment_claimed' &&
          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'paymentConfirmedAt']) &&
          request.resource.data.status == 'payment_confirmed')
         ||
-        (isOwner() &&
+        (isOwnerOrGranted('payments') &&
          resource.data.status == 'delivery_confirmed' &&
          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'releasedAt']) &&
          request.resource.data.status == 'released')
         ||
-        (isOwner() &&
+        (isOwnerOrGranted('payments') &&
          resource.data.status == 'disputed' &&
          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'releasedAt']) &&
          request.resource.data.status == 'released')
         ||
-        (isOwner() &&
+        (isOwnerOrGranted('payments') &&
          resource.data.status == 'disputed' &&
          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'refundedAt']) &&
          request.resource.data.status == 'refunded')

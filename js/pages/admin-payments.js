@@ -2,7 +2,7 @@ import { initLayout } from "../layout.js";
 import { guardAdmin } from "../admin-shell.js";
 import { t, onLocaleChange } from "../i18n.js";
 import { SiteSettings, Escrow } from "../firebase.js";
-import { btnClass, badgeClass, escapeHtml } from "../ui.js";
+import { btnClass, badgeClass, escapeHtml, safeUrl } from "../ui.js";
 
 let contentEl;
 let paymentInfo = {
@@ -50,6 +50,24 @@ function renderOrderRow(o) {
         ${
           o.paymentMethodChosen
             ? `<div class="text-muted force-ltr" dir="ltr" style="font-size:0.8rem;margin-top:0.15rem">${t("payments.methodUsedLabel")}: ${escapeHtml(o.paymentMethodChosen)}</div>`
+            : ""
+        }
+        ${
+          o.paymentReferenceNumber || o.paymentProofUrl
+            ? `<div class="payment-proof">
+                 ${
+                   o.paymentReferenceNumber
+                     ? `<div class="payment-proof-ref">${t("escrow.referenceNumberLabel")}: <span class="force-ltr" dir="ltr">${escapeHtml(o.paymentReferenceNumber)}</span></div>`
+                     : ""
+                 }
+                 ${
+                   o.paymentProofUrl
+                     ? `<a href="${safeUrl(o.paymentProofUrl)}" target="_blank" rel="noopener noreferrer" class="payment-proof-thumb">
+                          <img src="${safeUrl(o.paymentProofUrl)}" alt="${t("payments.proofScreenshotAlt", "Payment screenshot")}">
+                        </a>`
+                     : ""
+                 }
+               </div>`
             : ""
         }
         ${o.status === "disputed" && o.disputeNote ? `<p class="error-text" style="font-size:0.8rem;margin-top:0.25rem">${escapeHtml(o.disputeNote)}</p>` : ""}

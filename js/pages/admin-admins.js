@@ -1,23 +1,50 @@
 import { initLayout } from "../layout.js";
-import { guardAdmin, NAV_ITEMS, OWNER_ONLY_KEYS } from "../admin-shell.js";
+import { guardAdmin, NAV_ITEMS, SENSITIVE_KEYS, hasSection } from "../admin-shell.js";
 import { t, onLocaleChange } from "../i18n.js";
 import { Admin, OWNER_EMAIL, auth, SiteSettings } from "../firebase.js";
 import { authState } from "../state.js";
 import { btnClass, showMessage } from "../ui.js";
 
 // Every section an owner can grant/withhold, except "admins" (managing
-// admins is already owner-only regardless of this list) and any section in
-// OWNER_ONLY_KEYS (e.g. "payments" -- can't be delegated at all).
-const GRANTABLE_SECTIONS = NAV_ITEMS.filter((item) => item.key !== "admins" && !OWNER_ONLY_KEYS.includes(item.key));
+// admins is already owner-only regardless of this list). Sensitive keys
+// (payments, systemControls) ARE included here on purpose -- this form is
+// exactly how the owner explicitly grants them, since they never come from
+// the grandfather rule.
+const GRANTABLE_SECTIONS = NAV_ITEMS.filter((item) => item.key !== "admins").map((item) => ({
+  key: item.key,
+  labelKey: `admin.${item.key}`,
+}));
+// systemControls isn't a NAV_ITEMS page (see admin-shell.js) -- it's the
+// chat-disable/maintenance-mode card further down this very page, so it's
+// added as its own checkbox rather than derived from NAV_ITEMS.
+const SECTION_CHECKBOXES = [...GRANTABLE_SECTIONS, { key: "systemControls", labelKey: "admin.systemControlsTitle" }];
 
 let contentEl;
 let admins = [];
 let allUsers = [];
 let chatDisabled = false;
 let maintenanceModeOn = false;
+let editingPermsUid = null;
 
 function visibleAdmins() {
   return authState.isOwner ? admins : admins.filter((a) => a.email !== OWNER_EMAIL);
+}
+
+// currentSections is the admin's real allowedSections (null/undefined for
+// one granted before granular permissions existed, or before this form is
+// ever submitted for a brand-new admin). A sensitive key never defaults to
+// checked from a null array -- see admin-shell.js's hasSection for why.
+function sectionCheckboxesHTML(currentSections, inputClass) {
+  return SECTION_CHECKBOXES.map((item) => {
+    const isSensitive = SENSITIVE_KEYS.includes(item.key);
+    const checked = currentSections ? currentSections.includes(item.key) : !isSensitive;
+    return `
+      <label style="display:flex;align-items:center;gap:0.35rem;font-size:0.85rem">
+        <input type="checkbox" class="${inputClass}" value="${item.key}" ${checked ? "checked" : ""}>
+        ${t(item.labelKey)}
+      </label>
+    `;
+  }).join("");
 }
 
 function render() {
@@ -30,7 +57,7 @@ function render() {
     <h1 class="heading" style="font-size:1.5rem">${t("admin.admins")}</h1>
 
     ${
-      authState.isOwner
+      hasSection("systemControls")
         ? `
     <div class="card" style="padding:1.5rem;margin-top:1rem">
       <h2 class="card-title" style="font-size:1rem">${t("admin.systemControlsTitle")}</h2>
@@ -51,6 +78,13 @@ function render() {
         </div>
       </div>
     </div>
+    `
+        : ""
+    }
+
+    ${
+      authState.isOwner
+        ? `
     <form id="add-admin-form" class="form-stack card" style="padding:1.5rem;margin-top:1rem">
       <h2 class="card-title" style="font-size:1rem">${t("admin.addAdmin")}</h2>
       <p class="text-muted" style="font-size:0.8rem">${t("admin.addAdminByEmail")}</p>
@@ -65,14 +99,7 @@ function render() {
       <div class="field">
         <label class="label">${t("admin.sectionsLabel", "Sections this admin can access")}</label>
         <div style="display:flex;flex-wrap:wrap;gap:0.75rem">
-          ${GRANTABLE_SECTIONS.map(
-            (item) => `
-            <label style="display:flex;align-items:center;gap:0.35rem;font-size:0.85rem">
-              <input type="checkbox" class="new-admin-section" value="${item.key}" checked>
-              ${t(`admin.${item.key}`)}
-            </label>
-          `,
-          ).join("")}
+          ${sectionCheckboxesHTML(null, "new-admin-section")}
         </div>
       </div>
       <p id="add-admin-error" class="error-text" style="display:none"></p>
@@ -108,11 +135,35 @@ function render() {
           : list
               .map(
                 (a) => `
-              <div class="list-row">
-                <div class="list-row-main"><div style="font-weight:600" class="force-ltr">${a.email}</div></div>
+              <div class="list-row" style="flex-direction:column;align-items:stretch;gap:0.6rem">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap">
+                  <div style="font-weight:600" class="force-ltr">${a.email}</div>
+                  <div style="display:flex;gap:0.4rem">
+                    ${
+                      authState.isOwner && a.email !== OWNER_EMAIL
+                        ? `<button type="button" class="${btnClass("outline", "sm")}" data-edit-perms="${a.uid}">${t("admin.editPermissions", "Edit permissions")}</button>`
+                        : ""
+                    }
+                    ${
+                      authState.isOwner && a.uid !== currentUid && a.email !== OWNER_EMAIL
+                        ? `<button type="button" class="${btnClass("destructive", "sm")}" data-revoke="${a.uid}">${t("admin.revokeAdmin")}</button>`
+                        : ""
+                    }
+                  </div>
+                </div>
                 ${
-                  authState.isOwner && a.uid !== currentUid && a.email !== OWNER_EMAIL
-                    ? `<button type="button" class="${btnClass("destructive", "sm")}" data-revoke="${a.uid}">${t("admin.revokeAdmin")}</button>`
+                  editingPermsUid === a.uid
+                    ? `
+                  <div style="display:flex;flex-direction:column;gap:0.6rem;padding-top:0.4rem;border-top:1px solid var(--border)">
+                    <div style="display:flex;flex-wrap:wrap;gap:0.75rem">
+                      ${sectionCheckboxesHTML(a.allowedSections ?? null, "edit-perms-section")}
+                    </div>
+                    <div style="display:flex;gap:0.4rem">
+                      <button type="button" class="${btnClass("default", "sm")}" data-save-perms="${a.uid}">${t("admin.saveChanges")}</button>
+                      <button type="button" class="${btnClass("ghost", "sm")}" data-cancel-perms>${t("ads.cancel", "Cancel")}</button>
+                    </div>
+                  </div>
+                `
                     : ""
                 }
               </div>
@@ -178,6 +229,28 @@ function render() {
       await reload();
     });
   });
+
+  contentEl.querySelectorAll("[data-edit-perms]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      editingPermsUid = btn.dataset.editPerms;
+      render();
+    });
+  });
+  contentEl.querySelectorAll("[data-cancel-perms]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      editingPermsUid = null;
+      render();
+    });
+  });
+  contentEl.querySelectorAll("[data-save-perms]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const uid = btn.dataset.savePerms;
+      const allowedSections = [...contentEl.querySelectorAll(".edit-perms-section:checked")].map((cb) => cb.value);
+      await Admin.updateAllowedSections(uid, allowedSections);
+      editingPermsUid = null;
+      await reload();
+    });
+  });
 }
 
 async function reload() {
@@ -193,7 +266,7 @@ async function main() {
   await initLayout();
   await guardAdmin("admin-admins.html");
   contentEl = document.getElementById("admin-content");
-  if (authState.isOwner) {
+  if (hasSection("systemControls")) {
     SiteSettings.subscribeChatDisabled((active) => {
       chatDisabled = active;
       render();
