@@ -156,11 +156,15 @@ service cloud.firestore {
     // Owner's own payment-receiving details (Vodafone Cash / InstaPay / bank
     // account) for the manual-payment flow -- there's no live payment
     // gateway in this project, so buyers are told where to send money
-    // manually and the owner confirms receipt themselves. Owner-only on
-    // both read and write since this is personal financial info, not a
-    // general admin setting other admins should ever see.
+    // manually and the owner confirms receipt themselves. Write stays
+    // owner-only (this is personal financial info, not a general admin
+    // setting other admins should edit), but read is open to any signed-in
+    // user -- a buyer with an order awaiting payment needs to see it to
+    // know where to actually send money, same as any storefront publishing
+    // its own receiving details to a customer.
     match /settings/paymentInfo {
-      allow read, write: if isOwner();
+      allow read: if isSignedIn();
+      allow write: if isOwner();
     }
 
     // Real homepage stat counters (registered farmers, completed deals) --
@@ -328,7 +332,7 @@ service cloud.firestore {
       allow update: if isSignedIn() && (
         (request.auth.uid == resource.data.buyerId &&
          resource.data.status == 'awaiting_payment' &&
-         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'paymentClaimedAt']) &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'paymentClaimedAt', 'paymentMethodChosen']) &&
          request.resource.data.status == 'payment_claimed')
         ||
         (request.auth.uid == resource.data.buyerId &&

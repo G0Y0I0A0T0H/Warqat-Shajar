@@ -3,7 +3,7 @@ import { t, getLocale, onLocaleChange } from "../i18n.js";
 import { Products, Chat, Notifications, SiteSettings, Escrow } from "../firebase.js";
 import { categoryLabelById, onCategoriesChange } from "../constants.js";
 import { authState, cartState, subscribe, updateCartQuantity, removeFromCart } from "../state.js";
-import { btnClass, icon, showMessage, escapeHtml, safeUrl, escrowStepperHTML } from "../ui.js";
+import { btnClass, icon, showMessage, escapeHtml, safeUrl, escrowStepperHTML, renderEscrowActions } from "../ui.js";
 
 const contentEl = document.getElementById("cart-content");
 const productCache = new Map();
@@ -18,6 +18,10 @@ let chatDisabled = false;
 // "Order Now" was clicked, which meant there was nothing left to track here.
 let myOffersByProduct = {};
 let myEscrowByProduct = {};
+// The platform's own payment-receiving details (settings/paymentInfo),
+// shown to the buyer once an order reaches awaiting_payment -- see
+// renderEscrowActions in ui.js. Fetched once; it rarely changes.
+let paymentInfo = null;
 
 function newerByCreatedAt(current, candidate) {
   if (!current) return candidate;
@@ -28,6 +32,7 @@ async function loadOrderState() {
   const [offers, escrowOrders] = await Promise.all([
     Chat.listMyOffers(authState.user.uid).catch(() => []),
     Escrow.listMyOrdersOnce(authState.user.uid).catch(() => []),
+    paymentInfo ? Promise.resolve(paymentInfo) : SiteSettings.getPaymentInfoOnce().then((info) => (paymentInfo = info)).catch(() => {}),
   ]);
   myOffersByProduct = {};
   offers.forEach((o) => {
@@ -97,7 +102,10 @@ async function render() {
             <div class="text-muted" style="font-size:0.8rem">${escapeHtml(product.ownerName)}</div>
             ${
               escrowOrder
-                ? `<div style="margin-top:0.6rem;max-width:26rem">${escrowStepperHTML(escrowOrder)}</div>`
+                ? `<div style="margin-top:0.6rem;max-width:26rem">
+                     ${escrowStepperHTML(escrowOrder)}
+                     <div data-escrow-actions="${productId}" style="margin-top:0.75rem"></div>
+                   </div>`
                 : isPending
                   ? `<div style="margin-top:0.5rem"><span class="${btnClass("outline", "sm")}" style="pointer-events:none">${icon("headset")} ${t("cart.awaitingFarmerResponse", "Waiting for the farmer's response")}</span></div>`
                   : `<div style="display:flex;align-items:center;gap:0.5rem;margin-top:0.5rem;flex-wrap:wrap">
@@ -151,6 +159,18 @@ async function render() {
 
   contentEl.querySelectorAll("[data-order]").forEach((btn) => {
     btn.addEventListener("click", () => handleOrderNow(btn.dataset.order));
+  });
+
+  contentEl.querySelectorAll("[data-escrow-actions]").forEach((mountEl) => {
+    const productId = mountEl.dataset.escrowActions;
+    const order = myEscrowByProduct[productId];
+    if (!order) return;
+    renderEscrowActions(mountEl, {
+      order,
+      viewerUid: authState.user.uid,
+      paymentInfo,
+      onChange: loadOrderState,
+    });
   });
 }
 

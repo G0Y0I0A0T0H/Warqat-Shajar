@@ -642,8 +642,12 @@ export const Escrow = {
     );
   },
 
-  async markPaymentClaimed(orderId) {
-    await updateDoc(doc(db, "escrowOrders", orderId), { status: "payment_claimed", paymentClaimedAt: serverTimestamp() });
+  async markPaymentClaimed(orderId, method) {
+    await updateDoc(doc(db, "escrowOrders", orderId), {
+      status: "payment_claimed",
+      paymentClaimedAt: serverTimestamp(),
+      paymentMethodChosen: method || null,
+    });
   },
 
   // Owner-only in firestore.rules -- confirms a real transfer was received
@@ -1318,6 +1322,14 @@ export const SiteSettings = {
       (snap) => callback(snap.exists() ? { ...DEFAULT_PAYMENT_INFO, ...snap.data() } : DEFAULT_PAYMENT_INFO),
       () => callback(DEFAULT_PAYMENT_INFO),
     );
+  },
+
+  // One-time fetch for pages that just need to show it once alongside other
+  // one-time data (cart.js, dashboard-my-orders.js) rather than keep a live
+  // subscription open.
+  async getPaymentInfoOnce() {
+    const snap = await getDoc(paymentInfoRef);
+    return snap.exists() ? { ...DEFAULT_PAYMENT_INFO, ...snap.data() } : DEFAULT_PAYMENT_INFO;
   },
 
   // Admin-entered corrections/additions on top of the JS-seeded dialect

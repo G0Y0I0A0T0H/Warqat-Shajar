@@ -2972,6 +2972,77 @@ main {
   opacity: 0.85;
 }
 
+/* Interactive counterpart to the stepper above (renderEscrowActions /
+   escrowPaymentMethodsHTML in ui.js) -- kept the same fixed dark look on
+   purpose so it reads as one continuous widget with the stepper it sits
+   under, regardless of the site's light/dark theme. */
+.escrow-actions {
+  background: #0f1b12;
+  border: 1px solid rgba(46, 125, 50, 0.35);
+  border-radius: 1rem;
+  padding: 1.1rem;
+  color: #e8f5e9;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.escrow-actions-buttons {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.escrow-payment-methods-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.escrow-payment-methods {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.escrow-payment-method {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.6rem;
+  padding: 0.55rem 0.75rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.escrow-payment-method:has(input:checked) {
+  border-color: #2e7d32;
+  background: rgba(46, 125, 50, 0.2);
+}
+
+.escrow-payment-method input {
+  accent-color: #2e7d32;
+  flex-shrink: 0;
+}
+
+.escrow-payment-method-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.escrow-payment-method-value {
+  font-size: 0.8rem;
+  color: #7ee08a;
+  margin-inline-start: auto;
+}
+
+.escrow-payment-methods-note {
+  font-size: 0.75rem;
+  opacity: 0.75;
+}
+
 .offer-form {
   display: flex;
   flex-direction: column;

@@ -47,6 +47,11 @@ function renderOrderRow(o) {
         <div class="text-muted" style="font-size:0.8rem;margin-top:0.25rem">
           ${t("payments.buyerLabel")}: ${escapeHtml(o.buyerName || "")} · ${t("payments.sellerLabel")}: ${escapeHtml(o.sellerName || "")} · ${t("escrow.totalLabel")}: ${o.totalAmount}
         </div>
+        ${
+          o.paymentMethodChosen
+            ? `<div class="text-muted force-ltr" dir="ltr" style="font-size:0.8rem;margin-top:0.15rem">${t("payments.methodUsedLabel")}: ${escapeHtml(o.paymentMethodChosen)}</div>`
+            : ""
+        }
         ${o.status === "disputed" && o.disputeNote ? `<p class="error-text" style="font-size:0.8rem;margin-top:0.25rem">${escapeHtml(o.disputeNote)}</p>` : ""}
       </div>
       ${actionsHtml ? `<div style="display:flex;gap:0.4rem;flex-wrap:wrap">${actionsHtml}</div>` : ""}
