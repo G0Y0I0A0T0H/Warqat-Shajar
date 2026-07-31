@@ -876,11 +876,11 @@ export const Reports = {
 // ===========================================================================
 export const OWNER_EMAIL = "sgyiath@gmail.com";
 
-// Kept in sync by hand with firestore.rules' protectedAdminEmails() --
-// rules can't import this, so both lists have to be edited together.
-// These 3 admin accounts can never be revoked by anyone, not even the owner
-// via a raw API call (enforced in firestore.rules, not just this list), and
-// are hidden from every other admin's view of the admin list.
+// Hidden from every OTHER admin's view of the admin list (admin-admins.js /
+// supreme-mode.js) -- visibility only, not a revoke restriction. The owner
+// can still see, edit, and revoke any of them (including via Supreme Mode);
+// only the owner's own doc is actually unrevokable, enforced in
+// firestore.rules purely to prevent a self-lockout.
 export const PROTECTED_ADMIN_EMAILS = ["georgemagdy117@gmail.com", "mostafahalafawy937@gmail.com", OWNER_EMAIL];
 
 export const Admin = {

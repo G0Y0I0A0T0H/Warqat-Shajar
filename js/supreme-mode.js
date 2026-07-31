@@ -16,7 +16,7 @@
 // action below still goes through firestore.rules' isOwner() check on the
 // server side, so discovering the trigger alone lets nobody actually do
 // anything unless they're also authenticated as the real owner account.
-import { Admin, Auth, OWNER_EMAIL, PROTECTED_ADMIN_EMAILS, Notifications } from "./firebase.js";
+import { Admin, Auth, OWNER_EMAIL, Notifications } from "./firebase.js";
 import { NAV_ITEMS, SENSITIVE_KEYS } from "./admin-shell.js";
 import { t } from "./i18n.js";
 import { escapeHtml, btnClass, badgeClass, icon } from "./ui.js";
@@ -103,7 +103,11 @@ function userRowHTML(u) {
 }
 
 function adminRowHTML(a) {
-  const isProtected = PROTECTED_ADMIN_EMAILS.includes(a.email);
+  // Supreme Mode is the fully-empowered view -- the only account that can
+  // never be revoked here is the owner's own (self-lockout prevention,
+  // enforced in firestore.rules), not the other admins who are merely
+  // hidden from everyone else's regular admin-list view.
+  const isProtected = a.email === OWNER_EMAIL;
   const sectionsSummary = a.allowedSections
     ? a.allowedSections.length
       ? a.allowedSections.join(", ")
