@@ -39,7 +39,24 @@ export async function openSupremeMode() {
   if (overlay) return;
   overlay = document.createElement("div");
   overlay.id = "supreme-mode-overlay";
+  // The shell/header/tabs-bar/close-button are created exactly once here,
+  // never touched again by render() (which only ever replaces #sm-tabs and
+  // #sm-body's contents) -- that's what keeps the entrance animation below
+  // playing once on open, instead of restarting on every tab switch or
+  // button click, since the animated nodes themselves are never recreated.
+  overlay.innerHTML = `
+    ${SUPREME_MODE_STYLE}
+    <div class="sm-shell">
+      <div class="sm-header">
+        <div class="sm-header-title">${icon("shield-check")} ${t("supreme.title", "Supreme Mode")}</div>
+        <button type="button" class="${btnClass("ghost", "icon")}" id="sm-close" aria-label="${t("ads.cancel", "Close")}">${icon("x")}</button>
+      </div>
+      <div class="sm-tabs" id="sm-tabs"></div>
+      <div class="sm-body" id="sm-body"></div>
+    </div>
+  `;
   document.body.appendChild(overlay);
+  overlay.querySelector("#sm-close").addEventListener("click", closeSupremeMode);
   await reload();
 }
 
@@ -98,6 +115,26 @@ function userRowHTML(u) {
         <button type="button" class="${btnClass("outline", "sm")}" data-sm-reset-pw="${u.uid}" data-sm-email="${escapeHtml(u.email || "")}">${t("supreme.sendResetEmail", "Send password reset")}</button>
         <button type="button" class="${btnClass("destructive", "icon-sm")}" data-sm-delete="${u.uid}" aria-label="${t("admin.deleteUser")}">${icon("trash")}</button>
       </div>
+    </div>
+  `;
+}
+
+// Every other admin page, one click away -- the owner already has
+// unconditional access to all of them (hasSection() short-circuits true
+// for authState.isOwner regardless of allowedSections), so this is just a
+// direct-navigation shortcut, not a reimplementation of any of those
+// pages' own logic.
+function quickAccessHTML() {
+  return `
+    <div class="sm-quick-grid">
+      ${NAV_ITEMS.map(
+        (item) => `
+        <a class="sm-quick-link" href="${item.href}">
+          ${icon(item.icon)}
+          <span>${t(`admin.${item.key}`)}</span>
+        </a>
+      `,
+      ).join("")}
     </div>
   `;
 }
@@ -169,17 +206,39 @@ function adminRowHTML(a) {
 // kill-switch overlay: a distinct, always-the-same-look widget.
 const SUPREME_MODE_STYLE = `
   <style>
+    @keyframes sm-overlay-materialize {
+      from { background: rgba(11,10,6,0); backdrop-filter: blur(0); }
+      to { background: #0b0a06; backdrop-filter: blur(2px); }
+    }
+    @keyframes sm-burst {
+      0% { opacity: 0.9; transform: translate(-50%, -50%) scale(0); }
+      70% { opacity: 0.35; }
+      100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
+    }
+    @keyframes sm-shell-materialize {
+      0% { opacity: 0; transform: scale(0.82) translateY(14px); filter: blur(10px); }
+      55% { opacity: 1; filter: blur(0); }
+      100% { opacity: 1; transform: scale(1) translateY(0); }
+    }
     #supreme-mode-overlay {
       position: fixed; inset: 0; z-index: 2147483646;
       background: #0b0a06; color: #f3e9c9;
       display: flex; align-items: center; justify-content: center;
       padding: 1.5rem; font-family: inherit;
+      animation: sm-overlay-materialize 0.5s ease-out;
+    }
+    #supreme-mode-overlay::before {
+      content: ""; position: absolute; top: 50%; left: 50%;
+      width: 40rem; height: 40rem; border-radius: 999px; pointer-events: none;
+      background: radial-gradient(circle, rgba(212,175,55,0.5), transparent 70%);
+      animation: sm-burst 0.9s ease-out forwards;
     }
     #supreme-mode-overlay .sm-shell {
       width: 100%; max-width: 48rem; max-height: 90vh;
       background: #17140a; border: 1px solid rgba(212,175,55,0.4);
       border-radius: 1rem; display: flex; flex-direction: column; overflow: hidden;
       box-shadow: 0 0 60px rgba(212,175,55,0.15);
+      animation: sm-shell-materialize 0.65s cubic-bezier(0.16, 1, 0.3, 1);
     }
     #supreme-mode-overlay .sm-header {
       display: flex; align-items: center; justify-content: space-between;
@@ -215,37 +274,44 @@ const SUPREME_MODE_STYLE = `
     #supreme-mode-overlay .sm-check { display: flex; align-items: center; gap: 0.35rem; }
     #supreme-mode-overlay .sm-panel-actions { display: flex; gap: 0.4rem; margin-top: 0.6rem; }
     #supreme-mode-overlay .input { background: rgba(255,255,255,0.05); border-color: rgba(212,175,55,0.3); color: #f3e9c9; }
+    #supreme-mode-overlay .sm-quick-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr)); gap: 0.6rem;
+    }
+    #supreme-mode-overlay .sm-quick-link {
+      display: flex; flex-direction: column; align-items: center; gap: 0.4rem;
+      background: rgba(255,255,255,0.03); border: 1px solid rgba(212,175,55,0.15);
+      border-radius: 0.7rem; padding: 1rem 0.6rem; text-align: center;
+      color: #f3e9c9; text-decoration: none; font-size: 0.8rem; font-weight: 600;
+      transition: border-color 0.15s ease, background 0.15s ease;
+    }
+    #supreme-mode-overlay .sm-quick-link:hover {
+      border-color: rgba(212,175,55,0.5); background: rgba(212,175,55,0.1);
+    }
+    #supreme-mode-overlay .sm-quick-link svg { width: 1.4rem; height: 1.4rem; color: #ecd280; }
   </style>
 `;
 
 function render() {
   if (!overlay) return;
-  overlay.innerHTML = `
-    ${SUPREME_MODE_STYLE}
-    <div class="sm-shell">
-      <div class="sm-header">
-        <div class="sm-header-title">${icon("shield-check")} ${t("supreme.title", "Supreme Mode")}</div>
-        <button type="button" class="${btnClass("ghost", "icon")}" id="sm-close" aria-label="${t("ads.cancel", "Close")}">${icon("x")}</button>
-      </div>
-      <div class="sm-tabs">
-        <button type="button" class="sm-tab ${activeTab === "users" ? "is-active" : ""}" data-sm-tab="users">${t("admin.users")} (${users.length})</button>
-        <button type="button" class="sm-tab ${activeTab === "admins" ? "is-active" : ""}" data-sm-tab="admins">${t("admin.admins")} (${admins.length})</button>
-      </div>
-      <div class="sm-body">
-        ${
-          activeTab === "users"
-            ? `
-          <input class="input" id="sm-user-search" placeholder="${t("header.searchPlaceholder")}" value="${escapeHtml(userSearch)}" style="max-width:20rem;margin-bottom:0.75rem">
-          ${visibleUsersList().map(userRowHTML).join("") || `<p class="sm-empty">${t("admin.noUsers")}</p>`}
-        `
-            : admins.map(adminRowHTML).join("") || `<p class="sm-empty">${t("admin.noAdmins")}</p>`
-        }
-      </div>
-    </div>
-  `;
+  const tabsEl = overlay.querySelector("#sm-tabs");
+  const bodyEl = overlay.querySelector("#sm-body");
 
-  overlay.querySelector("#sm-close").addEventListener("click", closeSupremeMode);
-  overlay.querySelectorAll("[data-sm-tab]").forEach((btn) => {
+  tabsEl.innerHTML = `
+    <button type="button" class="sm-tab ${activeTab === "users" ? "is-active" : ""}" data-sm-tab="users">${t("admin.users")} (${users.length})</button>
+    <button type="button" class="sm-tab ${activeTab === "admins" ? "is-active" : ""}" data-sm-tab="admins">${t("admin.admins")} (${admins.length})</button>
+    <button type="button" class="sm-tab ${activeTab === "quick" ? "is-active" : ""}" data-sm-tab="quick">${t("supreme.quickAccess", "Quick Access")}</button>
+  `;
+  bodyEl.innerHTML =
+    activeTab === "users"
+      ? `
+        <input class="input" id="sm-user-search" placeholder="${t("header.searchPlaceholder")}" value="${escapeHtml(userSearch)}" style="max-width:20rem;margin-bottom:0.75rem">
+        ${visibleUsersList().map(userRowHTML).join("") || `<p class="sm-empty">${t("admin.noUsers")}</p>`}
+      `
+      : activeTab === "admins"
+        ? admins.map(adminRowHTML).join("") || `<p class="sm-empty">${t("admin.noAdmins")}</p>`
+        : quickAccessHTML();
+
+  tabsEl.querySelectorAll("[data-sm-tab]").forEach((btn) => {
     btn.addEventListener("click", () => {
       activeTab = btn.dataset.smTab;
       editingPermsUid = null;
@@ -255,7 +321,7 @@ function render() {
   });
 
   if (activeTab === "users") {
-    overlay.querySelector("#sm-user-search")?.addEventListener("input", (e) => {
+    bodyEl.querySelector("#sm-user-search")?.addEventListener("input", (e) => {
       userSearch = e.target.value;
       render();
     });
@@ -302,7 +368,7 @@ function render() {
         await reload();
       });
     });
-  } else {
+  } else if (activeTab === "admins") {
     overlay.querySelectorAll("[data-sm-edit-perms]").forEach((btn) => {
       btn.addEventListener("click", () => {
         viewingPinUid = null;

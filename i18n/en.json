@@ -685,7 +685,8 @@
     "noPinSet": "Not set",
     "newPinPlaceholder": "New PIN",
     "noSections": "No sections",
-    "allSections": "All sections (ungated)"
+    "allSections": "All sections (ungated)",
+    "quickAccess": "All Sections"
   },
   "escrow": {
     "title": "Track order status",
