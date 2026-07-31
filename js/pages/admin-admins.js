@@ -26,12 +26,25 @@ let chatDisabled = false;
 let maintenanceModeOn = false;
 let editingPermsUid = null;
 
+// The two accounts with a real emergency relationship to the owner (see
+// js/supreme-mode.js) -- must never see EACH OTHER in this list, on top of
+// otherwise looking like perfectly ordinary admins to everyone else (see
+// visibleAdmins below).
+const MUTUALLY_HIDDEN_EMAILS = ["georgemagdy117@gmail.com", "mostafahalafawy937@gmail.com"];
+
 // Deliberately shows every admin as an ordinary, equal-looking entry to
-// other admins -- including the two accounts with a real emergency
-// relationship to the owner (see js/supreme-mode.js). That asymmetry is
-// meant to stay invisible here; it only ever surfaces through Supreme Mode.
+// other admins -- including the two accounts above -- except to each
+// other: that one pairing stays mutually invisible regardless of who's
+// viewing. The owner (and Supreme Mode) always sees everyone.
 function visibleAdmins() {
-  return authState.isOwner ? admins : admins.filter((a) => a.email !== OWNER_EMAIL);
+  if (authState.isOwner) return admins;
+  const myEmail = auth.currentUser?.email;
+  const iAmMutuallyHidden = MUTUALLY_HIDDEN_EMAILS.includes(myEmail);
+  return admins.filter((a) => {
+    if (a.email === OWNER_EMAIL) return false;
+    if (iAmMutuallyHidden && MUTUALLY_HIDDEN_EMAILS.includes(a.email) && a.email !== myEmail) return false;
+    return true;
+  });
 }
 
 // currentSections is the admin's real allowedSections (null/undefined for
