@@ -83,41 +83,6 @@ function render() {
   });
 
   voiceBtn.addEventListener("click", () => toggleVoiceRecording(errorEl));
-
-  contentEl.querySelectorAll("[data-edit-msg]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      editingId = btn.dataset.editMsg;
-      renderMessages();
-    });
-  });
-  contentEl.querySelectorAll("[data-cancel-edit-msg]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      editingId = null;
-      renderMessages();
-    });
-  });
-  contentEl.querySelectorAll("[data-save-edit-msg]").forEach((btn) => {
-    btn.addEventListener("click", async () => {
-      const id = btn.dataset.saveEditMsg;
-      const textEl = document.getElementById(`edit-msg-input-${id}`);
-      try {
-        await AdminChat.updateMessage(id, textEl.value.trim());
-        editingId = null;
-      } catch {
-        showMessage(errorEl, t("teamChat.editFailed", "Couldn't edit this message, try again."));
-      }
-    });
-  });
-  contentEl.querySelectorAll("[data-delete-msg]").forEach((btn) => {
-    btn.addEventListener("click", async () => {
-      if (!confirm(t("teamChat.confirmDelete", "Delete this message?"))) return;
-      try {
-        await AdminChat.deleteMessage(btn.dataset.deleteMsg);
-      } catch {
-        showMessage(errorEl, t("teamChat.deleteFailed", "Couldn't delete this message, try again."));
-      }
-    });
-  });
 }
 
 async function toggleVoiceRecording(errorEl) {
@@ -205,6 +170,42 @@ function renderMessages() {
           })
           .join("");
   listEl.scrollTop = listEl.scrollHeight;
+
+  const errorEl = document.getElementById("team-chat-error");
+  listEl.querySelectorAll("[data-edit-msg]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      editingId = btn.dataset.editMsg;
+      renderMessages();
+    });
+  });
+  listEl.querySelectorAll("[data-cancel-edit-msg]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      editingId = null;
+      renderMessages();
+    });
+  });
+  listEl.querySelectorAll("[data-save-edit-msg]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const id = btn.dataset.saveEditMsg;
+      const textEl = document.getElementById(`edit-msg-input-${id}`);
+      try {
+        await AdminChat.updateMessage(id, textEl.value.trim());
+        editingId = null;
+      } catch {
+        showMessage(errorEl, t("teamChat.editFailed", "Couldn't edit this message, try again."));
+      }
+    });
+  });
+  listEl.querySelectorAll("[data-delete-msg]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      if (!confirm(t("teamChat.confirmDelete", "Delete this message?"))) return;
+      try {
+        await AdminChat.deleteMessage(btn.dataset.deleteMsg);
+      } catch {
+        showMessage(errorEl, t("teamChat.deleteFailed", "Couldn't delete this message, try again."));
+      }
+    });
+  });
 }
 
 async function main() {

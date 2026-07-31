@@ -634,11 +634,16 @@ export const Escrow = {
     );
   },
 
-  async markPaymentClaimed(orderId, method) {
+  // referenceNumber + proofUrl are required by firestore.rules (not just
+  // the UI) -- a bare status claim with no evidence isn't enough for the
+  // owner/granted admin to actually verify a transfer happened.
+  async markPaymentClaimed(orderId, { method, referenceNumber, proofUrl }) {
     await updateDoc(doc(db, "escrowOrders", orderId), {
       status: "payment_claimed",
       paymentClaimedAt: serverTimestamp(),
       paymentMethodChosen: method || null,
+      paymentReferenceNumber: referenceNumber,
+      paymentProofUrl: proofUrl,
     });
   },
 
@@ -886,6 +891,13 @@ export const Admin = {
   async grantAdmin(uid, email, adminModeCode, allowedSections = null) {
     await setDoc(doc(db, "admins", uid), { email, grantedAt: serverTimestamp(), allowedSections });
     await setDoc(doc(db, "adminSecrets", uid), { adminModeCode });
+  },
+
+  // Owner-only in firestore.rules (isOwner() already covers any field on
+  // any admin doc) -- lets the owner revise an existing admin's section
+  // grants after the fact, not just at creation time.
+  async updateAllowedSections(uid, allowedSections) {
+    await updateDoc(doc(db, "admins", uid), { allowedSections });
   },
 
   async revokeAdmin(uid) {

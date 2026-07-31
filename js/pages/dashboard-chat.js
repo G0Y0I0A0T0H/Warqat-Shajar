@@ -3,7 +3,7 @@ import { guardDashboard } from "../dashboard-shell.js";
 import { t, onLocaleChange } from "../i18n.js";
 import { Chat, Products, Reviews, PhoneAttempts, Notifications, SiteSettings, Escrow } from "../firebase.js";
 import { authState } from "../state.js";
-import { btnClass, badgeClass, icon, initReportDialog, renderStarButtons, showMessage, containsPhoneNumber, escapeHtml, escrowPaymentMethodsHTML } from "../ui.js";
+import { btnClass, badgeClass, icon, initReportDialog, renderStarButtons, showMessage, containsPhoneNumber, escapeHtml, renderEscrowActions } from "../ui.js";
 import { initHelpTour } from "../help-tour.js";
 
 const params = new URLSearchParams(location.search);
@@ -27,7 +27,6 @@ let dealParties = null;
 let escrowOrderId = null;
 let escrowOrder = null;
 let escrowUnsub = null;
-let disputeFormOpen = false;
 // The platform's own payment-receiving details -- fetched once in main(),
 // shown to the buyer while awaiting_payment so they actually know where to
 // send money (see escrowPaymentMethodsHTML in ui.js).
@@ -161,7 +160,6 @@ function watchEscrowOrder() {
     escrowUnsub = null;
   }
   escrowOrder = null;
-  disputeFormOpen = false;
   if (nextId) {
     escrowUnsub = Escrow.subscribeOrder(nextId, (order) => {
       escrowOrder = order;
@@ -178,18 +176,6 @@ function renderEscrowTracker() {
     escrowMount.innerHTML = "";
     return;
   }
-  const isBuyer = profile.uid === escrowOrder.buyerId;
-  const isSeller = profile.uid === escrowOrder.sellerId;
-  const isFinal = escrowOrder.status === "released" || escrowOrder.status === "refunded";
-  const canDispute = !isFinal && escrowOrder.status !== "disputed" && (isBuyer || isSeller);
-
-  let actionsHtml = "";
-  if (isBuyer && escrowOrder.status === "awaiting_payment") {
-    const hasMethods = Boolean(paymentInfo?.vodafoneCash || paymentInfo?.instapay || paymentInfo?.bankAccountNumber);
-    actionsHtml = `<button type="button" class="${btnClass("default", "sm")}" id="escrow-mark-paid-btn" ${hasMethods ? "disabled" : ""}>${t("escrow.markPaidBtn")}</button>`;
-  } else if (isBuyer && escrowOrder.status === "payment_confirmed") {
-    actionsHtml = `<button type="button" class="${btnClass("default", "sm")}" id="escrow-confirm-delivery-btn">${t("escrow.confirmDeliveryBtn")}</button>`;
-  }
 
   escrowMount.innerHTML = `
     <div class="card escrow-tracker" style="padding:1rem;margin-bottom:0.75rem;display:flex;flex-direction:column;gap:0.5rem">
@@ -197,50 +183,19 @@ function renderEscrowTracker() {
         <span class="${badgeClass(escrowOrder.status === "released" ? "default" : escrowOrder.status === "disputed" ? "destructive" : "outline")}">${t(ESCROW_STATUS_KEY[escrowOrder.status])}</span>
         <span class="text-muted" style="font-size:0.8rem">${t("escrow.totalLabel")}: ${escrowOrder.totalAmount}</span>
       </div>
-      ${escrowOrder.status === "awaiting_payment" && isBuyer ? escrowPaymentMethodsHTML(escrowOrder.id, paymentInfo) : ""}
       ${escrowOrder.status === "disputed" ? `<p class="error-text" style="font-size:0.8rem">${escapeHtml(escrowOrder.disputeNote || "")}</p>` : ""}
-      ${actionsHtml ? `<div style="display:flex;gap:0.5rem;flex-wrap:wrap">${actionsHtml}</div>` : ""}
-      ${
-        canDispute
-          ? `<div>
-              <button type="button" class="${btnClass("ghost", "sm")}" id="escrow-dispute-toggle-btn">${t("escrow.raiseDisputeBtn")}</button>
-              ${
-                disputeFormOpen
-                  ? `<div style="display:flex;flex-direction:column;gap:0.4rem;margin-top:0.5rem">
-                      <textarea class="textarea" id="escrow-dispute-note" rows="2" placeholder="${t("escrow.disputeNotePlaceholder")}"></textarea>
-                      <button type="button" class="${btnClass("destructive", "sm")}" id="escrow-dispute-submit-btn" style="align-self:flex-start">${t("escrow.disputeSubmitBtn")}</button>
-                    </div>`
-                  : ""
-              }
-            </div>`
-          : ""
-      }
+      <div id="escrow-actions-mount"></div>
     </div>
   `;
 
-  const markPaidBtn = document.getElementById("escrow-mark-paid-btn");
-  document.querySelectorAll(`input[name="escrow-payment-method-${escrowOrder.id}"]`).forEach((r) => {
-    r.addEventListener("change", () => {
-      if (markPaidBtn) markPaidBtn.disabled = false;
-    });
-  });
-  markPaidBtn?.addEventListener("click", async () => {
-    const chosen = document.querySelector(`input[name="escrow-payment-method-${escrowOrder.id}"]:checked`);
-    markPaidBtn.disabled = true;
-    await Escrow.markPaymentClaimed(escrowOrder.id, chosen ? chosen.value : null);
-  });
-  document.getElementById("escrow-confirm-delivery-btn")?.addEventListener("click", async () => {
-    await Escrow.confirmDelivery(escrowOrder.id);
-  });
-  document.getElementById("escrow-dispute-toggle-btn")?.addEventListener("click", () => {
-    disputeFormOpen = !disputeFormOpen;
-    renderEscrowTracker();
-  });
-  document.getElementById("escrow-dispute-submit-btn")?.addEventListener("click", async () => {
-    const note = document.getElementById("escrow-dispute-note").value.trim();
-    if (!note) return;
-    await Escrow.raiseDispute(escrowOrder.id, profile.uid, note);
-    disputeFormOpen = false;
+  // The live subscribeOrder above already re-invokes this whole function on
+  // any real change, so there's nothing extra to do on a successful action --
+  // no onChange needed, unlike the one-time-fetch pages (cart.js,
+  // dashboard-my-orders.js) that have to explicitly reload.
+  renderEscrowActions(escrowMount.querySelector("#escrow-actions-mount"), {
+    order: escrowOrder,
+    viewerUid: profile.uid,
+    paymentInfo,
   });
 
   // Shown once ever (help-tour.js guards this via localStorage) the first

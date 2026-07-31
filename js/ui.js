@@ -484,28 +484,44 @@ export function escrowPaymentMethodsHTML(orderId, paymentInfo) {
 
 // The interactive counterpart to escrowStepperHTML above -- shows the
 // platform's actual payment methods (settings/paymentInfo) so the buyer
-// knows where to send money, lets them pick which one they used and mark
-// the order paid, confirm delivery once payment's confirmed, or either side
-// raise a dispute. Self-contained like initProductComments/initReportDialog
-// above: renders into containerEl and wires its own listeners; call again
-// via onChange once the order's status actually changes.
+// knows where to send money, requires a transaction reference number and a
+// screenshot of the transfer before "I sent the payment" can be pressed (so
+// the admin has real proof to check, not just a bare claim), lets the buyer
+// confirm delivery once payment's confirmed, or either side raise a
+// dispute. Self-contained like initProductComments/initReportDialog above:
+// renders into containerEl and wires its own listeners; call again via
+// onChange once the order's status actually changes.
 export function renderEscrowActions(containerEl, { order, viewerUid, paymentInfo, onChange }) {
   const isBuyer = viewerUid === order.buyerId;
   const isSeller = viewerUid === order.sellerId;
   const isFinal = order.status === "released" || order.status === "refunded" || order.status === "disputed";
   const canDispute = !isFinal && (isBuyer || isSeller);
+  const isAwaitingPaymentAsBuyer = isBuyer && order.status === "awaiting_payment";
 
   let topHtml = "";
+  let proofFormHtml = "";
   let primaryBtnHtml = "";
-  if (isBuyer && order.status === "awaiting_payment") {
+  if (isAwaitingPaymentAsBuyer) {
     topHtml = escrowPaymentMethodsHTML(order.id, paymentInfo);
-    const hasMethods = Boolean(paymentInfo?.vodafoneCash || paymentInfo?.instapay || paymentInfo?.bankAccountNumber);
-    primaryBtnHtml = `<button type="button" class="${btnClass("default", "sm")}" id="escrow-mark-paid-btn" ${hasMethods ? "disabled" : ""}>${icon("check")} ${t("escrow.markPaidBtn")}</button>`;
+    proofFormHtml = `
+      <div class="field">
+        <label class="label" for="escrow-ref-input-${order.id}">${t("escrow.referenceNumberLabel")}</label>
+        <input class="input force-ltr" dir="ltr" id="escrow-ref-input-${order.id}" placeholder="${t("escrow.referenceNumberPlaceholder")}">
+      </div>
+      <div class="field">
+        <label class="label">${t("escrow.proofScreenshotLabel")}</label>
+        <div id="escrow-proof-mount-${order.id}"></div>
+      </div>
+    `;
+    // Starts disabled regardless of whether methods exist yet -- method +
+    // reference number + screenshot are all required, checked in
+    // updateMarkPaidState below.
+    primaryBtnHtml = `<button type="button" class="${btnClass("default", "sm")}" id="escrow-mark-paid-btn" disabled>${icon("check")} ${t("escrow.markPaidBtn")}</button>`;
   } else if (isBuyer && order.status === "payment_confirmed") {
     primaryBtnHtml = `<button type="button" class="${btnClass("default", "sm")}" id="escrow-confirm-delivery-btn">${icon("package")} ${t("escrow.confirmDeliveryBtn")}</button>`;
   }
 
-  if (!topHtml && !primaryBtnHtml && !canDispute) {
+  if (!topHtml && !proofFormHtml && !primaryBtnHtml && !canDispute) {
     containerEl.innerHTML = "";
     return;
   }
@@ -513,6 +529,7 @@ export function renderEscrowActions(containerEl, { order, viewerUid, paymentInfo
   containerEl.innerHTML = `
     <div class="escrow-actions">
       ${topHtml}
+      ${proofFormHtml}
       ${primaryBtnHtml ? `<div class="escrow-actions-buttons">${primaryBtnHtml}</div>` : ""}
       ${
         canDispute
@@ -528,17 +545,39 @@ export function renderEscrowActions(containerEl, { order, viewerUid, paymentInfo
     </div>
   `;
 
+  let proofInput = null;
   const markPaidBtn = containerEl.querySelector("#escrow-mark-paid-btn");
-  if (markPaidBtn) {
-    containerEl.querySelectorAll('input[name="escrow-payment-method-' + order.id + '"]').forEach((r) => {
-      r.addEventListener("change", () => {
-        markPaidBtn.disabled = false;
-      });
+
+  function updateMarkPaidState() {
+    if (!markPaidBtn) return;
+    const chosen = containerEl.querySelector(`input[name="escrow-payment-method-${order.id}"]:checked`);
+    const refValue = containerEl.querySelector(`#escrow-ref-input-${order.id}`)?.value.trim();
+    const proofUrl = proofInput?.getValue();
+    markPaidBtn.disabled = !(chosen && refValue && proofUrl);
+  }
+
+  if (isAwaitingPaymentAsBuyer) {
+    proofInput = renderImageInput(containerEl.querySelector(`#escrow-proof-mount-${order.id}`), {
+      uploadPathPrefix: "paymentProofs/",
+      onChange: updateMarkPaidState,
     });
+    containerEl.querySelectorAll(`input[name="escrow-payment-method-${order.id}"]`).forEach((r) => {
+      r.addEventListener("change", updateMarkPaidState);
+    });
+    containerEl.querySelector(`#escrow-ref-input-${order.id}`)?.addEventListener("input", updateMarkPaidState);
+  }
+
+  if (markPaidBtn) {
     markPaidBtn.addEventListener("click", async () => {
       const chosen = containerEl.querySelector(`input[name="escrow-payment-method-${order.id}"]:checked`);
+      const referenceNumber = containerEl.querySelector(`#escrow-ref-input-${order.id}`)?.value.trim();
+      const proofUrl = proofInput?.getValue();
       markPaidBtn.disabled = true;
-      await Escrow.markPaymentClaimed(order.id, chosen ? chosen.value : null);
+      await Escrow.markPaymentClaimed(order.id, {
+        method: chosen ? chosen.value : null,
+        referenceNumber,
+        proofUrl,
+      });
       onChange?.();
     });
   }
