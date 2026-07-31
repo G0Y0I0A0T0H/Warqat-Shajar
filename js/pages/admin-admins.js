@@ -148,7 +148,7 @@ function render() {
                         : ""
                     }
                     ${
-                      authState.isOwner && a.uid !== currentUid && !PROTECTED_ADMIN_EMAILS.includes(a.email)
+                      authState.isOwner && a.email !== OWNER_EMAIL
                         ? `<button type="button" class="${btnClass("destructive", "sm")}" data-revoke="${a.uid}">${t("admin.revokeAdmin")}</button>`
                         : ""
                     }

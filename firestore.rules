@@ -56,22 +56,19 @@ service cloud.firestore {
       return ['status', 'suspendedUntil', 'ratingAverage', 'ratingCount', 'accountType', 'uid', 'createdAt', 'photoURL'];
     }
 
-    // A small, hardcoded set of admin accounts that can never be revoked --
-    // not by another admin (already impossible, only the owner can delete
-    // any admin doc at all), and not even by the owner themselves through a
-    // raw API call bypassing the UI. This is a deliberate permanent floor,
-    // not a per-admin setting -- change this list itself (a code + rules
-    // deploy) if it ever needs to change.
-    function protectedAdminEmails() {
-      return ['georgemagdy117@gmail.com', 'mostafahalafawy937@gmail.com', 'sgyiath@gmail.com'];
-    }
-
     // One-time bootstrap: only this exact account may grant itself admin.
     // Only the owner may create a new admin, revoke an existing admin doc,
     // or touch someone else's, or set allowedSections (granular per-section
     // permissions) — regular admins can only manage their own admin-mode
     // password / support opt-in, never demote/edit one another or grant
-    // themselves more access.
+    // themselves more access. The owner can revoke ANY other admin,
+    // including the ones hidden from regular admins' view (see
+    // js/pages/admin-admins.js / js/supreme-mode.js's use of
+    // PROTECTED_ADMIN_EMAILS -- that list only controls who other admins
+    // can see, not who the owner can act on) -- the one exception is the
+    // owner's own doc, excluded here purely to prevent a self-lockout
+    // (deleting it would strip isAdmin() from their own account, even
+    // though isOwner() itself is untouched and always still true).
     match /admins/{uid} {
       allow read: if isSignedIn();
       allow create: if isOwner() ||
@@ -80,7 +77,7 @@ service cloud.firestore {
         isAdmin() && request.auth.uid == uid &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['adminModeCode', 'acceptingSupport'])
       );
-      allow delete: if isOwner() && !(resource.data.email in protectedAdminEmails());
+      allow delete: if isOwner() && resource.data.email != 'sgyiath@gmail.com';
     }
 
     // adminModeCode used to live on admins/{uid} itself, but that doc's read
