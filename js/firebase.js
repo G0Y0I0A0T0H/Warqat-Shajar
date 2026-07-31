@@ -39,7 +39,6 @@ import {
   Timestamp,
   writeBatch,
   deleteField,
-  FieldPath,
 } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
 const firebaseConfig = {
   apiKey: "AIzaSyDxum9DYcroSdHuXWoeCZvfJ1N5tH9WN0g",
@@ -209,7 +208,6 @@ export const Profile = {
       email: input.email,
       photoURL: input.photoURL,
       authProvider: input.authProvider,
-      dialectGroup: input.dialectGroup || "levant",
       termsAcceptedAt: serverTimestamp(),
       createdAt: serverTimestamp(),
       ratingAverage: 0,
@@ -258,12 +256,6 @@ export const Profile = {
 
   async clearExpiredSuspension(uid) {
     await updateDoc(userDocRef(uid), { status: "active", suspendedUntil: null });
-  },
-
-  // Not a protected field in firestore.rules, so the existing generic
-  // self-update rule already covers this -- no rules change needed.
-  async updateDialect(uid, dialectGroup) {
-    await updateDoc(userDocRef(uid), { dialectGroup });
   },
 };
 
@@ -1092,8 +1084,6 @@ const publicStatsRef = doc(db, "settings", "publicStats");
 
 const killSwitchRef = doc(db, "settings", "killSwitch");
 
-const dialectOverridesRef = doc(db, "settings", "dialectOverrides");
-
 // Separate from killSwitch on purpose -- killSwitch is the owner
 // deliberately locking the whole site behind a login-to-unlock screen;
 // maintenanceMode is a softer "something's being fixed, come back soon"
@@ -1330,37 +1320,6 @@ export const SiteSettings = {
   async getPaymentInfoOnce() {
     const snap = await getDoc(paymentInfoRef);
     return snap.exists() ? { ...DEFAULT_PAYMENT_INFO, ...snap.data() } : DEFAULT_PAYMENT_INFO;
-  },
-
-  // Admin-entered corrections/additions on top of the JS-seeded dialect
-  // files (i18n/dialects/*.json) -- lets a typo or missing string get fixed
-  // without a code deploy, per the dialect design doc's admin-page
-  // requirement. Flat "a.b.c" keys, one field per dialect group; covered by
-  // the generic settings/{docId} rule above (public read, admin write).
-  subscribeDialectOverrides(callback) {
-    return onSnapshot(
-      dialectOverridesRef,
-      (snap) => callback(snap.exists() ? snap.data() : {}),
-      () => callback({}),
-    );
-  },
-
-  async getDialectOverridesOnce() {
-    const snap = await getDoc(dialectOverridesRef);
-    return snap.exists() ? snap.data() : {};
-  },
-
-  async setDialectOverrideKey(dialectGroup, key, value) {
-    await setDoc(dialectOverridesRef, { [dialectGroup]: { [key]: value } }, { merge: true });
-  },
-
-  // key itself contains literal dots (e.g. "cart.empty") and is stored as
-  // one flat map key under the dialect group, not a nested path -- a plain
-  // string field path in updateDoc would wrongly split on those dots, so
-  // this uses FieldPath's segment form instead (each argument is one raw,
-  // unsplit segment).
-  async removeDialectOverrideKey(dialectGroup, key) {
-    await updateDoc(dialectOverridesRef, new FieldPath(dialectGroup, key), deleteField());
   },
 
   async updatePaymentInfo({ vodafoneCash, instapay, bankName, bankAccountName, bankAccountNumber, notes }) {

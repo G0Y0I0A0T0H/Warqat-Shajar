@@ -4,7 +4,7 @@
 // behavior against fixed IDs present identically on every page.
 import { authState, favoritesState, cartState, notifState, subscribe, isUserThemeDark, setUserThemeDark } from "./state.js";
 import { Auth, SiteSettings, Notifications, OWNER_EMAIL } from "./firebase.js";
-import { t, getLocale, setLocale, initI18n, onLocaleChange, getDialect, applyExtraOverrides } from "./i18n.js";
+import { t, getLocale, setLocale, initI18n, onLocaleChange } from "./i18n.js";
 import { icon, renderAvatar, wireDropdown, renderIcons, interpolate, showToast, btnClass, escapeHtml, safeUrl } from "./ui.js";
 
 const SOCIAL_ICON_KEY = {
@@ -693,13 +693,6 @@ function wireKillSwitchShortcut() {
 
 export async function initLayout() {
   await initI18n();
-  // Admin-entered dialect corrections (settings/dialectOverrides) layer on
-  // top of the JS-seeded dialect file for whichever dialect is active --
-  // best-effort, since the seeded translations already work fine on their
-  // own if this fetch fails or the doc doesn't exist yet.
-  SiteSettings.getDialectOverridesOnce()
-    .then((all) => applyExtraOverrides(all[getDialect()]))
-    .catch(() => {});
   renderIcons(document);
   initSplashScreen();
   wireThemeToggle();
