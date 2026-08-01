@@ -108,6 +108,91 @@ export const Storage = {
     const data = await res.json();
     return data.secure_url;
   },
+
+  // National ID photos are encrypted client-side before this ever runs (see
+  // Crypto/IdentityVerification below), so the bytes are opaque ciphertext,
+  // not a real image -- /image/upload would reject it. /raw/upload stores it
+  // as an arbitrary binary asset instead.
+  async uploadEncryptedFile(path, blob) {
+    const folder = path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : undefined;
+    const formData = new FormData();
+    // The upload preset's allowed-formats list rejects a plain ".bin"
+    // extension -- ".dat" passes through fine and reads clearly as opaque
+    // data if anyone ever stumbles on the URL directly.
+    formData.append("file", blob, "encrypted.dat");
+    formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+    if (folder) formData.append("folder", folder);
+
+    const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/raw/upload`, {
+      method: "POST",
+      body: formData,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => null);
+      throw new Error(err?.error?.message || "Upload failed");
+    }
+    const data = await res.json();
+    return data.secure_url;
+  },
+};
+
+// ===========================================================================
+// Client-side encryption (National ID photos)
+// ===========================================================================
+// This is a static site with no server, so a Cloudinary URL alone is public
+// to anyone who has it (same as every other image on the site). A National
+// ID card photo is far more sensitive than a product photo, so instead of
+// uploading it in the clear, we encrypt it in the browser with a per-photo
+// AES-GCM key before it ever leaves the device. The key + IV travel with the
+// Firestore record (identityVerification/{uid}), which has its own narrow
+// read rule (owner, or an admin explicitly granted the "identity" section) --
+// see firestore.rules. Anyone who only has the Cloudinary URL sees ciphertext.
+const AES_ALGO = "AES-GCM";
+
+function bufToBase64(buf) {
+  let binary = "";
+  new Uint8Array(buf).forEach((b) => (binary += String.fromCharCode(b)));
+  return btoa(binary);
+}
+
+function base64ToBuf(b64) {
+  const binary = atob(b64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes.buffer;
+}
+
+export const Crypto = {
+  // Encrypts `file` with a freshly generated random key + IV (never reused
+  // across uploads). Returns the ciphertext as a Blob ready to upload, plus
+  // the key/IV/original mime type as base64/plain strings ready to store in
+  // Firestore alongside the uploaded URL.
+  async encryptFile(file) {
+    const key = await crypto.subtle.generateKey({ name: AES_ALGO, length: 256 }, true, ["encrypt", "decrypt"]);
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const plainBuf = await file.arrayBuffer();
+    const cipherBuf = await crypto.subtle.encrypt({ name: AES_ALGO, iv }, key, plainBuf);
+    const rawKey = await crypto.subtle.exportKey("raw", key);
+    return {
+      blob: new Blob([cipherBuf], { type: "application/octet-stream" }),
+      keyB64: bufToBase64(rawKey),
+      ivB64: bufToBase64(iv.buffer),
+      mimeType: file.type || "image/jpeg",
+    };
+  },
+
+  // Fetches the ciphertext back from its (public, but meaningless without
+  // the key) URL and decrypts it in-browser. Returns an object URL suitable
+  // for an <img src>, which the caller should revoke when done with it.
+  async decryptToObjectUrl({ url, keyB64, ivB64, mimeType }) {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("Could not fetch encrypted file");
+    const cipherBuf = await res.arrayBuffer();
+    const key = await crypto.subtle.importKey("raw", base64ToBuf(keyB64), AES_ALGO, false, ["decrypt"]);
+    const iv = new Uint8Array(base64ToBuf(ivB64));
+    const plainBuf = await crypto.subtle.decrypt({ name: AES_ALGO, iv }, key, cipherBuf);
+    return URL.createObjectURL(new Blob([plainBuf], { type: mimeType || "image/jpeg" }));
+  },
 };
 
 // ===========================================================================
@@ -256,6 +341,50 @@ export const Profile = {
 
   async clearExpiredSuspension(uid) {
     await updateDoc(userDocRef(uid), { status: "active", suspendedUntil: null });
+  },
+};
+
+// ===========================================================================
+// Identity verification (National ID number + encrypted ID card photo)
+// ===========================================================================
+// Deliberately its own top-level doc, not fields on users/{uid} -- that doc's
+// read rule already lets ANY admin read it (see firestore.rules), which is
+// far broader than what the owner wants for something this sensitive. This
+// collection has its own read rule: the user themselves, the owner, or an
+// admin explicitly granted "identity" in allowedSections.
+function identityDocRef(uid) {
+  return doc(db, "identityVerification", uid);
+}
+
+export const IdentityVerification = {
+  // file is the raw File from an <input type="file">; encrypted client-side
+  // (see Crypto.encryptFile) before it ever reaches Cloudinary.
+  async submit(uid, { nationalId, file }) {
+    const { blob, keyB64, ivB64, mimeType } = await Crypto.encryptFile(file);
+    const url = await Storage.uploadEncryptedFile(`identity/${uid}-${Date.now()}`, blob);
+    await setDoc(identityDocRef(uid), {
+      nationalId,
+      idCardPhotoUrl: url,
+      idCardPhotoKey: keyB64,
+      idCardPhotoIv: ivB64,
+      idCardPhotoMimeType: mimeType,
+      submittedAt: serverTimestamp(),
+    });
+  },
+
+  async getForUser(uid) {
+    const snap = await getDoc(identityDocRef(uid));
+    return snap.exists() ? snap.data() : null;
+  },
+
+  // Convenience wrapper around Crypto.decryptToObjectUrl for a stored record.
+  async decryptPhoto(record) {
+    return Crypto.decryptToObjectUrl({
+      url: record.idCardPhotoUrl,
+      keyB64: record.idCardPhotoKey,
+      ivB64: record.idCardPhotoIv,
+      mimeType: record.idCardPhotoMimeType,
+    });
   },
 };
 

@@ -1,9 +1,9 @@
 import { initLayout } from "../layout.js";
 import { t } from "../i18n.js";
-import { Auth, Profile } from "../firebase.js";
+import { Auth, Profile, IdentityVerification } from "../firebase.js";
 import { showMessage } from "../ui.js";
 import { authState, subscribe } from "../state.js";
-import { renderRoleSelector, populateGovernorateSelect, renderCategoryCheckboxGrid, updateCategoriesVisibility } from "./auth-shared.js";
+import { renderRoleSelector, populateGovernorateSelect, renderCategoryCheckboxGrid, updateCategoriesVisibility, wireIdCardPhotoPreview, isValidNationalId } from "./auth-shared.js";
 
 async function main() {
   await initLayout();
@@ -28,6 +28,7 @@ async function main() {
   updateCategoriesVisibility(categoriesField, categoriesLabel, accountType);
   populateGovernorateSelect(governorateSelect);
   renderCategoryCheckboxGrid(categoriesGrid, categories, (v) => (categories = v));
+  wireIdCardPhotoPreview(document.getElementById("idCardPhoto"), document.getElementById("idCardPhotoPreview"));
 
   function guard() {
     if (authState.loading) return;
@@ -54,11 +55,21 @@ async function main() {
     showMessage(formError, "");
 
     const phone = document.getElementById("phone").value.trim();
+    const nationalId = document.getElementById("nationalId").value.trim();
+    const idCardPhoto = document.getElementById("idCardPhoto").files[0];
     const governorate = governorateSelect.value;
     const termsAccepted = document.getElementById("terms-accepted").checked;
 
     if (!phone || !governorate) {
       showMessage(formError, t("auth.register.governoratePlaceholder"));
+      return;
+    }
+    if (!isValidNationalId(nationalId)) {
+      showMessage(formError, t("auth.errors.nationalIdInvalid"));
+      return;
+    }
+    if (!idCardPhoto) {
+      showMessage(formError, t("auth.errors.idCardPhotoRequired"));
       return;
     }
     if (!termsAccepted) {
@@ -80,6 +91,11 @@ async function main() {
         photoURL: authState.user.photoURL,
         authProvider: "google.com",
       });
+      try {
+        await IdentityVerification.submit(authState.user.uid, { nationalId, file: idCardPhoto });
+      } catch {
+        showMessage(formError, t("auth.errors.identitySubmitFailed"));
+      }
       location.href = "index.html";
     } catch (error) {
       showMessage(formError, t(`auth.errors.${Auth.getAuthErrorKey(error)}`));

@@ -155,6 +155,22 @@ service cloud.firestore {
         (isAdmin() && resource.data.email != 'sgyiath@gmail.com');
     }
 
+    // National ID number + encrypted ID card photo (key/IV live here too --
+    // see js/firebase.js's Crypto/IdentityVerification). Deliberately NOT
+    // fields on users/{uid} -- that doc's read rule lets ANY admin read it,
+    // which is far broader than the owner wants for something this
+    // sensitive. Only the user themselves, or an admin explicitly granted
+    // "identity" in allowedSections (owner always has it), can read this.
+    match /identityVerification/{uid} {
+      allow read: if isSignedIn() && (request.auth.uid == uid || isOwnerOrGranted('identity'));
+      allow create, update: if isSignedIn() && request.auth.uid == uid &&
+        request.resource.data.nationalId is string && request.resource.data.nationalId.size() == 14 &&
+        request.resource.data.idCardPhotoUrl is string && request.resource.data.idCardPhotoUrl.size() > 0 &&
+        request.resource.data.idCardPhotoKey is string && request.resource.data.idCardPhotoKey.size() > 0 &&
+        request.resource.data.idCardPhotoIv is string && request.resource.data.idCardPhotoIv.size() > 0;
+      allow delete: if isOwner();
+    }
+
     match /ads/{adId} {
       allow read: if true;
       allow create, update, delete: if isAdmin();

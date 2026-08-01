@@ -57,6 +57,25 @@ export function renderCategoryCheckboxGrid(container, selected, onChange) {
   onCategoriesChange(render);
 }
 
+// Egyptian national IDs are 14 digits, first digit 2 or 3 (birth century).
+export function isValidNationalId(value) {
+  return /^[23]\d{13}$/.test(value);
+}
+
+// Local object-URL preview only -- the actual encrypt+upload happens at
+// submit time in register.js/complete-profile.js, once we have a uid.
+export function wireIdCardPhotoPreview(fileInputEl, previewImgEl) {
+  fileInputEl.addEventListener("change", () => {
+    const file = fileInputEl.files[0];
+    if (!file) {
+      previewImgEl.style.display = "none";
+      return;
+    }
+    previewImgEl.src = URL.createObjectURL(file);
+    previewImgEl.style.display = "block";
+  });
+}
+
 export function updateCategoriesVisibility(fieldEl, labelEl, accountType) {
   if (accountType === "consumer") {
     fieldEl.style.display = "none";
