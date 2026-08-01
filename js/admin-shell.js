@@ -34,8 +34,10 @@ export const NAV_ITEMS = [
 // "admins" is special-cased in hasSection below: the PAGE itself stays
 // reachable by every admin regardless (self-service password/support
 // toggle), only the ability to actually manage other admins is gated --
-// see canManageAdmins().
-export const SENSITIVE_KEYS = ["payments", "systemControls", "admins"];
+// see canManageAdmins(). "identity" isn't a NAV_ITEMS page either (it's the
+// National ID / ID card photo section inside admin-users.html) -- owner-only
+// by default, same reasoning as systemControls.
+export const SENSITIVE_KEYS = ["payments", "systemControls", "admins", "identity"];
 
 // Owner always has every section. A sensitive key (see SENSITIVE_KEYS)
 // requires explicit inclusion in allowedSections, full stop. Every other

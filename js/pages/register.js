@@ -1,9 +1,9 @@
 import { initLayout } from "../layout.js";
 import { t } from "../i18n.js";
-import { Auth, Profile } from "../firebase.js";
+import { Auth, Profile, IdentityVerification } from "../firebase.js";
 import { showMessage } from "../ui.js";
 import { ACCOUNT_TYPES } from "../constants.js";
-import { renderRoleSelector, populateGovernorateSelect, renderCategoryCheckboxGrid, updateCategoriesVisibility } from "./auth-shared.js";
+import { renderRoleSelector, populateGovernorateSelect, renderCategoryCheckboxGrid, updateCategoriesVisibility, wireIdCardPhotoPreview, isValidNationalId } from "./auth-shared.js";
 
 async function main() {
   await initLayout();
@@ -29,6 +29,7 @@ async function main() {
   updateCategoriesVisibility(categoriesField, categoriesLabel, accountType);
   populateGovernorateSelect(governorateSelect);
   renderCategoryCheckboxGrid(categoriesGrid, categories, (v) => (categories = v));
+  wireIdCardPhotoPreview(document.getElementById("idCardPhoto"), document.getElementById("idCardPhotoPreview"));
 
   const form = document.getElementById("register-form");
   const formError = document.getElementById("form-error");
@@ -52,6 +53,8 @@ async function main() {
 
     const fullName = document.getElementById("fullName").value.trim();
     const phone = document.getElementById("phone").value.trim();
+    const nationalId = document.getElementById("nationalId").value.trim();
+    const idCardPhoto = document.getElementById("idCardPhoto").files[0];
     const email = document.getElementById("email").value.trim();
     const password = document.getElementById("password").value;
     const confirmPassword = document.getElementById("confirmPassword").value;
@@ -68,6 +71,14 @@ async function main() {
     }
     if (!governorate) {
       showMessage(formError, t("auth.register.governoratePlaceholder"));
+      return;
+    }
+    if (!isValidNationalId(nationalId)) {
+      showMessage(formError, t("auth.errors.nationalIdInvalid"));
+      return;
+    }
+    if (!idCardPhoto) {
+      showMessage(formError, t("auth.errors.idCardPhotoRequired"));
       return;
     }
     if (!termsAccepted) {
@@ -90,6 +101,11 @@ async function main() {
         photoURL: user.photoURL,
         authProvider: "password",
       });
+      try {
+        await IdentityVerification.submit(user.uid, { nationalId, file: idCardPhoto });
+      } catch {
+        showMessage(formError, t("auth.errors.identitySubmitFailed"));
+      }
       location.href = "index.html";
     } catch (error) {
       showMessage(formError, t(`auth.errors.${Auth.getAuthErrorKey(error)}`));

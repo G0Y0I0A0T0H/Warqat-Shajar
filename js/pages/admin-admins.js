@@ -17,10 +17,16 @@ const GRANTABLE_SECTIONS = NAV_ITEMS.map((item) => ({
   key: item.key,
   labelKey: `admin.${item.key}`,
 }));
-// systemControls isn't a NAV_ITEMS page (see admin-shell.js) -- it's the
-// chat-disable/maintenance-mode card further down this very page, so it's
-// added as its own checkbox rather than derived from NAV_ITEMS.
-const SECTION_CHECKBOXES = [...GRANTABLE_SECTIONS, { key: "systemControls", labelKey: "admin.systemControlsTitle" }];
+// systemControls and identity aren't NAV_ITEMS pages (see admin-shell.js) --
+// systemControls is the chat-disable/maintenance-mode card further down this
+// very page, and identity is the National ID / ID card photo section inside
+// admin-users.html, so both are added as their own checkboxes rather than
+// derived from NAV_ITEMS.
+const SECTION_CHECKBOXES = [
+  ...GRANTABLE_SECTIONS,
+  { key: "systemControls", labelKey: "admin.systemControlsTitle" },
+  { key: "identity", labelKey: "admin.identityVerificationTitle" },
+];
 
 let contentEl;
 let admins = [];
