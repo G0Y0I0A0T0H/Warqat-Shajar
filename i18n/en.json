@@ -625,7 +625,8 @@
     "orderConfirmed": { "title": "Order confirmed", "body": "Your order for {product} was confirmed and reached the farmer" },
     "newOrderRequest": { "title": "New order", "body": "{name} requested {product}" },
     "productAddedToCart": { "title": "Your product was added to a cart", "body": "{name} added {product} to their cart" },
-    "newProductComment": { "title": "New comment", "body": "{name} commented on your product" }
+    "newProductComment": { "title": "New comment", "body": "{name} commented on your product" },
+    "paymentClaimed": { "title": "Buyer sent the payment", "body": "{amount} EGP was sent for {product} via {method}, reference number: {reference}. Check your payments dashboard to confirm you received it." }
   },
   "ads": {
     "title": "Ad Management",

@@ -608,6 +608,17 @@ export function renderEscrowActions(containerEl, { order, viewerUid, paymentInfo
         referenceNumber,
         proofUrl,
       });
+      Notifications.create({
+        uid: order.sellerId,
+        key: "paymentClaimed",
+        params: {
+          product: order.productLabel || "",
+          amount: String(order.totalAmount),
+          method: chosen?.dataset.methodLabel || "",
+          reference: referenceNumber || "",
+        },
+        link: "dashboard-orders.html",
+      }).catch(() => {});
       onChange?.();
     });
   }
