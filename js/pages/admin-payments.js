@@ -2,18 +2,17 @@ import { initLayout } from "../layout.js";
 import { guardAdmin } from "../admin-shell.js";
 import { t, onLocaleChange } from "../i18n.js";
 import { SiteSettings, Escrow } from "../firebase.js";
-import { btnClass, badgeClass, escapeHtml, safeUrl } from "../ui.js";
+import { btnClass, badgeClass, icon, showMessage, escapeHtml, safeUrl } from "../ui.js";
+
+// Small, deliberately limited preset -- enough to represent every method
+// type asked for (mobile wallet, card, delivery) without turning this into
+// a full icon-picker.
+const ICON_CHOICES = ["phone", "credit-card", "package"];
 
 let contentEl;
-let paymentInfo = {
-  vodafoneCash: null,
-  instapay: null,
-  bankName: null,
-  bankAccountName: null,
-  bankAccountNumber: null,
-  notes: null,
-};
+let paymentInfo = { methods: [], notes: null };
 let activeOrders = [];
+let migrated = false;
 
 const ESCROW_STATUS_KEY = {
   awaiting_payment: "escrow.statusAwaitingPayment",
@@ -77,37 +76,70 @@ function renderOrderRow(o) {
   `;
 }
 
+function methodRowHTML(m) {
+  return `
+    <div class="list-row">
+      <div class="list-row-main" style="display:flex;align-items:center;gap:0.65rem">
+        <span class="payment-method-icon-preview">${icon(m.icon || "credit-card")}</span>
+        <div>
+          <div style="display:flex;align-items:center;gap:0.4rem">
+            <span style="font-weight:600">${escapeHtml(m.label)}</span>
+            ${!m.enabled ? `<span class="${badgeClass("secondary")}">${t("payments.methodDisabled", "Disabled")}</span>` : ""}
+          </div>
+          ${m.value ? `<div class="text-muted force-ltr" dir="ltr" style="font-size:0.8rem">${escapeHtml(m.value)}</div>` : ""}
+        </div>
+      </div>
+      <div style="display:flex;gap:0.4rem">
+        <button type="button" class="${btnClass("outline", "sm")}" data-toggle-method="${m.id}">${m.enabled ? t("payments.disableMethod", "Disable") : t("payments.enableMethod", "Enable")}</button>
+        <button type="button" class="${btnClass("destructive", "icon-sm")}" data-remove-method="${m.id}" aria-label="${t("payments.removeMethod", "Remove")}">${icon("trash")}</button>
+      </div>
+    </div>
+  `;
+}
+
 function render() {
   contentEl.innerHTML = `
     <h1 class="heading" style="font-size:1.5rem">${t("payments.title")}</h1>
     <p class="text-muted" style="font-size:0.85rem;margin-top:0.25rem;max-width:40rem">${t("payments.hint")}</p>
 
-    <form id="payment-info-form" class="form-stack card" style="padding:1.5rem;margin-top:1rem">
-      <div class="field">
-        <label class="label" for="payment-vodafone-input">${t("payments.vodafoneCashLabel")}</label>
-        <input class="input force-ltr" dir="ltr" id="payment-vodafone-input" value="${paymentInfo.vodafoneCash || ""}">
+    <div class="card" style="padding:1.5rem;margin-top:1rem">
+      <h2 class="card-title" style="font-size:1rem">${t("payments.methodsTitle", "Payment methods")}</h2>
+      <p class="text-muted" style="font-size:0.8rem;margin-top:0.25rem">${t("payments.methodsHint", "Add, remove, or enable/disable any payment method shown to buyers -- full control, nothing hardcoded.")}</p>
+      <div style="margin-top:1rem;display:flex;flex-direction:column;gap:0.5rem">
+        ${
+          paymentInfo.methods.length === 0
+            ? `<p class="empty-state">${t("payments.noMethods", "No payment methods yet")}</p>`
+            : paymentInfo.methods.map(methodRowHTML).join("")
+        }
       </div>
-      <div class="field">
-        <label class="label" for="payment-instapay-input">${t("payments.instapayLabel")}</label>
-        <input class="input force-ltr" dir="ltr" id="payment-instapay-input" value="${paymentInfo.instapay || ""}">
-      </div>
-      <div class="field">
-        <label class="label" for="payment-bank-name-input">${t("payments.bankNameLabel")}</label>
-        <input class="input" id="payment-bank-name-input" value="${paymentInfo.bankName || ""}">
-      </div>
-      <div class="field">
-        <label class="label" for="payment-bank-account-name-input">${t("payments.bankAccountNameLabel")}</label>
-        <input class="input" id="payment-bank-account-name-input" value="${paymentInfo.bankAccountName || ""}">
-      </div>
-      <div class="field">
-        <label class="label" for="payment-bank-account-number-input">${t("payments.bankAccountNumberLabel")}</label>
-        <input class="input force-ltr" dir="ltr" id="payment-bank-account-number-input" value="${paymentInfo.bankAccountNumber || ""}">
-      </div>
+      <form id="add-method-form" class="form-stack" style="margin-top:1.25rem;padding-top:1rem;border-top:1px solid var(--border)">
+        <div class="grid-2" style="gap:0.75rem">
+          <div class="field">
+            <label class="label">${t("payments.methodNameLabel", "Method name")}</label>
+            <input class="input" id="new-method-label" placeholder="${t("payments.methodNamePlaceholder", "e.g. Vodafone Cash")}">
+          </div>
+          <div class="field">
+            <label class="label">${t("payments.methodIconLabel", "Icon")}</label>
+            <select class="select" id="new-method-icon">
+              ${ICON_CHOICES.map((i) => `<option value="${i}">${i}</option>`).join("")}
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label class="label">${t("payments.methodValueLabel", "Receiving details (phone number, ID, card info -- optional)")}</label>
+          <input class="input force-ltr" dir="ltr" id="new-method-value">
+        </div>
+        <p id="add-method-error" class="error-text" style="display:none"></p>
+        <button type="submit" class="${btnClass("default", "sm")}" style="align-self:flex-start">${t("payments.addMethod", "Add method")}</button>
+      </form>
+    </div>
+
+    <form id="payment-notes-form" class="form-stack card" style="padding:1.5rem;margin-top:1rem">
       <div class="field">
         <label class="label" for="payment-notes-input">${t("payments.notesLabel")}</label>
         <textarea class="textarea" rows="3" id="payment-notes-input">${paymentInfo.notes || ""}</textarea>
       </div>
-      <span id="payment-info-saved" class="success-text" style="display:none">${t("payments.saved")}</span>
+      <span id="payment-notes-saved" class="success-text" style="display:none">${t("payments.saved")}</span>
       <button type="submit" class="${btnClass("default")}" style="align-self:flex-start">${t("payments.save")}</button>
     </form>
 
@@ -138,17 +170,43 @@ function render() {
     });
   });
 
-  contentEl.querySelector("#payment-info-form").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    await SiteSettings.updatePaymentInfo({
-      vodafoneCash: contentEl.querySelector("#payment-vodafone-input").value.trim(),
-      instapay: contentEl.querySelector("#payment-instapay-input").value.trim(),
-      bankName: contentEl.querySelector("#payment-bank-name-input").value.trim(),
-      bankAccountName: contentEl.querySelector("#payment-bank-account-name-input").value.trim(),
-      bankAccountNumber: contentEl.querySelector("#payment-bank-account-number-input").value.trim(),
-      notes: contentEl.querySelector("#payment-notes-input").value.trim(),
+  contentEl.querySelectorAll("[data-toggle-method]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const id = btn.dataset.toggleMethod;
+      const updated = paymentInfo.methods.map((m) => (m.id === id ? { ...m, enabled: !m.enabled } : m));
+      await SiteSettings.setPaymentMethods(updated);
     });
-    const saved = contentEl.querySelector("#payment-info-saved");
+  });
+  contentEl.querySelectorAll("[data-remove-method]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      if (!confirm(t("payments.confirmRemoveMethod", "Remove this payment method?"))) return;
+      const id = btn.dataset.removeMethod;
+      await SiteSettings.setPaymentMethods(paymentInfo.methods.filter((m) => m.id !== id));
+    });
+  });
+  contentEl.querySelector("#add-method-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const errorEl = contentEl.querySelector("#add-method-error");
+    showMessage(errorEl, "");
+    const label = contentEl.querySelector("#new-method-label").value.trim();
+    if (!label) {
+      showMessage(errorEl, t("payments.methodNameRequired", "Enter a method name"));
+      return;
+    }
+    const newMethod = {
+      id: `pm-${Date.now()}`,
+      label,
+      icon: contentEl.querySelector("#new-method-icon").value,
+      value: contentEl.querySelector("#new-method-value").value.trim(),
+      enabled: true,
+    };
+    await SiteSettings.setPaymentMethods([...paymentInfo.methods, newMethod]);
+  });
+
+  contentEl.querySelector("#payment-notes-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    await SiteSettings.updatePaymentNotes(contentEl.querySelector("#payment-notes-input").value.trim());
+    const saved = contentEl.querySelector("#payment-notes-saved");
     saved.style.display = "inline";
     setTimeout(() => (saved.style.display = "none"), 2500);
   });
@@ -162,12 +220,44 @@ async function reloadOrders() {
   render();
 }
 
+// One-time, additive migration from the old fixed-field shape
+// (vodafoneCash/instapay/bank*) to the new admin-managed methods list, the
+// first time this page loads after the switch -- nothing is deleted, the
+// old fields just stop being read once real methods exist. Also seeds the
+// other commonly-requested method types (Visa, Mastercard, cash on
+// delivery) as disabled placeholders so the admin can just fill in details
+// and flip them on, rather than typing every one from scratch.
+function migrateLegacyFieldsIfNeeded(data) {
+  if (migrated || (data.methods && data.methods.length > 0)) return;
+  migrated = true;
+  const seeded = [
+    { id: "vodafone-cash", label: "فودافون كاش", icon: "phone", value: data.vodafoneCash || "", enabled: Boolean(data.vodafoneCash) },
+    { id: "instapay", label: "إنستاباي", icon: "credit-card", value: data.instapay || "", enabled: Boolean(data.instapay) },
+    { id: "visa", label: "فيزا", icon: "credit-card", value: "", enabled: false },
+    { id: "mastercard", label: "ماستر كارد", icon: "credit-card", value: "", enabled: false },
+    { id: "cod", label: "الدفع عند الاستلام", icon: "package", value: "", enabled: false },
+  ];
+  if (data.bankAccountNumber) {
+    seeded.push({
+      id: "bank-transfer",
+      label: "تحويل بنكي",
+      icon: "credit-card",
+      value: [data.bankName, data.bankAccountName, data.bankAccountNumber].filter(Boolean).join(" — "),
+      enabled: true,
+    });
+  }
+  SiteSettings.setPaymentMethods(seeded).catch(() => {
+    migrated = false;
+  });
+}
+
 async function main() {
   await initLayout();
   await guardAdmin("admin-payments.html");
   contentEl = document.getElementById("admin-content");
   SiteSettings.subscribePaymentInfo((data) => {
     paymentInfo = data;
+    migrateLegacyFieldsIfNeeded(data);
     render();
   });
   await reloadOrders();

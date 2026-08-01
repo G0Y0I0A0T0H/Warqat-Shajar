@@ -1129,14 +1129,15 @@ const maintenanceModeRef = doc(db, "settings", "maintenanceMode");
 // which is a separate collection entirely.
 const chatDisabledRef = doc(db, "settings", "chatDisabled");
 
-// Owner's own payment-receiving details -- see firestore.rules for why this
-// doc is owner-only on both read and write.
+// The platform's payment-receiving methods -- a fully admin-managed list
+// (add/remove/enable/disable any method, not a fixed set of fields), so the
+// owner (or an admin granted "payments") has complete control over what
+// shows up in the buyer-facing method picker. Each entry:
+// { id, label, icon, value, enabled }. See firestore.rules for why this doc
+// is write-restricted to isOwnerOrGranted('payments') (read is any signed-in
+// user, since a buyer needs to see it to know where to send money).
 const DEFAULT_PAYMENT_INFO = {
-  vodafoneCash: null,
-  instapay: null,
-  bankName: null,
-  bankAccountName: null,
-  bankAccountNumber: null,
+  methods: [],
   notes: null,
 };
 const paymentInfoRef = doc(db, "settings", "paymentInfo");
@@ -1353,19 +1354,15 @@ export const SiteSettings = {
     return snap.exists() ? { ...DEFAULT_PAYMENT_INFO, ...snap.data() } : DEFAULT_PAYMENT_INFO;
   },
 
-  async updatePaymentInfo({ vodafoneCash, instapay, bankName, bankAccountName, bankAccountNumber, notes }) {
-    await setDoc(
-      paymentInfoRef,
-      {
-        vodafoneCash: vodafoneCash || null,
-        instapay: instapay || null,
-        bankName: bankName || null,
-        bankAccountName: bankAccountName || null,
-        bankAccountNumber: bankAccountNumber || null,
-        notes: notes || null,
-      },
-      { merge: true },
-    );
+  // Replaces the whole methods list -- the admin UI manages it client-side
+  // (add/remove/edit/toggle) and saves the full resulting array at once,
+  // same pattern as admin-branding.js's category list management.
+  async setPaymentMethods(methods) {
+    await setDoc(paymentInfoRef, { methods }, { merge: true });
+  },
+
+  async updatePaymentNotes(notes) {
+    await setDoc(paymentInfoRef, { notes: notes || null }, { merge: true });
   },
 };
 
