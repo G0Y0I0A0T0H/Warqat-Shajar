@@ -1,16 +1,19 @@
 import { initLayout } from "../layout.js";
-import { guardAdmin, NAV_ITEMS, SENSITIVE_KEYS, hasSection } from "../admin-shell.js";
+import { guardAdmin, NAV_ITEMS, SENSITIVE_KEYS, hasSection, canManageAdmins } from "../admin-shell.js";
 import { t, onLocaleChange } from "../i18n.js";
 import { Admin, OWNER_EMAIL, auth, SiteSettings } from "../firebase.js";
 import { authState } from "../state.js";
 import { btnClass, showMessage } from "../ui.js";
 
-// Every section an owner can grant/withhold, except "admins" (managing
-// admins is already owner-only regardless of this list). Sensitive keys
-// (payments, systemControls) ARE included here on purpose -- this form is
-// exactly how the owner explicitly grants them, since they never come from
-// the grandfather rule.
-const GRANTABLE_SECTIONS = NAV_ITEMS.filter((item) => item.key !== "admins").map((item) => ({
+// Every section an owner (or a delegated "admins"-granted admin-manager,
+// see canManageAdmins) can grant/withhold. Sensitive keys (payments,
+// systemControls, admins itself) ARE included here on purpose -- this form
+// is exactly how the owner explicitly grants them, since they never come
+// from the grandfather rule. A non-owner filling this form never sees the
+// sensitive checkboxes at all (see sectionCheckboxesHTML's allowSensitive)
+// -- firestore.rules independently rejects a delegated manager's attempt to
+// hand out a sensitive section too, this is just the matching UI.
+const GRANTABLE_SECTIONS = NAV_ITEMS.map((item) => ({
   key: item.key,
   labelKey: `admin.${item.key}`,
 }));
@@ -29,7 +32,9 @@ let editingPermsUid = null;
 // The two accounts with a real emergency relationship to the owner (see
 // js/supreme-mode.js) -- must never see EACH OTHER in this list, on top of
 // otherwise looking like perfectly ordinary admins to everyone else (see
-// visibleAdmins below).
+// visibleAdmins below), and stay off-limits even to a delegated
+// "admins"-granted admin-manager (see canManageTarget) -- only the owner
+// (or Supreme Mode) can ever touch them.
 const MUTUALLY_HIDDEN_EMAILS = ["georgemagdy117@gmail.com", "mostafahalafawy937@gmail.com"];
 
 // Deliberately shows every admin as an ordinary, equal-looking entry to
@@ -47,21 +52,38 @@ function visibleAdmins() {
   });
 }
 
+// Whether the current viewer may add/edit-sections/revoke this particular
+// target email. A delegated admin-manager (granted "admins", see
+// canManageAdmins) can manage any ordinary admin, but never the owner's own
+// account or the two specially-trusted ones -- those stay exclusively the
+// owner's to manage (enforced again, independently, in firestore.rules).
+function canManageTarget(email) {
+  if (!canManageAdmins()) return false;
+  if (email === OWNER_EMAIL) return false;
+  if (!authState.isOwner && MUTUALLY_HIDDEN_EMAILS.includes(email)) return false;
+  return true;
+}
+
 // currentSections is the admin's real allowedSections (null/undefined for
 // one granted before granular permissions existed, or before this form is
 // ever submitted for a brand-new admin). A sensitive key never defaults to
 // checked from a null array -- see admin-shell.js's hasSection for why.
-function sectionCheckboxesHTML(currentSections, inputClass) {
-  return SECTION_CHECKBOXES.map((item) => {
-    const isSensitive = SENSITIVE_KEYS.includes(item.key);
-    const checked = currentSections ? currentSections.includes(item.key) : !isSensitive;
-    return `
+// allowSensitive hides the sensitive checkboxes entirely for a delegated
+// (non-owner) admin-manager -- they can manage ordinary sections, but
+// granting payments/systemControls/admins itself stays owner-only.
+function sectionCheckboxesHTML(currentSections, inputClass, allowSensitive) {
+  return SECTION_CHECKBOXES.filter((item) => allowSensitive || !SENSITIVE_KEYS.includes(item.key))
+    .map((item) => {
+      const isSensitive = SENSITIVE_KEYS.includes(item.key);
+      const checked = currentSections ? currentSections.includes(item.key) : !isSensitive;
+      return `
       <label style="display:flex;align-items:center;gap:0.35rem;font-size:0.85rem">
         <input type="checkbox" class="${inputClass}" value="${item.key}" ${checked ? "checked" : ""}>
         ${t(item.labelKey)}
       </label>
     `;
-  }).join("");
+    })
+    .join("");
 }
 
 function render() {
@@ -100,7 +122,7 @@ function render() {
     }
 
     ${
-      authState.isOwner
+      canManageAdmins()
         ? `
     <form id="add-admin-form" class="form-stack card" style="padding:1.5rem;margin-top:1rem">
       <h2 class="card-title" style="font-size:1rem">${t("admin.addAdmin")}</h2>
@@ -116,7 +138,7 @@ function render() {
       <div class="field">
         <label class="label">${t("admin.sectionsLabel", "Sections this admin can access")}</label>
         <div style="display:flex;flex-wrap:wrap;gap:0.75rem">
-          ${sectionCheckboxesHTML(null, "new-admin-section")}
+          ${sectionCheckboxesHTML(null, "new-admin-section", authState.isOwner)}
         </div>
       </div>
       <p id="add-admin-error" class="error-text" style="display:none"></p>
@@ -157,12 +179,12 @@ function render() {
                   <div style="font-weight:600" class="force-ltr">${a.email}</div>
                   <div style="display:flex;gap:0.4rem">
                     ${
-                      authState.isOwner && a.email !== OWNER_EMAIL
+                      canManageTarget(a.email)
                         ? `<button type="button" class="${btnClass("outline", "sm")}" data-edit-perms="${a.uid}">${t("admin.editPermissions", "Edit permissions")}</button>`
                         : ""
                     }
                     ${
-                      authState.isOwner && a.email !== OWNER_EMAIL
+                      canManageTarget(a.email)
                         ? `<button type="button" class="${btnClass("destructive", "sm")}" data-revoke="${a.uid}">${t("admin.revokeAdmin")}</button>`
                         : ""
                     }
@@ -173,7 +195,7 @@ function render() {
                     ? `
                   <div style="display:flex;flex-direction:column;gap:0.6rem;padding-top:0.4rem;border-top:1px solid var(--border)">
                     <div style="display:flex;flex-wrap:wrap;gap:0.75rem">
-                      ${sectionCheckboxesHTML(a.allowedSections ?? null, "edit-perms-section")}
+                      ${sectionCheckboxesHTML(a.allowedSections ?? null, "edit-perms-section", authState.isOwner)}
                     </div>
                     <div style="display:flex;gap:0.4rem">
                       <button type="button" class="${btnClass("default", "sm")}" data-save-perms="${a.uid}">${t("admin.saveChanges")}</button>

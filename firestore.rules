@@ -39,6 +39,17 @@ service cloud.firestore {
       );
     }
 
+    // The owner's own account, plus the two admins with a real emergency
+    // relationship to the owner (see js/supreme-mode.js) -- a delegated
+    // "admins"-granted admin-manager (see isOwnerOrGranted('admins') below)
+    // can never create, edit the sections of, or revoke any of these three,
+    // even though they otherwise look like perfectly ordinary admins in the
+    // regular panel. Only the owner (or Supreme Mode, which is just the
+    // owner's own account through a different UI) can ever touch them.
+    function isUntouchableByDelegatedAdmins(email) {
+      return email == 'sgyiath@gmail.com' || email == 'georgemagdy117@gmail.com' || email == 'mostafahalafawy937@gmail.com';
+    }
+
     function isParticipant(chatData) {
       return isSignedIn() && request.auth.uid in chatData.participantIds;
     }
@@ -57,27 +68,36 @@ service cloud.firestore {
     }
 
     // One-time bootstrap: only this exact account may grant itself admin.
-    // Only the owner may create a new admin, revoke an existing admin doc,
-    // or touch someone else's, or set allowedSections (granular per-section
-    // permissions) — regular admins can only manage their own admin-mode
-    // password / support opt-in, never demote/edit one another or grant
-    // themselves more access. The owner can revoke ANY other admin,
-    // including the ones hidden from regular admins' view (see
-    // js/pages/admin-admins.js / js/supreme-mode.js's use of
-    // PROTECTED_ADMIN_EMAILS -- that list only controls who other admins
-    // can see, not who the owner can act on) -- the one exception is the
-    // owner's own doc, excluded here purely to prevent a self-lockout
-    // (deleting it would strip isAdmin() from their own account, even
-    // though isOwner() itself is untouched and always still true).
+    // Beyond the owner, a regular admin explicitly granted "admins" in their
+    // own allowedSections (see isOwnerOrGranted('admins') / js/admin-shell.js
+    // canManageAdmins) can also create a new admin, edit an existing one's
+    // allowedSections, or revoke them -- but never for the owner's own
+    // account or the two specially-trusted ones (isUntouchableByDelegatedAdmins
+    // above), and never handing out a sensitive section (payments,
+    // systemControls, or admins itself) to anyone -- only the owner grants
+    // those. A plain admin with no "admins" grant can still only manage
+    // their own admin-mode password / support opt-in, same as always.
     match /admins/{uid} {
       allow read: if isSignedIn();
       allow create: if isOwner() ||
-        (isSignedIn() && request.auth.uid == uid && request.auth.token.email == 'sgyiath@gmail.com');
+        (isSignedIn() && request.auth.uid == uid && request.auth.token.email == 'sgyiath@gmail.com') ||
+        (
+          isOwnerOrGranted('admins') && !isOwner() &&
+          !isUntouchableByDelegatedAdmins(request.resource.data.email) &&
+          !request.resource.data.get('allowedSections', []).hasAny(['payments', 'systemControls', 'admins'])
+        );
       allow update: if isOwner() || (
         isAdmin() && request.auth.uid == uid &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['adminModeCode', 'acceptingSupport'])
+      ) || (
+        isOwnerOrGranted('admins') && !isOwner() &&
+        !isUntouchableByDelegatedAdmins(resource.data.email) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['allowedSections']) &&
+        !resource.data.get('allowedSections', []).hasAny(['payments', 'systemControls', 'admins']) &&
+        !request.resource.data.allowedSections.hasAny(['payments', 'systemControls', 'admins'])
       );
-      allow delete: if isOwner() && resource.data.email != 'sgyiath@gmail.com';
+      allow delete: if (isOwner() && resource.data.email != 'sgyiath@gmail.com') ||
+        (isOwnerOrGranted('admins') && !isOwner() && !isUntouchableByDelegatedAdmins(resource.data.email));
     }
 
     // adminModeCode used to live on admins/{uid} itself, but that doc's read

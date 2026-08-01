@@ -25,16 +25,17 @@ export const NAV_ITEMS = [
 // Keys that require an EXPLICIT grant in an admin's allowedSections --
 // unlike every other section, an admin with no allowedSections field at all
 // (granted before granular permissions existed) does NOT automatically get
-// these via the grandfather rule below. They touch real money (payments) or
-// sitewide availability (system controls), so access has to be a deliberate,
-// current choice by the owner, never an accident of grandfathering.
-// "systemControls" isn't a NAV_ITEMS page at all (it's a section inside
-// admin-admins.html, not its own route) -- callers check it directly via
-// hasSection("systemControls"). ("admins" itself is NOT gated here: any
-// admin still needs admin-admins.html for their own password/support-toggle
-// self-service, it's only the "add admin" form + System Controls inside
-// that page which are further gated.)
-export const SENSITIVE_KEYS = ["payments", "systemControls"];
+// these via the grandfather rule below. They touch real money (payments),
+// sitewide availability (system controls), or the ability to manage other
+// admins (admins) -- access has to be a deliberate, current choice by the
+// owner, never an accident of grandfathering. "systemControls" isn't a
+// NAV_ITEMS page at all (it's a section inside admin-admins.html, not its
+// own route) -- callers check it directly via hasSection("systemControls").
+// "admins" is special-cased in hasSection below: the PAGE itself stays
+// reachable by every admin regardless (self-service password/support
+// toggle), only the ability to actually manage other admins is gated --
+// see canManageAdmins().
+export const SENSITIVE_KEYS = ["payments", "systemControls", "admins"];
 
 // Owner always has every section. A sensitive key (see SENSITIVE_KEYS)
 // requires explicit inclusion in allowedSections, full stop. Every other
@@ -42,9 +43,18 @@ export const SENSITIVE_KEYS = ["payments", "systemControls"];
 // (an admin granted before this feature existed).
 export function hasSection(key) {
   if (authState.isOwner) return true;
+  if (key === "admins") return true;
   if (SENSITIVE_KEYS.includes(key)) return Boolean(authState.allowedSections?.includes(key));
   if (!authState.allowedSections) return true;
   return authState.allowedSections.includes(key);
+}
+
+// The actual "can manage other admins" grant (add/edit/revoke) -- distinct
+// from hasSection("admins"), which only governs whether the admin-admins.html
+// PAGE itself is reachable (always true, for self-service). Explicit-grant
+// only, same reasoning as every other SENSITIVE_KEYS entry.
+export function canManageAdmins() {
+  return authState.isOwner || Boolean(authState.allowedSections?.includes("admins"));
 }
 
 function renderDenied(root) {
