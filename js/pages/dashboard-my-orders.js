@@ -61,8 +61,8 @@ function render() {
         ${
           escrowOrder
             ? `<div style="margin-top:0.85rem">
-                 ${escrowStepperHTML(escrowOrder)}
-                 <div data-escrow-actions="${o.messageId}" style="margin-top:0.75rem"></div>
+                 <div data-escrow-actions="${o.messageId}"></div>
+                 <div style="margin-top:0.75rem">${escrowStepperHTML(escrowOrder)}</div>
                </div>`
             : ""
         }
