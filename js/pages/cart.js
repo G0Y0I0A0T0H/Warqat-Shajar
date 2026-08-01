@@ -103,8 +103,8 @@ async function render() {
             ${
               escrowOrder
                 ? `<div style="margin-top:0.6rem;max-width:26rem">
-                     ${escrowStepperHTML(escrowOrder)}
-                     <div data-escrow-actions="${productId}" style="margin-top:0.75rem"></div>
+                     <div data-escrow-actions="${productId}"></div>
+                     <div style="margin-top:0.75rem">${escrowStepperHTML(escrowOrder)}</div>
                    </div>`
                 : isPending
                   ? `<div style="margin-top:0.5rem"><span class="${btnClass("outline", "sm")}" style="pointer-events:none">${icon("headset")} ${t("cart.awaitingFarmerResponse", "Waiting for the farmer's response")}</span></div>`
