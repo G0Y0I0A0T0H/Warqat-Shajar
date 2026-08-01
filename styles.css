@@ -3043,6 +3043,80 @@ main {
   opacity: 0.75;
 }
 
+.escrow-method-circles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.9rem;
+}
+
+.escrow-method-circle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: pointer;
+  width: 4.25rem;
+}
+
+.escrow-method-circle input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.escrow-method-circle-icon {
+  width: 3.25rem;
+  height: 3.25rem;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.06);
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  color: #e8f5e9;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+}
+
+.escrow-method-circle-icon svg {
+  width: 1.4rem;
+  height: 1.4rem;
+}
+
+.escrow-method-circle input:checked ~ .escrow-method-circle-icon {
+  border-color: #2e7d32;
+  background: rgba(46, 125, 50, 0.25);
+  color: #7ee08a;
+  transform: scale(1.05);
+}
+
+.escrow-method-circle input:focus-visible ~ .escrow-method-circle-icon {
+  outline: 2px solid #7ee08a;
+  outline-offset: 2px;
+}
+
+.escrow-method-circle-label {
+  font-size: 0.68rem;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.2;
+}
+
+.escrow-method-circle input:checked ~ .escrow-method-circle-label {
+  color: #e8f5e9;
+  font-weight: 700;
+}
+
+.escrow-method-value-display {
+  font-size: 0.8rem;
+  background: rgba(46, 125, 50, 0.15);
+  border: 1px solid rgba(46, 125, 50, 0.35);
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  color: #e8f5e9;
+}
+
 /* Admin-side view of a buyer's payment proof (admin-payments.js) -- kept as
    regular page content (follows light/dark theme), unlike the always-dark
    escrow widgets above, since this lives inside the ordinary admin shell. */
@@ -3074,6 +3148,23 @@ main {
   height: 100%;
   object-fit: cover;
   display: block;
+}
+
+.payment-method-icon-preview {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--muted);
+  color: var(--foreground);
+  flex-shrink: 0;
+}
+
+.payment-method-icon-preview svg {
+  width: 1.15rem;
+  height: 1.15rem;
 }
 
 .offer-form {

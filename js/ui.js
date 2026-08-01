@@ -449,35 +449,42 @@ export function escrowStepperHTML(order) {
   `;
 }
 
-function paymentMethodRow(orderId, labelKey, value) {
-  if (!value) return "";
+// A payment method as a circular icon button (native radio input underneath,
+// visually hidden -- see styles.css .escrow-method-circle -- so it stays a
+// real, accessible radio group while looking like a row of icon buttons).
+function paymentMethodCircle(orderId, method) {
   return `
-    <label class="escrow-payment-method">
-      <input type="radio" name="escrow-payment-method-${orderId}" value="${escapeHtml(value)}">
-      <span class="escrow-payment-method-label">${t(labelKey)}</span>
-      <span class="escrow-payment-method-value force-ltr" dir="ltr">${escapeHtml(value)}</span>
+    <label class="escrow-method-circle">
+      <input
+        type="radio"
+        name="escrow-payment-method-${orderId}"
+        value="${escapeHtml(method.value || method.label)}"
+        data-method-value="${escapeHtml(method.value || "")}"
+        data-method-label="${escapeHtml(method.label)}"
+      >
+      <span class="escrow-method-circle-icon">${icon(method.icon || "credit-card")}</span>
+      <span class="escrow-method-circle-label">${escapeHtml(method.label)}</span>
     </label>
   `;
 }
 
-// Shared by renderEscrowActions below and dashboard-chat.js's own escrow
-// tracker -- the platform's real payment methods (settings/paymentInfo) as
-// selectable radio rows (grouped per orderId so multiple orders on the same
-// page never share a radio group), so the buyer actually knows where to
-// send money instead of a generic "wait for instructions" hint.
+// Shared by renderEscrowActions below -- the platform's real payment
+// methods (settings/paymentInfo, a fully admin-managed list -- see
+// admin-payments.js) as a row of selectable circular icon buttons (grouped
+// per orderId so multiple orders on the same page never share a radio
+// group), so the buyer actually knows where to send money instead of a
+// generic "wait for instructions" hint. The chosen method's own receiving
+// value is revealed separately once picked -- see the
+// #escrow-method-value-${orderId} wiring in renderEscrowActions.
 export function escrowPaymentMethodsHTML(orderId, paymentInfo) {
-  const bankValue = [paymentInfo?.bankName, paymentInfo?.bankAccountName, paymentInfo?.bankAccountNumber].filter(Boolean).join(" — ");
-  const methodsHtml = [
-    paymentMethodRow(orderId, "escrow.methodVodafoneCash", paymentInfo?.vodafoneCash),
-    paymentMethodRow(orderId, "escrow.methodInstapay", paymentInfo?.instapay),
-    paymentMethodRow(orderId, "escrow.methodBankTransfer", bankValue || null),
-  ].join("");
-  if (!methodsHtml) {
+  const enabledMethods = (paymentInfo?.methods || []).filter((m) => m.enabled);
+  if (enabledMethods.length === 0) {
     return `<p class="text-muted" style="font-size:0.8rem">${t("escrow.noPaymentMethodsYet")}</p>`;
   }
   return `
     <p class="escrow-payment-methods-title">${t("escrow.choosePaymentMethod")}</p>
-    <div class="escrow-payment-methods">${methodsHtml}</div>
+    <div class="escrow-method-circles">${enabledMethods.map((m) => paymentMethodCircle(orderId, m)).join("")}</div>
+    <div class="escrow-method-value-display" id="escrow-method-value-${orderId}" style="display:none"></div>
     ${paymentInfo?.notes ? `<p class="escrow-payment-methods-note">${escapeHtml(paymentInfo.notes)}</p>` : ""}
   `;
 }
@@ -556,13 +563,36 @@ export function renderEscrowActions(containerEl, { order, viewerUid, paymentInfo
     markPaidBtn.disabled = !(chosen && refValue && proofUrl);
   }
 
+  // Reveals the picked method's own receiving value (e.g. a Vodafone Cash
+  // number) below the circle row -- a method with no value at all (cash on
+  // delivery, say) just shows its label so the buyer still gets confirmation
+  // of what they picked.
+  function updateMethodValueDisplay() {
+    const displayEl = containerEl.querySelector(`#escrow-method-value-${order.id}`);
+    if (!displayEl) return;
+    const chosen = containerEl.querySelector(`input[name="escrow-payment-method-${order.id}"]:checked`);
+    if (!chosen) {
+      displayEl.style.display = "none";
+      return;
+    }
+    const label = chosen.dataset.methodLabel || "";
+    const value = chosen.dataset.methodValue || "";
+    displayEl.innerHTML = value
+      ? `${escapeHtml(label)}: <span class="force-ltr" dir="ltr" style="font-weight:700">${escapeHtml(value)}</span>`
+      : `<span style="font-weight:700">${escapeHtml(label)}</span>`;
+    displayEl.style.display = "block";
+  }
+
   if (isAwaitingPaymentAsBuyer) {
     proofInput = renderImageInput(containerEl.querySelector(`#escrow-proof-mount-${order.id}`), {
       uploadPathPrefix: "paymentProofs/",
       onChange: updateMarkPaidState,
     });
     containerEl.querySelectorAll(`input[name="escrow-payment-method-${order.id}"]`).forEach((r) => {
-      r.addEventListener("change", updateMarkPaidState);
+      r.addEventListener("change", () => {
+        updateMarkPaidState();
+        updateMethodValueDisplay();
+      });
     });
     containerEl.querySelector(`#escrow-ref-input-${order.id}`)?.addEventListener("input", updateMarkPaidState);
   }
