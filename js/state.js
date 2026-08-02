@@ -45,38 +45,43 @@ function sessionKey(uid) {
   return `adminModeUnlocked:${uid}`;
 }
 
-// No system-preference fallback on purpose -- a first-time visitor always
-// gets the site's own configured default (light, unless the owner sets it
-// to dark in branding -- see applySiteDefaultDarkMode below), never
-// whatever dark/light mode their OS happens to be in.
+// Two independently-remembered preferences, not one -- the regular site and
+// admin mode default to opposite things (light vs dark) and switching one
+// should never silently change the other. No system-preference fallback on
+// the regular site on purpose -- a first-time visitor always gets the
+// site's own configured default (light, unless the owner sets it to dark
+// in branding -- see applySiteDefaultDarkMode below), never whatever
+// dark/light mode their OS happens to be in.
 const THEME_KEY = "wsj-theme";
+const ADMIN_THEME_KEY = "wsj-admin-theme";
 let userPrefersDark = localStorage.getItem(THEME_KEY) === "dark";
+let adminPrefersDark = localStorage.getItem(ADMIN_THEME_KEY)
+  ? localStorage.getItem(ADMIN_THEME_KEY) === "dark"
+  : true;
 
-// The "dark" class is shared by two independent signals: an admin's own
-// dark-mode preference, and admin mode being active (a separate visual cue
-// this app already used the same class for) — either one should darken the
-// site, so this must OR them rather than one clobbering the other.
 function applyDarkMode() {
-  document.documentElement.classList.toggle("dark", authState.isAdminModeActive || userPrefersDark);
+  const dark = authState.isAdminModeActive ? adminPrefersDark : userPrefersDark;
+  document.documentElement.classList.toggle("dark", dark);
 }
 applyDarkMode();
 
-// The actually-displayed theme, as opposed to isUserThemeDark() (the user's
-// own underlying preference). These differ while admin mode is active,
-// which forces dark regardless of the user's own preference -- the theme
-// toggle button uses this, not isUserThemeDark(), so its icon never lies
-// about what's actually on screen.
-export function isThemeDark() {
-  return authState.isAdminModeActive || userPrefersDark;
-}
-
+// Whichever preference is actually relevant right now -- the admin one
+// while admin mode is active, the regular site one otherwise. This is what
+// the theme toggle button reads and writes, so the same button naturally
+// controls "whichever context you're currently in" and its icon always
+// matches what's really on screen.
 export function isUserThemeDark() {
-  return userPrefersDark;
+  return authState.isAdminModeActive ? adminPrefersDark : userPrefersDark;
 }
 
 export function setUserThemeDark(isDark) {
-  userPrefersDark = isDark;
-  localStorage.setItem(THEME_KEY, isDark ? "dark" : "light");
+  if (authState.isAdminModeActive) {
+    adminPrefersDark = isDark;
+    localStorage.setItem(ADMIN_THEME_KEY, isDark ? "dark" : "light");
+  } else {
+    userPrefersDark = isDark;
+    localStorage.setItem(THEME_KEY, isDark ? "dark" : "light");
+  }
   applyDarkMode();
 }
 
