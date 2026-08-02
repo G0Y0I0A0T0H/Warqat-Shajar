@@ -2,7 +2,7 @@
 // switcher, footer year. Markup itself is repeated per HTML file (see
 // partials below used when authoring pages); this module only wires
 // behavior against fixed IDs present identically on every page.
-import { authState, favoritesState, cartState, notifState, subscribe, isUserThemeDark, setUserThemeDark } from "./state.js";
+import { authState, favoritesState, cartState, notifState, subscribe, isUserThemeDark, setUserThemeDark, isThemeDark, applySiteDefaultDarkMode } from "./state.js";
 import { Auth, SiteSettings, Notifications, OWNER_EMAIL } from "./firebase.js";
 import { t, getLocale, setLocale, initI18n, onLocaleChange } from "./i18n.js";
 import { icon, renderAvatar, wireDropdown, renderIcons, interpolate, showToast, btnClass, escapeHtml, safeUrl } from "./ui.js";
@@ -228,15 +228,23 @@ function renderNotifBell() {
   renderNotifPanel(mount.querySelector("#notif-content"), items);
 }
 
+// Admin mode always forces dark (see state.js's applyDarkMode) regardless
+// of the toggle -- showing an interactive control that can't actually
+// change anything, with an icon that (before this) reflected the user's
+// underlying preference instead of the real on-screen state, made it look
+// broken while in admin mode. Simplest real fix: hide it there entirely.
 function updateThemeToggleIcon() {
   const btn = document.getElementById("theme-toggle");
-  if (btn) btn.innerHTML = icon(isUserThemeDark() ? "sun" : "moon");
+  if (!btn) return;
+  btn.style.display = authState.isAdminModeActive ? "none" : "";
+  btn.innerHTML = icon(isThemeDark() ? "sun" : "moon");
 }
 
 function wireThemeToggle() {
   const btn = document.getElementById("theme-toggle");
   if (!btn) return;
   updateThemeToggleIcon();
+  subscribe(updateThemeToggleIcon);
   btn.addEventListener("click", () => {
     setUserThemeDark(!isUserThemeDark());
     updateThemeToggleIcon();
@@ -279,6 +287,7 @@ function applyBrandColor() {
       document.documentElement.style.setProperty("--leaf-trail-size", theme.cursorSize * 0.55 + "px");
       document.documentElement.style.setProperty("--leaf-particle-size", theme.cursorSize * 0.125 + "px");
     }
+    applySiteDefaultDarkMode(theme.defaultDarkMode);
   });
 }
 

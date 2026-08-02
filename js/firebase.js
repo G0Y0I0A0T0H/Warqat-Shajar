@@ -1224,7 +1224,7 @@ const siteImagesRef = doc(db, "settings", "siteImages");
 const DEFAULT_SITE_CONTENT = { ar: {}, en: {} };
 const siteContentRef = doc(db, "settings", "siteContent");
 
-const DEFAULT_SITE_THEME = { primaryColor: null, cursorSize: null };
+const DEFAULT_SITE_THEME = { primaryColor: null, cursorSize: null, defaultDarkMode: false };
 const siteThemeRef = doc(db, "settings", "siteTheme");
 
 const DEFAULT_SOCIAL_LINKS = { links: [], phone: null, whatsapp: null, email: null, policyLink: null };
@@ -1339,6 +1339,13 @@ export const SiteSettings = {
 
   async updateCursorSize(cursorSize) {
     await setDoc(siteThemeRef, { cursorSize }, { merge: true });
+  },
+
+  // The default light/dark mode shown to a visitor who has never touched
+  // the theme toggle themselves -- see state.js's applySiteDefaultDarkMode,
+  // which never overrides a visitor's own explicit choice.
+  async updateDefaultDarkMode(isDark) {
+    await setDoc(siteThemeRef, { defaultDarkMode: isDark }, { merge: true });
   },
 
   subscribeSocialLinks(callback) {

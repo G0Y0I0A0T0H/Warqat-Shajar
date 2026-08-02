@@ -45,10 +45,12 @@ function sessionKey(uid) {
   return `adminModeUnlocked:${uid}`;
 }
 
+// No system-preference fallback on purpose -- a first-time visitor always
+// gets the site's own configured default (light, unless the owner sets it
+// to dark in branding -- see applySiteDefaultDarkMode below), never
+// whatever dark/light mode their OS happens to be in.
 const THEME_KEY = "wsj-theme";
-let userPrefersDark = localStorage.getItem(THEME_KEY)
-  ? localStorage.getItem(THEME_KEY) === "dark"
-  : matchMedia("(prefers-color-scheme: dark)").matches;
+let userPrefersDark = localStorage.getItem(THEME_KEY) === "dark";
 
 // The "dark" class is shared by two independent signals: an admin's own
 // dark-mode preference, and admin mode being active (a separate visual cue
@@ -59,6 +61,15 @@ function applyDarkMode() {
 }
 applyDarkMode();
 
+// The actually-displayed theme, as opposed to isUserThemeDark() (the user's
+// own underlying preference). These differ while admin mode is active,
+// which forces dark regardless of the user's own preference -- the theme
+// toggle button uses this, not isUserThemeDark(), so its icon never lies
+// about what's actually on screen.
+export function isThemeDark() {
+  return authState.isAdminModeActive || userPrefersDark;
+}
+
 export function isUserThemeDark() {
   return userPrefersDark;
 }
@@ -66,6 +77,16 @@ export function isUserThemeDark() {
 export function setUserThemeDark(isDark) {
   userPrefersDark = isDark;
   localStorage.setItem(THEME_KEY, isDark ? "dark" : "light");
+  applyDarkMode();
+}
+
+// The owner's own configured default (settings/siteTheme.defaultDarkMode --
+// see admin-branding.js) for visitors who have never touched the toggle
+// themselves. Never overrides a visitor's own explicit choice, and never
+// touches admin mode's separate always-dark forcing.
+export function applySiteDefaultDarkMode(isDark) {
+  if (localStorage.getItem(THEME_KEY) !== null) return;
+  userPrefersDark = Boolean(isDark);
   applyDarkMode();
 }
 
