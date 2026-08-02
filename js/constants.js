@@ -12,6 +12,7 @@ export const CATEGORIES = [
   "rice",
   "organic",
   "animal-feed",
+  "nurseries",
 ];
 
 export const ACCOUNT_TYPES = ["farmer", "trader", "factory", "consumer"];
@@ -65,6 +66,7 @@ export const CATEGORY_IMAGES = {
   rice: "images/categories/rice.jpg",
   organic: "images/categories/organic.jpg",
   "animal-feed": "images/categories/animal-feed.jpg",
+  nurseries: "images/categories/nurseries.jpg",
 };
 
 // Assumed shelf life (days) per category, at good farmer-side storage — used
@@ -81,6 +83,7 @@ export const SHELF_LIFE_DAYS = {
   barley: 270,
   rice: 270,
   "animal-feed": 270,
+  nurseries: 180,
 };
 export const DEFAULT_SHELF_LIFE_DAYS = 14;
 
