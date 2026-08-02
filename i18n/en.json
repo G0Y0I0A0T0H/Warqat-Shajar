@@ -742,6 +742,7 @@
     "methodInstapay": "InstaPay",
     "methodBankTransfer": "Bank transfer",
     "noPaymentMethodsYet": "Support hasn't set up a payment method yet. Please contact support before completing the order.",
+    "createOrderFailed": "The offer was accepted, but there was a problem setting up the order tracker. Please contact support so we can fix it.",
     "phoneNumberLabel": "Phone number you paid from",
     "phoneNumberPlaceholder": "The phone number linked to the transfer",
     "referenceNumberLabel": "Transaction reference number",

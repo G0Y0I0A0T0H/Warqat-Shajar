@@ -331,7 +331,14 @@ service cloud.firestore {
           resource.data.type == 'offer' &&
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['offer']) &&
           (
+            // Only ever a one-shot resolution of a still-pending offer -- the
+            // UI never lets you respond to an already-resolved one, and
+            // without this the rule would too, letting a scripted request
+            // re-flip an already-accepted offer (which may already have a
+            // live escrow order tracking real payment) back to declined, or
+            // re-accept an already-declined one.
             (resource.data.senderId != request.auth.uid &&
+             resource.data.offer.status == 'pending' &&
              request.resource.data.offer.status in ['accepted', 'declined', 'countered']) ||
             // The buyer may withdraw their own offer while it's still pending.
             (resource.data.senderId == request.auth.uid &&
@@ -353,8 +360,14 @@ service cloud.firestore {
     // rejected here, not just in the UI, and the trail is immutable (no
     // delete rule at all).
     match /escrowOrders/{orderId} {
+      // Any admin used to be able to read every order here -- including
+      // buyer/seller names, payment phone numbers, reference numbers, and
+      // proof screenshots -- straight from the API, bypassing the
+      // admin-payments.html page's own hasSection("payments") gate entirely.
+      // Narrowed to match that gate for real: the order's own buyer/seller,
+      // or an admin explicitly granted "payments" (owner always has it).
       allow read: if isSignedIn() &&
-        (request.auth.uid == resource.data.buyerId || request.auth.uid == resource.data.sellerId || isAdmin());
+        (request.auth.uid == resource.data.buyerId || request.auth.uid == resource.data.sellerId || isOwnerOrGranted('payments'));
 
       // Only a real participant of the actual accepted offer this order
       // references may create it, and buyerId/sellerId must be the chat's
@@ -367,16 +380,28 @@ service cloud.firestore {
       // (so it can never collide with a real chatId/messageId pair from the
       // first branch), and the sellerId is checked against the product's
       // own real owner, not just trusted from the client's claim.
+      // Both branches also cross-check quantity/pricePerUnit against the
+      // real accepted offer (or the real product price) and require
+      // totalAmount to actually equal quantity * pricePerUnit -- the normal
+      // app UI always computes these correctly, but nothing used to stop a
+      // scripted request from forging a mismatched (e.g. much lower)
+      // totalAmount here, which every other part of the flow -- the
+      // buyer/seller's own totals, the admin's payments queue, the seller's
+      // payment-claimed notification -- would then trust at face value.
       allow create: if isSignedIn() &&
         request.resource.data.buyerId != request.resource.data.sellerId &&
         (request.auth.uid == request.resource.data.buyerId || request.auth.uid == request.resource.data.sellerId) &&
         request.resource.data.status == 'awaiting_payment' &&
+        request.resource.data.quantity > 0 &&
+        request.resource.data.totalAmount == request.resource.data.quantity * request.resource.data.pricePerUnit &&
         (
           (
             request.resource.data.chatId != null &&
             get(/databases/$(database)/documents/chats/$(request.resource.data.chatId)).data.participantIds
               .hasAll([request.resource.data.buyerId, request.resource.data.sellerId]) &&
-            get(/databases/$(database)/documents/chats/$(request.resource.data.chatId)/messages/$(orderId)).data.offer.status == 'accepted'
+            get(/databases/$(database)/documents/chats/$(request.resource.data.chatId)/messages/$(orderId)).data.offer.status == 'accepted' &&
+            get(/databases/$(database)/documents/chats/$(request.resource.data.chatId)/messages/$(orderId)).data.offer.quantity == request.resource.data.quantity &&
+            get(/databases/$(database)/documents/chats/$(request.resource.data.chatId)/messages/$(orderId)).data.offer.pricePerUnit == request.resource.data.pricePerUnit
           )
           ||
           (
@@ -384,7 +409,8 @@ service cloud.firestore {
             orderId.matches('^direct_.*$') &&
             request.auth.uid == request.resource.data.buyerId &&
             get(/databases/$(database)/documents/settings/chatDisabled).data.get('active', false) == true &&
-            get(/databases/$(database)/documents/products/$(request.resource.data.productId)).data.ownerId == request.resource.data.sellerId
+            get(/databases/$(database)/documents/products/$(request.resource.data.productId)).data.ownerId == request.resource.data.sellerId &&
+            get(/databases/$(database)/documents/products/$(request.resource.data.productId)).data.price == request.resource.data.pricePerUnit
           )
         );
 
