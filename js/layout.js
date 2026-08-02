@@ -2,7 +2,7 @@
 // switcher, footer year. Markup itself is repeated per HTML file (see
 // partials below used when authoring pages); this module only wires
 // behavior against fixed IDs present identically on every page.
-import { authState, favoritesState, cartState, notifState, subscribe, isUserThemeDark, setUserThemeDark, isThemeDark, applySiteDefaultDarkMode } from "./state.js";
+import { authState, favoritesState, cartState, notifState, subscribe, isUserThemeDark, setUserThemeDark, applySiteDefaultDarkMode } from "./state.js";
 import { Auth, SiteSettings, Notifications, OWNER_EMAIL } from "./firebase.js";
 import { t, getLocale, setLocale, initI18n, onLocaleChange } from "./i18n.js";
 import { icon, renderAvatar, wireDropdown, renderIcons, interpolate, showToast, btnClass, escapeHtml, safeUrl } from "./ui.js";
@@ -228,22 +228,21 @@ function renderNotifBell() {
   renderNotifPanel(mount.querySelector("#notif-content"), items);
 }
 
-// Admin mode always forces dark (see state.js's applyDarkMode) regardless
-// of the toggle -- showing an interactive control that can't actually
-// change anything, with an icon that (before this) reflected the user's
-// underlying preference instead of the real on-screen state, made it look
-// broken while in admin mode. Simplest real fix: hide it there entirely.
+// isUserThemeDark() is context-aware (see state.js) -- it reads/writes the
+// admin-mode preference while admin mode is active, and the regular site's
+// otherwise, so the same toggle stays live and meaningful in both places
+// and its icon always matches what's actually on screen.
 function updateThemeToggleIcon() {
   const btn = document.getElementById("theme-toggle");
-  if (!btn) return;
-  btn.style.display = authState.isAdminModeActive ? "none" : "";
-  btn.innerHTML = icon(isThemeDark() ? "sun" : "moon");
+  if (btn) btn.innerHTML = icon(isUserThemeDark() ? "sun" : "moon");
 }
 
 function wireThemeToggle() {
   const btn = document.getElementById("theme-toggle");
   if (!btn) return;
   updateThemeToggleIcon();
+  // Re-run once admin mode activates/deactivates -- that's when which
+  // stored preference is "current" switches out from under the icon.
   subscribe(updateThemeToggleIcon);
   btn.addEventListener("click", () => {
     setUserThemeDark(!isUserThemeDark());
