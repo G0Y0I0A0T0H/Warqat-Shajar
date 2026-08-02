@@ -763,14 +763,18 @@ export const Escrow = {
     );
   },
 
-  // referenceNumber + proofUrl are required by firestore.rules (not just
-  // the UI) -- a bare status claim with no evidence isn't enough for the
-  // owner/granted admin to actually verify a transfer happened.
-  async markPaymentClaimed(orderId, { method, referenceNumber, proofUrl }) {
+  // phoneNumber + referenceNumber + proofUrl are all required by
+  // firestore.rules (not just the UI) -- a bare status claim with no
+  // evidence isn't enough for the owner/granted admin to actually verify a
+  // transfer happened. phoneNumber is the number the buyer paid FROM (e.g.
+  // their Vodafone Cash number), which the seller needs to match the
+  // transfer in their own transaction history.
+  async markPaymentClaimed(orderId, { method, phoneNumber, referenceNumber, proofUrl }) {
     await updateDoc(doc(db, "escrowOrders", orderId), {
       status: "payment_claimed",
       paymentClaimedAt: serverTimestamp(),
       paymentMethodChosen: method || null,
+      paymentPhoneNumber: phoneNumber,
       paymentReferenceNumber: referenceNumber,
       paymentProofUrl: proofUrl,
     });

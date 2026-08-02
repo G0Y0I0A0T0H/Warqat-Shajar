@@ -626,7 +626,7 @@
     "newOrderRequest": { "title": "New order", "body": "{name} requested {product}" },
     "productAddedToCart": { "title": "Your product was added to a cart", "body": "{name} added {product} to their cart" },
     "newProductComment": { "title": "New comment", "body": "{name} commented on your product" },
-    "paymentClaimed": { "title": "Buyer sent the payment", "body": "{amount} EGP was sent for {product} via {method}, reference number: {reference}. Check your payments dashboard to confirm you received it." }
+    "paymentClaimed": { "title": "Buyer sent the payment", "body": "{amount} EGP was sent for {product} via {method} from phone number {phone}, reference number: {reference}. Check your payments dashboard to confirm you received it." }
   },
   "ads": {
     "title": "Ad Management",
@@ -742,6 +742,8 @@
     "methodInstapay": "InstaPay",
     "methodBankTransfer": "Bank transfer",
     "noPaymentMethodsYet": "Support hasn't set up a payment method yet. Please contact support before completing the order.",
+    "phoneNumberLabel": "Phone number you paid from",
+    "phoneNumberPlaceholder": "The phone number linked to the transfer",
     "referenceNumberLabel": "Transaction reference number",
     "referenceNumberPlaceholder": "The transfer's reference number from your bank/wallet app",
     "proofScreenshotLabel": "Transfer receipt screenshot",

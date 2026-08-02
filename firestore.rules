@@ -395,14 +395,16 @@ service cloud.firestore {
       // money movement", per the vulnerabilities guide's principle of not
       // letting general admin access double as financial authority.
       allow update: if isSignedIn() && (
-        // Requires real proof, not just a status flip -- a reference number
-        // and a screenshot of the transfer, both non-empty -- so whoever
-        // reviews this (owner or a "payments"-granted admin) has something
-        // concrete to check, not just the buyer's bare word.
+        // Requires real proof, not just a status flip -- the phone number
+        // paid FROM, a reference number, and a screenshot of the transfer,
+        // all non-empty -- so whoever reviews this (owner or a
+        // "payments"-granted admin) has something concrete to check, not
+        // just the buyer's bare word.
         (request.auth.uid == resource.data.buyerId &&
          resource.data.status == 'awaiting_payment' &&
-         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'paymentClaimedAt', 'paymentMethodChosen', 'paymentReferenceNumber', 'paymentProofUrl']) &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'paymentClaimedAt', 'paymentMethodChosen', 'paymentPhoneNumber', 'paymentReferenceNumber', 'paymentProofUrl']) &&
          request.resource.data.status == 'payment_claimed' &&
+         request.resource.data.paymentPhoneNumber is string && request.resource.data.paymentPhoneNumber.size() > 0 &&
          request.resource.data.paymentReferenceNumber is string && request.resource.data.paymentReferenceNumber.size() > 0 &&
          request.resource.data.paymentProofUrl is string && request.resource.data.paymentProofUrl.size() > 0)
         ||
