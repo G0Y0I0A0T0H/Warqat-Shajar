@@ -88,19 +88,26 @@ function render() {
       // (dashboard-chat.js) -- this list has its own accept button so it
       // needs to do this too, not just the chat page.
       if (offer) {
-        Escrow.createOrder({
-          orderId: messageId,
-          chatId,
-          productId,
-          productLabel: offer.productLabel,
-          buyerId: offer.buyerId,
-          buyerName: offer.buyerName,
-          sellerId: profileRef.uid,
-          sellerName: profileRef.fullName,
-          quantity: offer.quantity,
-          unit: offer.unit,
-          pricePerUnit: offer.pricePerUnit,
-        }).catch(() => {});
+        try {
+          await Escrow.createOrder({
+            orderId: messageId,
+            chatId,
+            productId,
+            productLabel: offer.productLabel,
+            buyerId: offer.buyerId,
+            buyerName: offer.buyerName,
+            sellerId: profileRef.uid,
+            sellerName: profileRef.fullName,
+            quantity: offer.quantity,
+            unit: offer.unit,
+            pricePerUnit: offer.pricePerUnit,
+          });
+        } catch {
+          // The offer itself is already accepted at this point -- this only
+          // means the payment tracker failed to set up, which would
+          // otherwise fail completely silently (no order row, no error).
+          alert(t("escrow.createOrderFailed"));
+        }
       }
       await reload();
     });

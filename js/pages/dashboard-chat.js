@@ -298,16 +298,23 @@ async function acceptOffer(messageId) {
   if (offerMsg) Notifications.create({ uid: offerMsg.senderId, key: "offerAccepted", params: { name: profile.fullName } }).catch(() => {});
 
   if (dealParties && offerMsg) {
-    Escrow.createOrder({
-      orderId: messageId,
-      chatId,
-      productId: chat.contextId,
-      productLabel: chat.contextLabel,
-      ...dealParties,
-      quantity: offerMsg.offer.quantity,
-      unit: offerMsg.offer.unit,
-      pricePerUnit: offerMsg.offer.pricePerUnit,
-    }).catch(() => {});
+    try {
+      await Escrow.createOrder({
+        orderId: messageId,
+        chatId,
+        productId: chat.contextId,
+        productLabel: chat.contextLabel,
+        ...dealParties,
+        quantity: offerMsg.offer.quantity,
+        unit: offerMsg.offer.unit,
+        pricePerUnit: offerMsg.offer.pricePerUnit,
+      });
+    } catch {
+      // The offer itself is already accepted at this point -- this only
+      // means the payment tracker failed to set up, which would otherwise
+      // fail completely silently (no order row, no error, nothing).
+      alert(t("escrow.createOrderFailed"));
+    }
   }
 }
 

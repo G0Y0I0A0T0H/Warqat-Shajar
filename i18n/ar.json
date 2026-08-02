@@ -742,6 +742,7 @@
     "methodInstapay": "إنستاباي",
     "methodBankTransfer": "تحويل بنكي",
     "noPaymentMethodsYet": "الإدارة لسه ما حددتش وسيلة دفع. تواصل مع الدعم الفني قبل ما تكمل الطلب.",
+    "createOrderFailed": "العرض اتقبل، بس حصلت مشكلة في إنشاء تتبع الطلب. تواصل مع الدعم الفني عشان نظبطها.",
     "phoneNumberLabel": "رقم التليفون اللي حوّلت منه",
     "phoneNumberPlaceholder": "رقم التليفون المرتبط بعملية التحويل",
     "referenceNumberLabel": "رقم العملية",
