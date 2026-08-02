@@ -626,7 +626,7 @@
     "newOrderRequest": { "title": "طلب جديد", "body": "{name} طلب {product}" },
     "productAddedToCart": { "title": "منتجك بالسلة", "body": "{name} ضاف {product} لسلته" },
     "newProductComment": { "title": "تعليق جديد", "body": "{name} علّق على منتجك" },
-    "paymentClaimed": { "title": "المشتري حوّل الدفعة", "body": "تم تحويل {amount} جنيه مقابل {product} عبر {method}، رقم العملية: {reference}. تأكد من استلام المبلغ من لوحة إدارة الدفع." }
+    "paymentClaimed": { "title": "المشتري حوّل الدفعة", "body": "تم تحويل {amount} جنيه مقابل {product} عبر {method} من رقم {phone}، رقم العملية: {reference}. تأكد من استلام المبلغ من لوحة إدارة الدفع." }
   },
   "ads": {
     "title": "إدارة الإعلانات",
@@ -742,6 +742,8 @@
     "methodInstapay": "إنستاباي",
     "methodBankTransfer": "تحويل بنكي",
     "noPaymentMethodsYet": "الإدارة لسا ما حددت وسيلة دفع. تواصل مع الدعم الفني قبل ما تكمل الطلب.",
+    "phoneNumberLabel": "رقم الهاتف يلي حوّلت منه",
+    "phoneNumberPlaceholder": "رقم الهاتف المرتبط بعملية التحويل",
     "referenceNumberLabel": "رقم العملية",
     "referenceNumberPlaceholder": "رقم عملية التحويل يلي وصلك بعد الدفع",
     "proofScreenshotLabel": "صورة إيصال التحويل",

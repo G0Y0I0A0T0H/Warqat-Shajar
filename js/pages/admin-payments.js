@@ -52,8 +52,13 @@ function renderOrderRow(o) {
             : ""
         }
         ${
-          o.paymentReferenceNumber || o.paymentProofUrl
+          o.paymentPhoneNumber || o.paymentReferenceNumber || o.paymentProofUrl
             ? `<div class="payment-proof">
+                 ${
+                   o.paymentPhoneNumber
+                     ? `<div class="payment-proof-ref">${t("escrow.phoneNumberLabel")}: <span class="force-ltr" dir="ltr">${escapeHtml(o.paymentPhoneNumber)}</span></div>`
+                     : ""
+                 }
                  ${
                    o.paymentReferenceNumber
                      ? `<div class="payment-proof-ref">${t("escrow.referenceNumberLabel")}: <span class="force-ltr" dir="ltr">${escapeHtml(o.paymentReferenceNumber)}</span></div>`
