@@ -8,7 +8,7 @@ import { btnClass, badgeClass, icon, renderImageInput, showMessage, safeUrl, esc
 let contentEl;
 let siteImages = { heroImages: [], categoryImages: {}, logoUrl: null };
 let siteContent = { ar: {}, en: {} };
-let siteTheme = { primaryColor: null };
+let siteTheme = { primaryColor: null, defaultDarkMode: false };
 let socialLinks = { links: [] };
 let categoriesConfig = { extra: [], hidden: [] };
 
@@ -74,6 +74,14 @@ function render() {
         <span id="cursor-size-value" class="text-muted" style="min-width:3rem">${siteTheme.cursorSize || 40}px</span>
         <button type="button" class="${btnClass("default", "sm")}" id="save-cursor-size-btn">${t("branding.saveChanges", "Save")}</button>
         <span id="cursor-size-saved" class="success-text" style="display:none">${t("branding.saved")}</span>
+      </div>
+    </div>
+    <div>
+      <h3 class="card-title" style="font-size:0.95rem">${t("branding.defaultThemeTitle", "Default lighting mode")}</h3>
+      <p class="text-muted" style="font-size:0.8rem;margin-top:0.15rem">${t("branding.defaultThemeHint", "Applies to first-time visitors only -- anyone who has already used the sun/moon toggle keeps their own choice.")}</p>
+      <div style="display:flex;align-items:center;gap:0.5rem;margin-top:0.5rem">
+        <button type="button" class="${btnClass(!siteTheme.defaultDarkMode ? "default" : "outline", "sm")}" id="default-theme-light-btn">${t("branding.defaultThemeLight", "Always light")}</button>
+        <button type="button" class="${btnClass(siteTheme.defaultDarkMode ? "default" : "outline", "sm")}" id="default-theme-dark-btn">${t("branding.defaultThemeDark", "Always dark")}</button>
       </div>
     </div>
   `;
@@ -284,6 +292,14 @@ function render() {
     const saved = contentEl.querySelector("#cursor-size-saved");
     saved.style.display = "inline";
     setTimeout(() => (saved.style.display = "none"), 2500);
+  });
+
+  // Default lighting mode
+  contentEl.querySelector("#default-theme-light-btn").addEventListener("click", async () => {
+    await SiteSettings.updateDefaultDarkMode(false);
+  });
+  contentEl.querySelector("#default-theme-dark-btn").addEventListener("click", async () => {
+    await SiteSettings.updateDefaultDarkMode(true);
   });
 
   // Homepage text
