@@ -1278,7 +1278,7 @@ const paymentInfoRef = doc(db, "settings", "paymentInfo");
 // Kept in sync by hand with js/constants.js's CATEGORIES -- not imported
 // directly to avoid a circular import (constants.js already imports
 // SiteSettings from this file).
-const BUILTIN_CATEGORY_IDS = ["vegetables", "fruits", "wheat", "cotton", "barley", "rice", "organic", "animal-feed"];
+const BUILTIN_CATEGORY_IDS = ["vegetables", "fruits", "wheat", "cotton", "barley", "rice", "organic", "animal-feed", "nurseries"];
 
 function slugify(name) {
   return (
