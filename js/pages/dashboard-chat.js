@@ -2,6 +2,7 @@ import { initLayout } from "../layout.js";
 import { guardDashboard } from "../dashboard-shell.js";
 import { t, onLocaleChange } from "../i18n.js";
 import { Chat, Products, Reviews, PhoneAttempts, Notifications, SiteSettings, Escrow } from "../firebase.js";
+import { UNITS, unitLabelKey } from "../constants.js";
 import { authState } from "../state.js";
 import { btnClass, badgeClass, icon, initReportDialog, renderStarButtons, showMessage, containsPhoneNumber, escapeHtml, renderEscrowActions } from "../ui.js";
 import { initHelpTour } from "../help-tour.js";
@@ -227,7 +228,7 @@ function renderMessages() {
               <div class="card offer-card">
                 <span class="${badgeClass(o.status === "accepted" ? "default" : "outline")}" style="align-self:flex-start">${t(STATUS_KEY[o.status] || STATUS_KEY.pending)}</span>
                 <dl class="offer-grid">
-                  <dt>${t("chat.offerQuantity")}</dt><dd>${o.quantity} ${o.unit}</dd>
+                  <dt>${t("chat.offerQuantity")}</dt><dd>${o.quantity} ${t(unitLabelKey(o.unit))}</dd>
                   <dt>${t("chat.offerPrice")}</dt><dd>${o.pricePerUnit}</dd>
                   <dt class="offer-total">${t("chat.offerTotal")}</dt><dd class="offer-total">${o.totalPrice}</dd>
                 </dl>
@@ -329,8 +330,7 @@ function renderOfferForm() {
       <div class="offer-form-grid">
         <input class="input" id="of-quantity" type="number" min="0" placeholder="${t("chat.offerQuantity")}" value="${initial.quantity ?? ""}">
         <select class="select" id="of-unit">
-          <option value="kg" ${initial.unit !== "ton" ? "selected" : ""}>${t("products.unitKg")}</option>
-          <option value="ton" ${initial.unit === "ton" ? "selected" : ""}>${t("products.unitTon")}</option>
+          ${UNITS.map((u) => `<option value="${u}" ${(initial.unit || "kg") === u ? "selected" : ""}>${t(unitLabelKey(u))}</option>`).join("")}
         </select>
         <input class="input" id="of-price" type="number" min="0" step="0.01" placeholder="${t("chat.offerPrice")}" value="${initial.pricePerUnit ?? ""}">
       </div>

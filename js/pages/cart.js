@@ -1,7 +1,7 @@
 import { initLayout } from "../layout.js";
 import { t, getLocale, onLocaleChange } from "../i18n.js";
 import { Products, Chat, Notifications, SiteSettings, Escrow } from "../firebase.js";
-import { categoryLabelById, onCategoriesChange } from "../constants.js";
+import { categoryLabelById, onCategoriesChange, unitLabelKey } from "../constants.js";
 import { authState, cartState, subscribe, updateCartQuantity, removeFromCart } from "../state.js";
 import { btnClass, icon, showMessage, escapeHtml, safeUrl, escrowStepperHTML, renderEscrowActions } from "../ui.js";
 
@@ -81,7 +81,7 @@ async function render() {
       const product = productCache.get(productId);
       const quantity = cartState.items.get(productId);
       if (!product) return "";
-      const unitLabel = t(product.unit === "kg" ? "products.unitKg" : "products.unitTon");
+      const unitLabel = t(unitLabelKey(product.unit));
       const subtotal = quantity * product.price;
       const photo = product.photoUrls?.[0];
 
