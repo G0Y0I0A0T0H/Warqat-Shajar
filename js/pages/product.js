@@ -1,7 +1,7 @@
 import { initLayout } from "../layout.js";
 import { t, getLocale, onLocaleChange } from "../i18n.js";
 import { Products, Chat, Ads, Notifications, SiteSettings, Escrow } from "../firebase.js";
-import { governorateLabel, categoryLabelById, onCategoriesChange, computeFreshness } from "../constants.js";
+import { governorateLabel, categoryLabelById, onCategoriesChange, computeFreshness, unitLabelKey } from "../constants.js";
 import { renderAdSlot, favoriteButtonHTML, wireFavoriteButtons, initReportDialog, initProductComments, icon, showMessage, escapeHtml, safeUrl, badgeClass } from "../ui.js";
 import { authState, subscribe, addToCart } from "../state.js";
 
@@ -104,7 +104,7 @@ function renderFreshnessBadge(p) {
 function render() {
   if (!product) return;
   const isOwner = authState.user?.uid === product.ownerId;
-  const unitLabel = t(product.unit === "kg" ? "products.unitKg" : "products.unitTon");
+  const unitLabel = t(unitLabelKey(product.unit));
 
   detailEl.innerHTML = `
     <div class="product-gallery">

@@ -2,7 +2,7 @@ import { initLayout } from "../layout.js";
 import { guardDashboard } from "../dashboard-shell.js";
 import { t, getLocale, onLocaleChange } from "../i18n.js";
 import { Products } from "../firebase.js";
-import { categoryLabelById, onCategoriesChange } from "../constants.js";
+import { categoryLabelById, onCategoriesChange, unitLabelKey } from "../constants.js";
 import { badgeClass, btnClass, icon, safeUrl, escapeHtml } from "../ui.js";
 import { initHelpTour } from "../help-tour.js";
 
@@ -30,7 +30,7 @@ function render(products) {
             ${p.title ? `<span class="${badgeClass("outline")}" style="font-size:0.7rem">${categoryLabelById(p.category, getLocale())}</span>` : ""}
             <span class="${badgeClass(p.status === "active" ? "default" : "secondary")}">${t(p.status === "active" ? "products.statusActive" : "products.statusPaused")}</span>
           </div>
-          <div class="text-muted" style="font-size:0.875rem">${p.quantity} ${t(p.unit === "kg" ? "products.unitKg" : "products.unitTon")} — ${p.price} ${t("featured.perKg")}</div>
+          <div class="text-muted" style="font-size:0.875rem">${p.quantity} ${t(unitLabelKey(p.unit))} — ${p.price} ${t("featured.perKg")}</div>
           <div class="text-muted" style="font-size:0.8rem">${p.viewsCount || 0} ${t("products.viewsLabel")} · ${p.offersCount || 0} ${t("products.offersLabel")}</div>
         </div>
         <div class="list-row-actions">

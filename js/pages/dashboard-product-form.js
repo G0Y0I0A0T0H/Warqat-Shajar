@@ -3,7 +3,7 @@
 // (existingProduct = null) and dashboard-product-edit.js (existingProduct set).
 import { t, getLocale, onLocaleChange, refreshTranslations } from "../i18n.js";
 import { Products, PhoneAttempts, Notifications } from "../firebase.js";
-import { mergeCategories, categoryLabelById, onCategoriesChange } from "../constants.js";
+import { mergeCategories, categoryLabelById, onCategoriesChange, UNITS, unitLabelKey } from "../constants.js";
 import { populateGovernorateSelect } from "./auth-shared.js";
 import { renderStarButtons, showMessage, renderImageInput, containsPhoneNumber, safeUrl, escapeHtml } from "../ui.js";
 
@@ -100,10 +100,7 @@ export function renderProductForm(mountEl, profile, existingProduct) {
   }
   function renderUnitOptions() {
     const current = unitSelect.value || existingProduct?.unit || "kg";
-    unitSelect.innerHTML = `
-      <option value="kg">${t("products.unitKg")}</option>
-      <option value="ton">${t("products.unitTon")}</option>
-    `;
+    unitSelect.innerHTML = UNITS.map((u) => `<option value="${u}">${t(unitLabelKey(u))}</option>`).join("");
     unitSelect.value = current;
   }
   renderCategoryOptions();

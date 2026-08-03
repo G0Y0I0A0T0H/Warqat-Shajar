@@ -321,6 +321,7 @@
     "unitLabel": "Unit",
     "unitKg": "kg",
     "unitTon": "ton",
+    "unitPiece": "Piece",
     "qualityLabel": "Quality Rating (self-declared)",
     "descriptionLabel": "Description",
     "quantityLabel": "Available Quantity",

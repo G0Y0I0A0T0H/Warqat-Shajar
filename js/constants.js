@@ -17,6 +17,14 @@ export const CATEGORIES = [
 
 export const ACCOUNT_TYPES = ["farmer", "trader", "factory", "consumer"];
 
+// Product unit of sale -- weight-based (kg/ton) for crops, or per-item for
+// things like nursery seedlings/potted plants that aren't priced by weight.
+export const UNITS = ["kg", "ton", "piece"];
+const UNIT_LABEL_KEYS = { kg: "products.unitKg", ton: "products.unitTon", piece: "products.unitPiece" };
+export function unitLabelKey(unit) {
+  return UNIT_LABEL_KEYS[unit] || UNIT_LABEL_KEYS.kg;
+}
+
 export const GOVERNORATES = [
   { id: "cairo", ar: "القاهرة", en: "Cairo" },
   { id: "giza", ar: "الجيزة", en: "Giza" },
