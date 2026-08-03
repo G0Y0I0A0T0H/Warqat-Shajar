@@ -5,7 +5,7 @@
 import { authState, favoritesState, toggleFavorite } from "./state.js";
 import { t, getLocale } from "./i18n.js";
 import { Reports, Comments, SiteSettings, Storage, PhoneAttempts, Notifications, Escrow } from "./firebase.js";
-import { computeFreshness } from "./constants.js";
+import { computeFreshness, unitLabelKey } from "./constants.js";
 
 export function btnClass(variant = "default", size = "default", extra = "") {
   const variantClass = {
@@ -648,8 +648,9 @@ export function renderEscrowActions(containerEl, { order, viewerUid, paymentInfo
   });
 }
 
-export function productCardHTML(product, categoryLabel, governorateLabel, perKgLabel) {
+export function productCardHTML(product, categoryLabel, governorateLabel) {
   const photo = product.photoUrls?.[0];
+  const priceUnitLabel = `${t("products.currency")}/${t(unitLabelKey(product.unit))}`;
   const freshness = product.harvestDate ? computeFreshness(product.harvestDate, product.category) : null;
   // Older products created before the title field existed fall back to
   // showing the category as the heading, same as before.
@@ -667,7 +668,7 @@ export function productCardHTML(product, categoryLabel, governorateLabel, perKgL
         </div>
         ${product.title ? `<span class="${badgeClass("outline")}" style="font-size:0.7rem">${categoryLabel}</span>` : ""}
         <p class="product-card-gov">${governorateLabel}</p>
-        <p class="product-card-price">${product.price} ${perKgLabel}</p>
+        <p class="product-card-price">${product.price} ${priceUnitLabel}</p>
         ${freshness ? `<span class="product-card-freshness" style="color:${freshness.color}">${t("freshness.label")}: ${freshness.score}/10</span>` : ""}
       </div>
     </a>

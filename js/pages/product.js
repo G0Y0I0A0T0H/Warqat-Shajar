@@ -121,7 +121,7 @@ function render() {
       </div>
       ${product.title ? `<span class="${badgeClass("outline")}" style="margin-top:0.35rem;display:inline-block">${categoryLabelById(product.category, getLocale())}</span>` : ""}
       <p class="text-muted" style="display:flex;align-items:center;gap:0.25rem;margin-top:0.25rem;font-size:0.875rem">${icon("map-pin")} ${governorateLabel(product.governorate, getLocale())}</p>
-      <p class="product-detail-price" style="margin-top:1rem">${product.price} ${t("featured.perKg")}</p>
+      <p class="product-detail-price" style="margin-top:1rem">${product.price} ${t("products.currency")}/${unitLabel}</p>
       <div class="product-detail-stats" style="margin-top:1rem">
         <div>
           <div class="product-detail-stat-label">${t("products.quantityLabel")}</div>
