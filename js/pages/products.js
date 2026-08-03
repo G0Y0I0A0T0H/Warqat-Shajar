@@ -66,7 +66,7 @@ async function loadProducts() {
   }
 
   listEl.innerHTML = `<div class="product-grid">${products
-    .map((p) => productCardHTML(p, categoryLabelById(p.category, getLocale()), governorateLabel(p.governorate, getLocale()), t("featured.perKg", "EGP/kg")))
+    .map((p) => productCardHTML(p, categoryLabelById(p.category, getLocale()), governorateLabel(p.governorate, getLocale())))
     .join("")}</div>`;
   wireFavoriteButtons(listEl);
 }

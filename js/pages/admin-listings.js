@@ -2,7 +2,7 @@ import { initLayout } from "../layout.js";
 import { guardAdmin } from "../admin-shell.js";
 import { t, getLocale, onLocaleChange } from "../i18n.js";
 import { Admin } from "../firebase.js";
-import { categoryLabelById, onCategoriesChange } from "../constants.js";
+import { categoryLabelById, onCategoriesChange, unitLabelKey } from "../constants.js";
 import { btnClass, icon, escapeHtml, safeUrl } from "../ui.js";
 
 let contentEl;
@@ -24,7 +24,7 @@ function render() {
                 </div>
                 <div class="list-row-main">
                   <div style="font-weight:600">${p.title ? escapeHtml(p.title) : categoryLabelById(p.category, getLocale())}</div>
-                  <div class="text-muted" style="font-size:0.8rem">${p.title ? categoryLabelById(p.category, getLocale()) + " · " : ""}${escapeHtml(p.ownerName)} — ${p.price} ${t("featured.perKg")}</div>
+                  <div class="text-muted" style="font-size:0.8rem">${p.title ? categoryLabelById(p.category, getLocale()) + " · " : ""}${escapeHtml(p.ownerName)} — ${p.price} ${t("products.currency")}/${t(unitLabelKey(p.unit))}</div>
                 </div>
                 <a href="product.html?id=${p.id}" class="${btnClass("outline", "sm")}">${t("admin.viewProduct")}</a>
                 <button type="button" class="${btnClass("destructive", "icon-sm")}" data-remove="${p.id}" aria-label="${t("admin.removeListing")}">${icon("trash")}</button>

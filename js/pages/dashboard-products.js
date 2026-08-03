@@ -30,7 +30,7 @@ function render(products) {
             ${p.title ? `<span class="${badgeClass("outline")}" style="font-size:0.7rem">${categoryLabelById(p.category, getLocale())}</span>` : ""}
             <span class="${badgeClass(p.status === "active" ? "default" : "secondary")}">${t(p.status === "active" ? "products.statusActive" : "products.statusPaused")}</span>
           </div>
-          <div class="text-muted" style="font-size:0.875rem">${p.quantity} ${t(unitLabelKey(p.unit))} — ${p.price} ${t("featured.perKg")}</div>
+          <div class="text-muted" style="font-size:0.875rem">${p.quantity} ${t(unitLabelKey(p.unit))} — ${p.price} ${t("products.currency")}/${t(unitLabelKey(p.unit))}</div>
           <div class="text-muted" style="font-size:0.8rem">${p.viewsCount || 0} ${t("products.viewsLabel")} · ${p.offersCount || 0} ${t("products.offersLabel")}</div>
         </div>
         <div class="list-row-actions">
