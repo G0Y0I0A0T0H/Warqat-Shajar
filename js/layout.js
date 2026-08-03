@@ -156,8 +156,8 @@ function renderNotifPanel(panelEl, items) {
               .map(
                 (n) => `
             <a href="${safeUrl(n.link) || "#"}" class="notif-row ${!n.read ? "is-unread" : ""}" data-notif-id="${n.id}">
-              <div class="notif-row-title">${t(`notif.${n.key}.title`)}</div>
-              <div class="notif-row-body">${interpolate(t(`notif.${n.key}.body`), n.params)}</div>
+              <div class="notif-row-title">${escapeHtml(t(`notif.${n.key}.title`))}</div>
+              <div class="notif-row-body">${interpolate(escapeHtml(t(`notif.${n.key}.body`)), n.params)}</div>
               <div class="notif-row-time">${formatNotifTime(n.createdAt)}</div>
             </a>
           `,
