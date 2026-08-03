@@ -124,10 +124,13 @@ service cloud.firestore {
       allow create: if isSignedIn() && request.auth.uid == uid;
       allow update: if isOwner() ||
         (
-          // Only the owner account may ever set photoURL -- an admin
-          // moderating another user's doc still can't touch it here.
+          // The only thing the app's own admin UI ever does to another
+          // user's doc is suspend/ban/reactivate (Admin.setUserStatus) --
+          // narrowed to exactly that, not "any field but photoURL", so a
+          // compromised or rogue admin account can't rewrite someone's
+          // phone/email/accountType/rating directly.
           isAdmin() && resource.data.email != 'sgyiath@gmail.com' &&
-          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['photoURL'])
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'suspendedUntil'])
         ) || (
         isSignedIn() && request.auth.uid == uid &&
         !request.resource.data.diff(resource.data).affectedKeys().hasAny(userProtectedFields())
@@ -502,7 +505,13 @@ service cloud.firestore {
     match /productComments/{commentId} {
       allow read: if true;
       allow create: if isActiveUser() && request.resource.data.uid == request.auth.uid;
-      allow update, delete: if isSignedIn() &&
+      // No self-edit feature exists in the app -- update was previously open
+      // to the comment's own author too, which only ever mattered as a way
+      // to rewrite uid/productId on an existing comment (e.g. reassigning
+      // authorship to someone else, or moving it onto a different product),
+      // never a real editing use case. Admin-only, matching reviews below.
+      allow update: if isAdmin();
+      allow delete: if isSignedIn() &&
         (resource.data.uid == request.auth.uid || isAdmin());
     }
 
@@ -515,7 +524,11 @@ service cloud.firestore {
 
     // A single shared room for every admin — never exposed to regular users.
     match /adminChats/{messageId} {
-      allow read, create: if isAdmin();
+      allow read: if isAdmin();
+      // senderId must be the real caller -- without this, any admin could
+      // post a message tagged with a DIFFERENT admin's uid, impersonating
+      // them in the shared team room.
+      allow create: if isAdmin() && request.resource.data.senderId == request.auth.uid;
       // Owner can always moderate; a message's own sender can also edit/
       // delete their own message any time -- an earlier version limited
       // this to a 15-minute window, but that just meant the delete button

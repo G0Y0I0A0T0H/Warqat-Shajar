@@ -197,6 +197,14 @@ SiteSettings.subscribeSiteImages((images) => {
   toastBadgeUrl = images.logoUrl || "images/logo-icon.png";
 });
 
+// `key` comes from a Firestore doc any signed-in user can write into anyone
+// else's notifications (see firestore.rules) -- there's no fixed enum of
+// valid keys enforced server-side, so an attacker can set key to arbitrary
+// text. t()'s own fallback for an unmatched key is the raw key itself (see
+// i18n.js), which would otherwise land straight in innerHTML unescaped.
+// escapeHtml() here is what keeps that "unknown key" path from being a
+// stored XSS reaching every other signed-in user (and admins) who gets
+// this toast.
 export function showToast({ key, params, link }) {
   const container = getToastContainer();
   const toast = document.createElement("div");
@@ -205,8 +213,8 @@ export function showToast({ key, params, link }) {
     <div class="toast-leaf-accent"></div>
     <img src="${safeUrl(toastBadgeUrl)}" class="toast-badge" alt="">
     <div class="toast-body">
-      <div class="toast-title">${t(`notif.${key}.title`)}<span class="toast-dot"></span></div>
-      <div class="toast-subtitle">${interpolate(t(`notif.${key}.body`), params)}</div>
+      <div class="toast-title">${escapeHtml(t(`notif.${key}.title`))}<span class="toast-dot"></span></div>
+      <div class="toast-subtitle">${interpolate(escapeHtml(t(`notif.${key}.body`)), params)}</div>
     </div>
   `;
   // No separate close button — the shape's tapered corner leaves no safe spot

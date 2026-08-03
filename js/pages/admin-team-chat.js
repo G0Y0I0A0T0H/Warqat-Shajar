@@ -143,9 +143,9 @@ function renderMessages() {
                   </div>
                 </div>`;
             } else if (fileUrl && isAudio) {
-              body = `<audio controls src="${fileUrl}" style="max-width:14rem"></audio>`;
+              body = `<audio controls src="${safeUrl(fileUrl)}" style="max-width:14rem"></audio>`;
             } else if (fileUrl) {
-              body = `<a href="${fileUrl}" target="_blank" rel="noopener noreferrer"><img src="${fileUrl}" alt="${escapeHtml(m.fileName || "")}" style="max-width:12rem;max-height:12rem;border-radius:var(--radius-lg);display:block"></a>`;
+              body = `<a href="${safeUrl(fileUrl)}" target="_blank" rel="noopener noreferrer"><img src="${safeUrl(fileUrl)}" alt="${escapeHtml(m.fileName || "")}" style="max-width:12rem;max-height:12rem;border-radius:var(--radius-lg);display:block"></a>`;
             } else {
               body = escapeHtml(m.text);
             }
