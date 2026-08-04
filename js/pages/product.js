@@ -101,6 +101,21 @@ function renderFreshnessBadge(p) {
   `;
 }
 
+function buildShareData(p) {
+  const unitLabel = t(unitLabelKey(p.unit));
+  const title = p.title || categoryLabelById(p.category, getLocale());
+  const lines = [
+    title,
+    `${t("products.priceLabel")}: ${p.price} ${t("products.currency")}/${unitLabel}`,
+    `${t("products.quantityLabel")}: ${p.quantity} ${unitLabel}`,
+    `${t("share.sellerLabel")}: ${p.ownerName}`,
+  ];
+  if (p.description) {
+    lines.push(p.description.length > 140 ? `${p.description.slice(0, 140)}…` : p.description);
+  }
+  return { url: location.href, title, summary: lines.join("\n") };
+}
+
 function render() {
   if (!product) return;
   const isOwner = authState.user?.uid === product.ownerId;
@@ -121,7 +136,7 @@ function render() {
       </div>
       ${product.title ? `<span class="${badgeClass("outline")}" style="margin-top:0.35rem;display:inline-block">${categoryLabelById(product.category, getLocale())}</span>` : ""}
       <p class="text-muted" style="display:flex;align-items:center;gap:0.25rem;margin-top:0.25rem;font-size:0.875rem">${icon("map-pin")} ${governorateLabel(product.governorate, getLocale())}</p>
-      <div style="margin-top:0.75rem">${shareButtonsHTML(location.href, product.title || categoryLabelById(product.category, getLocale()))}</div>
+      <div style="margin-top:0.75rem">${shareButtonsHTML(buildShareData(product))}</div>
       <p class="product-detail-price" style="margin-top:1rem">${product.price} ${t("products.currency")}/${unitLabel}</p>
       <div class="product-detail-stats" style="margin-top:1rem">
         <div>

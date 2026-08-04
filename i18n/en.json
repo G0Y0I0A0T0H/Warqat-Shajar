@@ -158,7 +158,8 @@
     "copyLink": "Copy link",
     "copied": "Copied",
     "share": "Share",
-    "email": "Email"
+    "email": "Email",
+    "sellerLabel": "Seller"
   },
   "userMenu": {
     "dashboard": "Dashboard",
