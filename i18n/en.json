@@ -154,6 +154,12 @@
   "language": {
     "switchTo": "العربية"
   },
+  "share": {
+    "copyLink": "Copy link",
+    "copied": "Copied",
+    "share": "Share",
+    "email": "Email"
+  },
   "userMenu": {
     "dashboard": "Dashboard",
     "profile": "Profile",
@@ -203,6 +209,14 @@
       "subtitle": "Just a few more details before you start using Waraqat Shajar",
       "submit": "Save and Continue"
     },
+    "verify": {
+      "title": "Confirm your email",
+      "subtitle": "We sent a 6-character verification code to {email}. Enter it below to finish creating your account.",
+      "codeLabel": "Verification code",
+      "resend": "Resend code",
+      "resent": "A new code was sent to your email",
+      "confirm": "Confirm and create account"
+    },
     "errors": {
       "generic": "Something went wrong, please try again",
       "invalidEmail": "This email address is invalid",
@@ -214,6 +228,10 @@
       "accountTypeRequired": "Please select an account type",
       "nationalIdInvalid": "National ID number must be exactly 14 digits",
       "idCardPhotoRequired": "Please upload a photo of your national ID card",
+      "emailSendFailed": "Couldn't send the verification code, check your connection and try again",
+      "codeRequired": "Please enter the code we sent you",
+      "codeInvalid": "That code is incorrect",
+      "codeExpired": "This code has expired, press \"Resend code\"",
       "identitySubmitFailed": "Your account was created, but there was a problem uploading your identity verification data. Please contact us from the \"Contact Us\" page to complete it.",
       "unauthorizedDomain": "Google sign-in isn't enabled on this site yet — try again later or use email instead",
       "popupBlocked": "Your browser blocked the sign-in window — allow pop-ups for this site and try again",

@@ -110,6 +110,8 @@ const ICON_PATHS = {
   "book-open": '<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2Z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7Z"/>',
   verified: '<circle cx="12" cy="12" r="10"/><path d="m8 12 3 3 5-6"/>',
   "credit-card": '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/>',
+  share: '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.59 13.51 6.83 3.98"/><path d="m15.41 6.51-6.82 3.98"/>',
+  send: '<path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/>',
 };
 
 export function icon(name, extraClass = "") {
@@ -321,6 +323,80 @@ export function wireFavoriteButtons(root = document) {
       await toggleFavorite(btn.dataset.productId);
       btn.classList.toggle("is-active", favoritesState.favoriteIds.has(btn.dataset.productId));
     });
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Copy-link + share — product detail page. url/title only ever flow through
+// encodeURIComponent (share links) or the clipboard API, never into
+// innerHTML, so no escaping is needed even though title is farmer-entered.
+// ---------------------------------------------------------------------------
+function buildShareUrl(platform, url, title) {
+  const u = encodeURIComponent(url);
+  const text = encodeURIComponent(title || "");
+  switch (platform) {
+    case "whatsapp":
+      return `https://wa.me/?text=${text}%20${u}`;
+    case "facebook":
+      return `https://www.facebook.com/sharer/sharer.php?u=${u}`;
+    case "x":
+      return `https://twitter.com/intent/tweet?url=${u}&text=${text}`;
+    case "telegram":
+      return `https://t.me/share/url?url=${u}&text=${text}`;
+    case "email":
+      return `mailto:?subject=${text}&body=${u}`;
+    default:
+      return url;
+  }
+}
+
+export function shareButtonsHTML(url, title) {
+  return `
+    <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+      <button type="button" class="btn btn-outline btn-sm" data-copy-link="${escapeHtml(url)}">${icon("link")} ${t("share.copyLink")}</button>
+      <div class="dropdown">
+        <button type="button" class="btn btn-outline btn-sm" data-share-toggle>${icon("share")} ${t("share.share")}</button>
+        <div class="dropdown-content">
+          <a class="dropdown-item" href="${buildShareUrl("whatsapp", url, title)}" target="_blank" rel="noopener noreferrer">${icon("whatsapp")} WhatsApp</a>
+          <a class="dropdown-item" href="${buildShareUrl("facebook", url, title)}" target="_blank" rel="noopener noreferrer">${icon("facebook")} Facebook</a>
+          <a class="dropdown-item" href="${buildShareUrl("x", url, title)}" target="_blank" rel="noopener noreferrer">${icon("x")} X (Twitter)</a>
+          <a class="dropdown-item" href="${buildShareUrl("telegram", url, title)}" target="_blank" rel="noopener noreferrer">${icon("send")} Telegram</a>
+          <a class="dropdown-item" href="${buildShareUrl("email", url, title)}">${icon("mail")} ${t("share.email")}</a>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function copyToClipboard(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand("copy");
+    document.body.removeChild(ta);
+  }
+}
+
+export function wireShareButtons(root = document) {
+  root.querySelectorAll("[data-copy-link]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      await copyToClipboard(btn.dataset.copyLink);
+      const original = btn.innerHTML;
+      btn.innerHTML = `${icon("check")} ${t("share.copied")}`;
+      setTimeout(() => {
+        btn.innerHTML = original;
+      }, 1800);
+    });
+  });
+  root.querySelectorAll("[data-share-toggle]").forEach((toggleBtn) => {
+    const menu = toggleBtn.nextElementSibling;
+    if (menu) wireDropdown(toggleBtn, menu);
   });
 }
 

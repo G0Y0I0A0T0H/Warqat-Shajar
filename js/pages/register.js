@@ -1,9 +1,12 @@
 import { initLayout } from "../layout.js";
 import { t } from "../i18n.js";
 import { Auth, Profile, IdentityVerification } from "../firebase.js";
-import { showMessage } from "../ui.js";
+import { showMessage, openDialog, closeDialog, interpolate } from "../ui.js";
 import { ACCOUNT_TYPES } from "../constants.js";
 import { renderRoleSelector, populateGovernorateSelect, renderCategoryCheckboxGrid, updateCategoriesVisibility, wireIdCardPhotoPreview, isValidNationalId } from "./auth-shared.js";
+import { generateVerificationCode, sendVerificationCode, CODE_VALID_MINUTES } from "../email-verification.js";
+
+const RESEND_COOLDOWN_SECONDS = 60;
 
 async function main() {
   await initLayout();
@@ -35,6 +38,154 @@ async function main() {
   const formError = document.getElementById("form-error");
   const submitBtn = document.getElementById("submit-btn");
   const googleBtn = document.getElementById("google-btn");
+
+  // Email/password sign-up must prove the typed address is real before the
+  // Firebase Auth account is created, so a typo or a bot can't casually mint
+  // an account -- Google sign-up (below) skips all of this since Google
+  // already verified that address. The code is generated and checked
+  // entirely client-side (no backend here to hold it), which stops the
+  // common case but not someone reading it out of devtools/network tab --
+  // an accepted tradeoff given this is a static, backend-less site.
+  const verifyDialog = document.getElementById("verify-dialog");
+  const verifyOverlay = document.getElementById("verify-dialog-overlay");
+  const verifySubtitle = document.getElementById("verify-dialog-subtitle");
+  const verifyCodeInput = document.getElementById("verify-code-input");
+  const verifyError = document.getElementById("verify-error");
+  const verifyConfirmBtn = document.getElementById("verify-confirm-btn");
+  const verifyResendBtn = document.getElementById("verify-resend-btn");
+  const verifyCloseBtn = document.getElementById("verify-dialog-close");
+  const resendLabel = t("auth.verify.resend");
+
+  let pending = null; // { code, expiresAt, data }
+  let resendTimer = null;
+
+  function startResendCooldown() {
+    let secondsLeft = RESEND_COOLDOWN_SECONDS;
+    verifyResendBtn.disabled = true;
+    verifyResendBtn.textContent = `${resendLabel} (${secondsLeft})`;
+    clearInterval(resendTimer);
+    resendTimer = setInterval(() => {
+      secondsLeft -= 1;
+      if (secondsLeft <= 0) {
+        clearInterval(resendTimer);
+        verifyResendBtn.disabled = false;
+        verifyResendBtn.textContent = resendLabel;
+      } else {
+        verifyResendBtn.textContent = `${resendLabel} (${secondsLeft})`;
+      }
+    }, 1000);
+  }
+
+  function closeVerifyDialog() {
+    closeDialog(verifyDialog);
+    verifyOverlay.classList.remove("is-open");
+    clearInterval(resendTimer);
+    pending = null;
+    verifyCodeInput.value = "";
+    showMessage(verifyError, "");
+    submitBtn.disabled = false;
+  }
+
+  async function openVerifyDialog(registrationData) {
+    const code = generateVerificationCode();
+    pending = { code, expiresAt: Date.now() + CODE_VALID_MINUTES * 60 * 1000, data: registrationData };
+    verifySubtitle.textContent = interpolate(t("auth.verify.subtitle"), { email: registrationData.email });
+    verifyCodeInput.value = "";
+    showMessage(verifyError, "");
+    verifyResendBtn.disabled = true;
+    verifyResendBtn.textContent = resendLabel;
+    openDialog(verifyDialog);
+    verifyOverlay.classList.add("is-open");
+    try {
+      await sendVerificationCode(registrationData.email, code);
+      startResendCooldown();
+    } catch {
+      showMessage(verifyError, t("auth.errors.emailSendFailed"));
+      verifyResendBtn.disabled = false;
+    }
+    verifyCodeInput.focus();
+  }
+
+  async function finishRegistration(data) {
+    const user = await Auth.registerWithEmail(data.fullName, data.email, data.password);
+    await Profile.createUserProfile({
+      uid: user.uid,
+      fullName: data.fullName,
+      phone: data.phone,
+      governorate: data.governorate,
+      accountType: data.accountType,
+      crops: data.accountType === "farmer" ? data.categories : [],
+      sourcingCategories: data.accountType === "trader" || data.accountType === "factory" ? data.categories : [],
+      email: user.email,
+      photoURL: user.photoURL,
+      authProvider: "password",
+    });
+    try {
+      await IdentityVerification.submit(user.uid, { nationalId: data.nationalId, file: data.idCardPhoto });
+    } catch {
+      showMessage(formError, t("auth.errors.identitySubmitFailed"));
+    }
+    location.href = "index.html";
+  }
+
+  verifyConfirmBtn.addEventListener("click", async () => {
+    if (!pending) return;
+    showMessage(verifyError, "");
+    const typed = verifyCodeInput.value.trim().toUpperCase();
+    if (!typed) {
+      showMessage(verifyError, t("auth.errors.codeRequired"));
+      return;
+    }
+    if (Date.now() > pending.expiresAt) {
+      showMessage(verifyError, t("auth.errors.codeExpired"));
+      return;
+    }
+    if (typed !== pending.code) {
+      showMessage(verifyError, t("auth.errors.codeInvalid"));
+      return;
+    }
+
+    const data = pending.data;
+    verifyConfirmBtn.disabled = true;
+    try {
+      await finishRegistration(data);
+    } catch (error) {
+      closeVerifyDialog();
+      showMessage(formError, t(`auth.errors.${Auth.getAuthErrorKey(error)}`));
+    } finally {
+      verifyConfirmBtn.disabled = false;
+    }
+  });
+
+  verifyResendBtn.addEventListener("click", async () => {
+    if (!pending || verifyResendBtn.disabled) return;
+    const newCode = generateVerificationCode();
+    pending.code = newCode;
+    pending.expiresAt = Date.now() + CODE_VALID_MINUTES * 60 * 1000;
+    showMessage(verifyError, "");
+    verifyResendBtn.disabled = true;
+    try {
+      await sendVerificationCode(pending.data.email, newCode);
+      startResendCooldown();
+      showMessage(verifyError, t("auth.verify.resent"), "success");
+    } catch {
+      showMessage(verifyError, t("auth.errors.emailSendFailed"));
+      verifyResendBtn.disabled = false;
+    }
+  });
+
+  verifyCodeInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      verifyConfirmBtn.click();
+    }
+  });
+
+  verifyCloseBtn.addEventListener("click", closeVerifyDialog);
+  verifyOverlay.addEventListener("click", closeVerifyDialog);
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && verifyDialog.classList.contains("is-open")) closeVerifyDialog();
+  });
 
   try {
     const redirectedUser = await Auth.completeGoogleRedirect();
@@ -87,31 +238,7 @@ async function main() {
     }
 
     submitBtn.disabled = true;
-    try {
-      const user = await Auth.registerWithEmail(fullName, email, password);
-      await Profile.createUserProfile({
-        uid: user.uid,
-        fullName,
-        phone,
-        governorate,
-        accountType,
-        crops: accountType === "farmer" ? categories : [],
-        sourcingCategories: accountType === "trader" || accountType === "factory" ? categories : [],
-        email: user.email,
-        photoURL: user.photoURL,
-        authProvider: "password",
-      });
-      try {
-        await IdentityVerification.submit(user.uid, { nationalId, file: idCardPhoto });
-      } catch {
-        showMessage(formError, t("auth.errors.identitySubmitFailed"));
-      }
-      location.href = "index.html";
-    } catch (error) {
-      showMessage(formError, t(`auth.errors.${Auth.getAuthErrorKey(error)}`));
-    } finally {
-      submitBtn.disabled = false;
-    }
+    await openVerifyDialog({ fullName, phone, nationalId, idCardPhoto, email, password, governorate, accountType, categories });
   });
 
   googleBtn.addEventListener("click", async () => {
