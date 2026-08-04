@@ -12,6 +12,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@200..1000&family=Inter:wght@100..900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="cursor/cursor.css">
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 </head>
 <body>
   <div id="splash-screen" class="splash-screen is-hidden">
@@ -134,6 +135,24 @@
       </form>
     </div>
   </main>
+
+  <div class="dialog-overlay" id="verify-dialog-overlay"></div>
+  <div class="dialog-content" id="verify-dialog">
+    <button type="button" class="dialog-close btn btn-ghost btn-icon-sm" id="verify-dialog-close" aria-label="Close"><span data-icon="x"></span></button>
+    <div class="dialog-header">
+      <h3 class="dialog-title" data-i18n="auth.verify.title">Confirm your email</h3>
+      <p class="dialog-description" id="verify-dialog-subtitle"></p>
+    </div>
+    <div class="field">
+      <label class="label" for="verify-code-input" data-i18n="auth.verify.codeLabel">Verification code</label>
+      <input class="input force-ltr" id="verify-code-input" maxlength="6" autocomplete="one-time-code" dir="ltr" style="letter-spacing:0.3em;text-align:center;font-size:1.25rem;text-transform:uppercase">
+    </div>
+    <p id="verify-error" class="error-text" style="display:none"></p>
+    <div class="dialog-footer">
+      <button type="button" class="btn btn-outline" id="verify-resend-btn" data-i18n="auth.verify.resend">Resend code</button>
+      <button type="button" class="btn btn-default" id="verify-confirm-btn" data-i18n="auth.verify.confirm">Confirm and create account</button>
+    </div>
+  </div>
 
   <footer class="site-footer">
     <div class="container footer-grid">
