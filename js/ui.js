@@ -327,41 +327,30 @@ export function wireFavoriteButtons(root = document) {
 }
 
 // ---------------------------------------------------------------------------
-// Copy-link + share — product detail page. url/title only ever flow through
-// encodeURIComponent (share links) or the clipboard API, never into
-// innerHTML, so no escaping is needed even though title is farmer-entered.
+// Copy-link + share — product detail page. url/title/summary only ever flow
+// through encodeURIComponent (share links) or the clipboard API, never into
+// innerHTML, so no escaping is needed even though they're farmer-entered.
+//
+// Platforms differ in what they accept: WhatsApp has no separate url field
+// (the link has to be part of the text itself to be clickable), Telegram
+// takes url and text separately and shows its own link preview, Facebook's
+// sharer re-scrapes the target URL's own OG tags and ignores extra text, and
+// X's intent has a tight character budget so it only gets the short title,
+// not the full summary.
 // ---------------------------------------------------------------------------
-function buildShareUrl(platform, url, title) {
-  const u = encodeURIComponent(url);
-  const text = encodeURIComponent(title || "");
-  switch (platform) {
-    case "whatsapp":
-      return `https://wa.me/?text=${text}%20${u}`;
-    case "facebook":
-      return `https://www.facebook.com/sharer/sharer.php?u=${u}`;
-    case "x":
-      return `https://twitter.com/intent/tweet?url=${u}&text=${text}`;
-    case "telegram":
-      return `https://t.me/share/url?url=${u}&text=${text}`;
-    case "email":
-      return `mailto:?subject=${text}&body=${u}`;
-    default:
-      return url;
-  }
-}
-
-export function shareButtonsHTML(url, title) {
+export function shareButtonsHTML({ url, title, summary }) {
+  const body = summary ? `${summary}\n${url}` : url;
   return `
     <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
       <button type="button" class="btn btn-outline btn-sm" data-copy-link="${escapeHtml(url)}">${icon("link")} ${t("share.copyLink")}</button>
       <div class="dropdown">
         <button type="button" class="btn btn-outline btn-sm" data-share-toggle>${icon("share")} ${t("share.share")}</button>
         <div class="dropdown-content">
-          <a class="dropdown-item" href="${buildShareUrl("whatsapp", url, title)}" target="_blank" rel="noopener noreferrer">${icon("whatsapp")} WhatsApp</a>
-          <a class="dropdown-item" href="${buildShareUrl("facebook", url, title)}" target="_blank" rel="noopener noreferrer">${icon("facebook")} Facebook</a>
-          <a class="dropdown-item" href="${buildShareUrl("x", url, title)}" target="_blank" rel="noopener noreferrer">${icon("x")} X (Twitter)</a>
-          <a class="dropdown-item" href="${buildShareUrl("telegram", url, title)}" target="_blank" rel="noopener noreferrer">${icon("send")} Telegram</a>
-          <a class="dropdown-item" href="${buildShareUrl("email", url, title)}">${icon("mail")} ${t("share.email")}</a>
+          <a class="dropdown-item" href="https://wa.me/?text=${encodeURIComponent(body)}" target="_blank" rel="noopener noreferrer">${icon("whatsapp")} WhatsApp</a>
+          <a class="dropdown-item" href="https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}" target="_blank" rel="noopener noreferrer">${icon("facebook")} Facebook</a>
+          <a class="dropdown-item" href="https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${encodeURIComponent(title || "")}" target="_blank" rel="noopener noreferrer">${icon("x")} X (Twitter)</a>
+          <a class="dropdown-item" href="https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(summary || title || "")}" target="_blank" rel="noopener noreferrer">${icon("send")} Telegram</a>
+          <a class="dropdown-item" href="mailto:?subject=${encodeURIComponent(title || "")}&body=${encodeURIComponent(body)}">${icon("mail")} ${t("share.email")}</a>
         </div>
       </div>
     </div>

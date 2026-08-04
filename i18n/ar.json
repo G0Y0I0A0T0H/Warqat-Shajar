@@ -158,7 +158,8 @@
     "copyLink": "نسخ الرابط",
     "copied": "اتنسخ",
     "share": "مشاركة",
-    "email": "إيميل"
+    "email": "إيميل",
+    "sellerLabel": "البائع"
   },
   "userMenu": {
     "dashboard": "لوحة التحكم",
