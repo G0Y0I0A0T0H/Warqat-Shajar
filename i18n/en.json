@@ -154,6 +154,12 @@
   "language": {
     "switchTo": "العربية"
   },
+  "share": {
+    "copyLink": "Copy link",
+    "copied": "Copied",
+    "share": "Share",
+    "email": "Email"
+  },
   "userMenu": {
     "dashboard": "Dashboard",
     "profile": "Profile",

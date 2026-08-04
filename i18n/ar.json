@@ -154,6 +154,12 @@
   "language": {
     "switchTo": "English"
   },
+  "share": {
+    "copyLink": "نسخ الرابط",
+    "copied": "اتنسخ",
+    "share": "مشاركة",
+    "email": "إيميل"
+  },
   "userMenu": {
     "dashboard": "لوحة التحكم",
     "profile": "الملف الشخصي",

@@ -2,7 +2,7 @@ import { initLayout } from "../layout.js";
 import { t, getLocale, onLocaleChange } from "../i18n.js";
 import { Products, Chat, Ads, Notifications, SiteSettings, Escrow } from "../firebase.js";
 import { governorateLabel, categoryLabelById, onCategoriesChange, computeFreshness, unitLabelKey } from "../constants.js";
-import { renderAdSlot, favoriteButtonHTML, wireFavoriteButtons, initReportDialog, initProductComments, icon, showMessage, escapeHtml, safeUrl, badgeClass } from "../ui.js";
+import { renderAdSlot, favoriteButtonHTML, wireFavoriteButtons, shareButtonsHTML, wireShareButtons, initReportDialog, initProductComments, icon, showMessage, escapeHtml, safeUrl, badgeClass } from "../ui.js";
 import { authState, subscribe, addToCart } from "../state.js";
 
 const params = new URLSearchParams(location.search);
@@ -121,6 +121,7 @@ function render() {
       </div>
       ${product.title ? `<span class="${badgeClass("outline")}" style="margin-top:0.35rem;display:inline-block">${categoryLabelById(product.category, getLocale())}</span>` : ""}
       <p class="text-muted" style="display:flex;align-items:center;gap:0.25rem;margin-top:0.25rem;font-size:0.875rem">${icon("map-pin")} ${governorateLabel(product.governorate, getLocale())}</p>
+      <div style="margin-top:0.75rem">${shareButtonsHTML(location.href, product.title || categoryLabelById(product.category, getLocale()))}</div>
       <p class="product-detail-price" style="margin-top:1rem">${product.price} ${t("products.currency")}/${unitLabel}</p>
       <div class="product-detail-stats" style="margin-top:1rem">
         <div>
@@ -165,6 +166,7 @@ function render() {
 
   document.getElementById("fav-btn-mount").innerHTML = favoriteButtonHTML(product.id, "is-static");
   wireFavoriteButtons(detailEl);
+  wireShareButtons(detailEl);
 
   const qtyInput = document.getElementById("qty-calc-input");
   const qtyTotalEl = document.getElementById("qty-calc-total");
