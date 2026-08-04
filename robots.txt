@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+Disallow: /dashboard*
+Disallow: /admin*
+Disallow: /complete-profile.html
+Disallow: /cart.html
+Disallow: /favorites.html
+Disallow: /profile.html
+
+Sitemap: https://waraqatshajar.com/sitemap.xml
