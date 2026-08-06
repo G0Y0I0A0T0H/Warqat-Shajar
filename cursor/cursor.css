@@ -27,6 +27,19 @@ html.leaf-cursor-active {
   cursor: none;
 }
 
+/* Owner-configurable kill switch (regular visitors only -- see
+   js/layout.js's applyCursorDisabledClass, which never adds this class for
+   an admin). Higher specificity than the rule above via the extra class, so
+   it wins regardless of stylesheet order. cursor.js keeps running underneath
+   (still tracking the pointer/building trail items) -- this just hides the
+   visual layer and gives the native cursor back. */
+html.leaf-cursor-active.leaf-cursor-disabled {
+  cursor: auto;
+}
+html.leaf-cursor-disabled .leaf-cursor-layer {
+  display: none;
+}
+
 .leaf-cursor-layer {
   position: fixed;
   inset: 0;

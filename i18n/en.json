@@ -792,6 +792,8 @@
     "groupImages": "Homepage Images",
     "colorTitle": "Brand Color",
     "cursorSizeTitle": "Cursor Size",
+    "cursorEffectDisableLabel": "Disable the cursor effect for regular visitors",
+    "cursorEffectDisableHint": "Admins always keep the effect in their own browsing, regardless of this setting.",
     "defaultThemeTitle": "Default lighting mode",
     "defaultThemeHint": "Applies to first-time visitors only -- anyone who has already used the sun/moon toggle keeps their own choice.",
     "defaultThemeLight": "Always light",

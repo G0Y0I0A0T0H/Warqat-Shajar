@@ -75,6 +75,11 @@ function render() {
         <button type="button" class="${btnClass("default", "sm")}" id="save-cursor-size-btn">${t("branding.saveChanges", "Save")}</button>
         <span id="cursor-size-saved" class="success-text" style="display:none">${t("branding.saved")}</span>
       </div>
+      <label class="checkbox-row" style="margin-top:0.75rem">
+        <input type="checkbox" id="cursor-effect-disabled-input" ${siteTheme.cursorEffectDisabled ? "checked" : ""}>
+        <span>${t("branding.cursorEffectDisableLabel", "Disable the cursor effect for regular visitors")}</span>
+      </label>
+      <p class="text-muted" style="font-size:0.8rem;margin-top:0.15rem">${t("branding.cursorEffectDisableHint", "Admins always keep the effect in their own browsing, regardless of this setting.")}</p>
     </div>
     <div>
       <h3 class="card-title" style="font-size:0.95rem">${t("branding.defaultThemeTitle", "Default lighting mode")}</h3>
@@ -292,6 +297,9 @@ function render() {
     const saved = contentEl.querySelector("#cursor-size-saved");
     saved.style.display = "inline";
     setTimeout(() => (saved.style.display = "none"), 2500);
+  });
+  contentEl.querySelector("#cursor-effect-disabled-input").addEventListener("change", (e) => {
+    SiteSettings.updateCursorEffectDisabled(e.target.checked);
   });
 
   // Default lighting mode

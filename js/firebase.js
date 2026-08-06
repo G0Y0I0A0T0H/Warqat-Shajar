@@ -1224,7 +1224,7 @@ const siteImagesRef = doc(db, "settings", "siteImages");
 const DEFAULT_SITE_CONTENT = { ar: {}, en: {} };
 const siteContentRef = doc(db, "settings", "siteContent");
 
-const DEFAULT_SITE_THEME = { primaryColor: null, cursorSize: null, defaultDarkMode: false };
+const DEFAULT_SITE_THEME = { primaryColor: null, cursorSize: null, cursorEffectDisabled: false, defaultDarkMode: false };
 const siteThemeRef = doc(db, "settings", "siteTheme");
 
 const DEFAULT_SOCIAL_LINKS = { links: [], phone: null, whatsapp: null, email: null, policyLink: null };
@@ -1339,6 +1339,13 @@ export const SiteSettings = {
 
   async updateCursorSize(cursorSize) {
     await setDoc(siteThemeRef, { cursorSize }, { merge: true });
+  },
+
+  // Regular users only -- an admin's own view always keeps the cursor
+  // effect regardless of this setting (enforced client-side in layout.js by
+  // gating on authState.isAdmin, not here).
+  async updateCursorEffectDisabled(disabled) {
+    await setDoc(siteThemeRef, { cursorEffectDisabled: disabled }, { merge: true });
   },
 
   // The default light/dark mode shown to a visitor who has never touched

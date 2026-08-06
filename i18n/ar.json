@@ -792,6 +792,8 @@
     "groupImages": "صور الصفحة الرئيسية",
     "colorTitle": "لون الهوية",
     "cursorSizeTitle": "حجم مؤشر الماوس",
+    "cursorEffectDisableLabel": "تعطيل تأثير المؤشر للزوار العاديين",
+    "cursorEffectDisableHint": "الأدمن بيضل شايف التأثير دايمًا بتصفحه هو، بغض النظر عن هاد الإعداد.",
     "defaultThemeTitle": "الوضع الافتراضي للإضاءة",
     "defaultThemeHint": "بيتطبق بس على أول زيارة لأي حد جديد — أي حد استخدم زرار تبديل الوضع قبل كده هيفضل على اختياره هو.",
     "defaultThemeLight": "نهاري دايماً",
