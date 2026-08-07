@@ -908,6 +908,7 @@
     "deleteCategory": "امسح",
     "addCategoryTitle": "ضيف صنف",
     "confirmDeleteCategory": "تمسح الصنف ده؟ المنتجات اللي مستخدماه هتفضل عليه بس مش هتقدر تختاره لمنتجات جديدة.",
+    "confirmDeleteBuiltinCategory": "تشيل الصنف ده من التصفح؟ تقدر ترجعه تاني في أي وقت من نفس القايمة.",
     "categoryIdCollision": "في صنف تاني (أو الاسم الإنجليزي شبهه أوي) موجود بالفعل بالاسم ده. جرب اسم إنجليزي مختلف."
   },
   "accountStatus": {

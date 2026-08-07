@@ -198,12 +198,22 @@ function render() {
     </div>
   `;
 
+  // Hidden/deleted categories sink to the bottom of their own group so the
+  // ones actually in use stay easy to scan at the top -- isHidden is a
+  // stable sort key (Array.sort is stable across all engines this targets),
+  // so within "still active" and within "hidden" the original order holds.
+  const hiddenSet = new Set(categoriesConfig.hidden || []);
+  const sortedBuiltinCategories = [...CATEGORIES].sort((a, b) => Number(hiddenSet.has(a)) - Number(hiddenSet.has(b)));
+  const sortedCustomCategories = [...(categoriesConfig.extra || [])].sort(
+    (a, b) => Number(hiddenSet.has(a.id)) - Number(hiddenSet.has(b.id)),
+  );
+
   const categoriesGroup = `
     <div>
       <p class="text-muted" style="font-size:0.8rem">${t("branding.categoriesHint", "Hiding a category only removes it from browsing — existing products keep their category.")}</p>
       <div class="card" style="margin-top:0.75rem;padding:0 1rem">
-        ${CATEGORIES.map((c) => {
-          const isHidden = (categoriesConfig.hidden || []).includes(c);
+        ${sortedBuiltinCategories.map((c) => {
+          const isHidden = hiddenSet.has(c);
           const current = siteImages.categoryImages[c] || CATEGORY_IMAGES[c];
           return `
           <div class="list-row">
@@ -216,13 +226,17 @@ function render() {
               <div data-category-input-mount="${c}" style="margin-top:0.375rem;max-width:24rem"></div>
             </div>
             <button type="button" class="${btnClass("outline", "sm")}" data-replace-category="${c}">${t("branding.replaceImage")}</button>
-            <button type="button" class="${btnClass("outline", "sm")}" data-toggle-category-hidden="${c}" data-hidden="${isHidden}">${isHidden ? t("branding.showCategory", "Show") : t("branding.hideCategory", "Hide")}</button>
+            ${
+              isHidden
+                ? `<button type="button" class="${btnClass("outline", "sm")}" data-toggle-category-hidden="${c}" data-hidden="true">${t("branding.showCategory", "Show")}</button>`
+                : `<button type="button" class="${btnClass("destructive", "icon-sm")}" data-delete-builtin-category="${c}" aria-label="${t("branding.deleteCategory", "Delete")}">${icon("trash")}</button>`
+            }
           </div>
         `;
         }).join("")}
-        ${(categoriesConfig.extra || [])
+        ${sortedCustomCategories
           .map((c) => {
-            const isHidden = (categoriesConfig.hidden || []).includes(c.id);
+            const isHidden = hiddenSet.has(c.id);
             return `
           <div class="list-row">
             ${
@@ -438,6 +452,19 @@ function render() {
     btn.addEventListener("click", async () => {
       if (!confirm(t("branding.confirmDeleteCategory", "Delete this category?"))) return;
       await SiteSettings.removeCustomCategory(btn.dataset.deleteCategory);
+    });
+  });
+
+  // "Delete" a built-in category -- built-ins are defined in code, not
+  // Firestore, so there's no document to actually remove; this is the same
+  // hide mechanism as data-toggle-category-hidden above, just presented as
+  // a delete action (with its own confirm wording) since that's the mental
+  // model requested -- it sinks to the bottom of the list with a "Show"
+  // button to bring it back, rather than being an irreversible delete.
+  contentEl.querySelectorAll("[data-delete-builtin-category]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      if (!confirm(t("branding.confirmDeleteBuiltinCategory", "Remove this category from browsing? You can bring it back later from the same list."))) return;
+      await SiteSettings.toggleCategoryHidden(btn.dataset.deleteBuiltinCategory, true);
     });
   });
 

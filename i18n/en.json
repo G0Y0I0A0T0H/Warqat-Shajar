@@ -908,6 +908,7 @@
     "deleteCategory": "Delete",
     "addCategoryTitle": "Add a Category",
     "confirmDeleteCategory": "Delete this category? Products already using it will keep it, but it won't be addable to new ones.",
+    "confirmDeleteBuiltinCategory": "Remove this category from browsing? You can bring it back later from the same list.",
     "categoryIdCollision": "A category with this English name (or a very similar one) already exists. Choose a different English name."
   },
   "accountStatus": {
