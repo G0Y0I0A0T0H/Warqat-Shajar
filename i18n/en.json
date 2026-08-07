@@ -115,6 +115,15 @@
     "organic": "Organic Products",
     "animal-feed": "Animal Feed",
     "nurseries": "Nurseries",
+    "corn": "Corn",
+    "lentils": "Lentils",
+    "chickpeas": "Chickpeas",
+    "onions-garlic": "Onions & Garlic",
+    "sesame-sunflower": "Sesame & Sunflower",
+    "sugar-crops": "Sugarcane & Sugar Beet",
+    "green-legumes": "Green Legumes",
+    "herbs": "Medicinal & Aromatic Herbs",
+    "seeds": "Seeds for Planting",
     "shopNow": "Shop Now"
   },
   "featured": {

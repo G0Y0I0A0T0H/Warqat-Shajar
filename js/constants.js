@@ -13,6 +13,15 @@ export const CATEGORIES = [
   "organic",
   "animal-feed",
   "nurseries",
+  "corn",
+  "lentils",
+  "chickpeas",
+  "onions-garlic",
+  "sesame-sunflower",
+  "sugar-crops",
+  "green-legumes",
+  "herbs",
+  "seeds",
 ];
 
 export const ACCOUNT_TYPES = ["farmer", "trader", "factory", "consumer"];
