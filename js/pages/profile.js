@@ -2,14 +2,16 @@ import { initLayout } from "../layout.js";
 import { t, getLocale, onLocaleChange } from "../i18n.js";
 import { Reviews, Profile, SellerProfiles, PhoneAttempts } from "../firebase.js";
 import { governorateLabel, categoryLabelById, onCategoriesChange } from "../constants.js";
-import { renderAvatar, renderStars, badgeClass, icon, escapeHtml, renderImageInput, containsPhoneNumber, showMessage } from "../ui.js";
+import { renderAvatar, renderStars, badgeClass, icon, escapeHtml, renderImageInput, containsPhoneNumber, showMessage, renderLocationPicker } from "../ui.js";
 import { authState, subscribe } from "../state.js";
 
 const viewEl = document.getElementById("profile-view");
 let rating = { average: 0, count: 0 };
 let ratingLoadedFor = null;
 let sellerBio = "";
+let sellerPickupPoint = null;
 let bioLoadedFor = null;
+let pickupPicker = null;
 
 async function render() {
   if (authState.loading) {
@@ -33,6 +35,7 @@ async function render() {
     bioLoadedFor = profile.uid;
     const sellerProfile = await SellerProfiles.getOnce(profile.uid).catch(() => null);
     sellerBio = sellerProfile?.bio || "";
+    sellerPickupPoint = sellerProfile?.pickupPoint || null;
     render();
     return;
   }
@@ -93,7 +96,16 @@ async function render() {
             <p id="bio-error" class="error-text" style="display:none"></p>
             <span id="bio-saved" class="success-text" style="display:none">${t("payments.saved", "Saved")}</span>
             <button type="submit" class="btn btn-default btn-sm" style="align-self:flex-start">${t("payments.save", "Save")}</button>
-          </form>`
+          </form>
+          <div style="margin-top:1.5rem;padding-top:1.25rem;border-top:1px solid var(--border);max-width:28rem">
+            <div class="label">${t("map.pickupPointLabel", "Pickup point")}</div>
+            <p class="text-muted" style="font-size:0.8rem;margin-bottom:0.4rem">${t("map.pickupPointHint", "Where buyers who choose pickup can collect their order -- free, no delivery involved.")}</p>
+            <div id="pickup-point-mount"></div>
+            <div style="display:flex;align-items:center;gap:0.5rem;margin-top:0.5rem">
+              <button type="button" class="btn btn-default btn-sm" id="pickup-point-save">${t("payments.save", "Save")}</button>
+              <span id="pickup-point-saved" class="success-text" style="display:none">${t("payments.saved", "Saved")}</span>
+            </div>
+          </div>`
         : ""
     }
   `;
@@ -120,6 +132,22 @@ async function render() {
       }
       await SellerProfiles.updateBio(profile.uid, text);
       sellerBio = text;
+      savedEl.style.display = "inline";
+      setTimeout(() => (savedEl.style.display = "none"), 2500);
+    });
+
+    pickupPicker = renderLocationPicker(viewEl.querySelector("#pickup-point-mount"), {
+      lat: sellerPickupPoint?.lat,
+      lng: sellerPickupPoint?.lng,
+    });
+    viewEl.querySelector("#pickup-point-save").addEventListener("click", async (e) => {
+      const value = pickupPicker?.getValue();
+      if (!value) return;
+      e.target.disabled = true;
+      await SellerProfiles.updatePickupPoint(profile.uid, value);
+      sellerPickupPoint = value;
+      e.target.disabled = false;
+      const savedEl = viewEl.querySelector("#pickup-point-saved");
       savedEl.style.display = "inline";
       setTimeout(() => (savedEl.style.display = "none"), 2500);
     });

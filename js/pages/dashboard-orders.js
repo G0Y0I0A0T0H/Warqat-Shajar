@@ -2,7 +2,7 @@ import { initLayout } from "../layout.js";
 import { guardDashboard } from "../dashboard-shell.js";
 import { t, onLocaleChange } from "../i18n.js";
 import { Chat, Products, Escrow } from "../firebase.js";
-import { badgeClass, btnClass, icon, escapeHtml } from "../ui.js";
+import { badgeClass, btnClass, icon, escapeHtml, deliveryMethodLineHTML } from "../ui.js";
 import { initHelpTour } from "../help-tour.js";
 
 const listEl = document.getElementById("orders-list");
@@ -60,6 +60,7 @@ function render() {
             <div>${t("orders.buyerType")}: ${o.buyerAccountType ? t(`roles.${o.buyerAccountType}`) : ""}</div>
             <div>${t("orders.contact")}: ${escapeHtml(o.buyerName)}</div>
             ${o.deliveryNotes ? `<div>${t("orders.delivery")}: ${escapeHtml(o.deliveryNotes)}</div>` : ""}
+            ${deliveryMethodLineHTML(o)}
           </div>
         </div>
         <div class="list-row-actions" ${isFirstPending ? 'data-order-actions="first-pending"' : ""}>
@@ -101,6 +102,8 @@ function render() {
             quantity: offer.quantity,
             unit: offer.unit,
             pricePerUnit: offer.pricePerUnit,
+            deliveryMethod: offer.deliveryMethod,
+            deliveryLocation: offer.deliveryLocation,
           });
         } catch {
           // The offer itself is already accepted at this point -- this only

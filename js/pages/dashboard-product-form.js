@@ -14,7 +14,15 @@ function toDateInputValue(value) {
   return date.toISOString().slice(0, 10);
 }
 
-export function renderProductForm(mountEl, profile, existingProduct) {
+// options.addedByAdminUid: set only when an admin is creating this listing
+// on behalf of `profile` (js/pages/admin-listings.js) -- stored on the
+// product as internal audit metadata, never surfaced on the farmer's own
+// dashboard-products.js, so it still looks self-added to them.
+// options.redirectTo / cancelHref: admin-listings.js isn't the farmer's own
+// dashboard, so it needs different post-save/cancel destinations than the
+// dashboard-product-new.js/dashboard-product-edit.js default.
+export function renderProductForm(mountEl, profile, existingProduct, options = {}) {
+  const { addedByAdminUid, redirectTo = "dashboard-products.html", cancelHref = "dashboard-products.html" } = options;
   const photos = existingProduct?.photoUrls ? [...existingProduct.photoUrls] : [];
   let quality = existingProduct?.qualityRating || 3;
 
@@ -78,7 +86,7 @@ export function renderProductForm(mountEl, profile, existingProduct) {
       <p id="pf-error" class="error-text" style="display:none"></p>
       <div style="display:flex;gap:0.5rem">
         <button type="submit" class="btn btn-default" id="pf-submit" data-i18n="products.save">Save</button>
-        <a href="dashboard-products.html" class="btn btn-outline" data-i18n="products.cancel">Cancel</a>
+        <a href="${cancelHref}" class="btn btn-outline" data-i18n="products.cancel">Cancel</a>
       </div>
     </form>
   `;
@@ -235,6 +243,7 @@ export function renderProductForm(mountEl, profile, existingProduct) {
           ownerId: profile.uid,
           ownerName: profile.fullName,
           ownerPhone: profile.phone,
+          ...(addedByAdminUid ? { addedByAdminUid } : {}),
         });
         Notifications.create({
           uid: profile.uid,
@@ -242,7 +251,7 @@ export function renderProductForm(mountEl, profile, existingProduct) {
           params: { product: title },
         }).catch(() => {});
       }
-      location.href = "dashboard-products.html";
+      location.href = redirectTo;
     } catch (err) {
       console.error("[product-form] save failed:", err);
       showMessage(errorEl, t("products.uploadFailed"));

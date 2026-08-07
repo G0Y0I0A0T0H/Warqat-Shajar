@@ -5,7 +5,7 @@ import { initLayout } from "../layout.js";
 import { guardDashboard } from "../dashboard-shell.js";
 import { t, onLocaleChange } from "../i18n.js";
 import { Chat, Notifications, Escrow, SiteSettings } from "../firebase.js";
-import { badgeClass, btnClass, escapeHtml, escrowStepperHTML, renderEscrowActions } from "../ui.js";
+import { badgeClass, btnClass, escapeHtml, escrowStepperHTML, renderEscrowActions, deliveryMethodLineHTML } from "../ui.js";
 
 const listEl = document.getElementById("my-orders-list");
 let orders = [];
@@ -47,6 +47,7 @@ function render() {
               <div>${t("orders.quantity")}: ${o.quantity} ${o.unit}</div>
               <div>${t("myOrders.farmer")}: ${escapeHtml(o.farmerName)}</div>
               <div>${t("chat.offerTotal")}: ${o.totalPrice}</div>
+              ${deliveryMethodLineHTML(o)}
             </div>
           </div>
           <div class="list-row-actions">

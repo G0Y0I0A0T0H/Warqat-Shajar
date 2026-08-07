@@ -166,11 +166,22 @@ service cloud.firestore {
     // "identity" in allowedSections (owner always has it), can read this.
     match /identityVerification/{uid} {
       allow read: if isSignedIn() && (request.auth.uid == uid || isOwnerOrGranted('identity'));
-      allow create, update: if isSignedIn() && request.auth.uid == uid &&
+      allow create, update: if (
+        isSignedIn() && request.auth.uid == uid &&
         request.resource.data.nationalId is string && request.resource.data.nationalId.size() == 14 &&
         request.resource.data.idCardPhotoUrl is string && request.resource.data.idCardPhotoUrl.size() > 0 &&
         request.resource.data.idCardPhotoKey is string && request.resource.data.idCardPhotoKey.size() > 0 &&
-        request.resource.data.idCardPhotoIv is string && request.resource.data.idCardPhotoIv.size() > 0;
+        request.resource.data.idCardPhotoIv is string && request.resource.data.idCardPhotoIv.size() > 0
+      ) || (
+        // Same field-shape requirement, just for an admin explicitly
+        // granted "identity" correcting/entering it on a user's behalf
+        // (js/pages/admin-users.js) -- the owner always has this grant.
+        isOwnerOrGranted('identity') &&
+        request.resource.data.nationalId is string && request.resource.data.nationalId.size() == 14 &&
+        request.resource.data.idCardPhotoUrl is string && request.resource.data.idCardPhotoUrl.size() > 0 &&
+        request.resource.data.idCardPhotoKey is string && request.resource.data.idCardPhotoKey.size() > 0 &&
+        request.resource.data.idCardPhotoIv is string && request.resource.data.idCardPhotoIv.size() > 0
+      );
       allow delete: if isOwner();
     }
 
@@ -187,8 +198,19 @@ service cloud.firestore {
       allow read: if true;
       allow create, update: if isSignedIn() && request.auth.uid == uid &&
         request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['fullName', 'photoURL', 'governorate', 'crops', 'bio', 'updatedAt', 'createdAt']) &&
-        request.resource.data.get('bio', '') is string && request.resource.data.get('bio', '').size() <= 500;
+          .hasOnly(['fullName', 'photoURL', 'governorate', 'crops', 'bio', 'pickupPoint', 'updatedAt', 'createdAt']) &&
+        request.resource.data.get('bio', '') is string && request.resource.data.get('bio', '').size() <= 500 &&
+        (!('pickupPoint' in request.resource.data) ||
+         (request.resource.data.pickupPoint.lat is number && request.resource.data.pickupPoint.lng is number));
+
+      // Deliberately narrow -- an admin may manage a farmer's pickup point
+      // (per the owner's ask) but never their name/photo/bio/crops through
+      // this branch. Kept separate from the self-update branch above rather
+      // than just adding isAdmin() there, so this stays auditable as its
+      // own distinct grant.
+      allow update: if isAdmin() &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['pickupPoint']) &&
+        request.resource.data.pickupPoint.lat is number && request.resource.data.pickupPoint.lng is number;
     }
 
     match /ads/{adId} {
@@ -280,10 +302,21 @@ service cloud.firestore {
 
     match /products/{productId} {
       allow read: if true;
-      allow create: if isActiveUser() && request.resource.data.ownerId == request.auth.uid &&
+      allow create: if (
+        isActiveUser() && request.resource.data.ownerId == request.auth.uid &&
         request.resource.data.viewsCount == 0 &&
         request.resource.data.offersCount == 0 &&
-        request.resource.data.dealsCount == 0;
+        request.resource.data.dealsCount == 0
+      ) || (
+        // Admin creating a listing on behalf of a farmer who's having
+        // trouble doing it themselves (js/pages/admin-listings.js) -- same
+        // zero-initialized-counters requirement as the self-service branch,
+        // just without the ownerId==caller restriction.
+        isAdmin() &&
+        request.resource.data.viewsCount == 0 &&
+        request.resource.data.offersCount == 0 &&
+        request.resource.data.dealsCount == 0
+      );
 
       // Owner/admin may edit listing content but not directly rewrite the
       // trust/ranking counters (viewsCount, offersCount, dealsCount).

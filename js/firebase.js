@@ -388,6 +388,14 @@ export const SellerProfiles = {
     await updateDoc(doc(sellerProfilesCol, uid), { bio, updatedAt: serverTimestamp() });
   },
 
+  // Writes ONLY the pickupPoint field, on purpose -- this is what lets the
+  // exact same call satisfy either the farmer's own self-update rule or an
+  // admin's deliberately narrower pickupPoint-only branch (see
+  // firestore.rules), whichever one actually applies to the caller.
+  async updatePickupPoint(uid, { lat, lng }) {
+    await updateDoc(doc(sellerProfilesCol, uid), { pickupPoint: { lat, lng } });
+  },
+
   async getOnce(uid) {
     const snap = await getDoc(doc(sellerProfilesCol, uid));
     return snap.exists() ? snap.data() : null;
@@ -485,6 +493,15 @@ export const IdentityVerification = {
   async getForUser(uid) {
     const snap = await getDoc(identityDocRef(uid));
     return snap.exists() ? snap.data() : null;
+  },
+
+  // Admin-only in practice (firestore.rules requires isOwnerOrGranted
+  // ('identity') for any uid other than your own) -- corrects just the ID
+  // number without forcing a photo re-upload. updateDoc only sends the
+  // changed field; the existing photo fields still satisfy the rule's
+  // shape check since they're untouched in the resulting document.
+  async updateNationalId(uid, nationalId) {
+    await updateDoc(identityDocRef(uid), { nationalId });
   },
 
   // Convenience wrapper around Crypto.decryptToObjectUrl for a stored record.
@@ -841,7 +858,21 @@ export const Chat = {
 const escrowOrdersCol = collection(db, "escrowOrders");
 
 export const Escrow = {
-  async createOrder({ orderId, chatId, productId, productLabel, buyerId, buyerName, sellerId, sellerName, quantity, unit, pricePerUnit }) {
+  async createOrder({
+    orderId,
+    chatId,
+    productId,
+    productLabel,
+    buyerId,
+    buyerName,
+    sellerId,
+    sellerName,
+    quantity,
+    unit,
+    pricePerUnit,
+    deliveryMethod,
+    deliveryLocation,
+  }) {
     await setDoc(doc(db, "escrowOrders", orderId), {
       chatId,
       productId,
@@ -854,6 +885,11 @@ export const Escrow = {
       unit,
       pricePerUnit,
       totalAmount: quantity * pricePerUnit,
+      // "pickup" (free, from the seller's own sellerProfiles.pickupPoint) or
+      // "delivery" (deliveryLocation is the buyer's own {lat,lng}) -- no
+      // delivery fee involved yet, this is logistics-only for now.
+      deliveryMethod: deliveryMethod || null,
+      deliveryLocation: deliveryLocation || null,
       status: "awaiting_payment",
       paymentClaimedAt: null,
       paymentConfirmedAt: null,

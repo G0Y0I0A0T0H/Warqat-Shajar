@@ -2,7 +2,7 @@ import { initLayout } from "../layout.js";
 import { guardAdmin } from "../admin-shell.js";
 import { t, onLocaleChange } from "../i18n.js";
 import { SiteSettings, Escrow, Wallets, WithdrawalRequests } from "../firebase.js";
-import { btnClass, badgeClass, icon, showMessage, escapeHtml, safeUrl } from "../ui.js";
+import { btnClass, badgeClass, icon, showMessage, escapeHtml, safeUrl, deliveryMethodLineHTML } from "../ui.js";
 
 // Small, deliberately limited preset -- enough to represent every method
 // type asked for (mobile wallet, card, delivery) without turning this into
@@ -144,6 +144,7 @@ function renderDealRow(o) {
           ${t("payments.quantityLabel")}: ${o.quantity} ${escapeHtml(o.unit || "")}
           ${o.paymentMethodChosen ? ` · ${t("payments.methodUsedLabel")}: ${escapeHtml(o.paymentMethodChosen)}` : ""}
         </div>
+        ${deliveryMethodLineHTML(o)}
         ${
           o.paymentPhoneNumber || o.paymentReferenceNumber || o.paymentProofUrl
             ? `<div class="payment-proof">
