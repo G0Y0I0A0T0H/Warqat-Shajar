@@ -10,7 +10,7 @@ const EMAILJS_PUBLIC_KEY = "v-k2g4O-Z959eb_J5";
 // No 0/O/1/I/L -- keeps a hand-typed code unambiguous.
 const CODE_CHARS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 export const CODE_LENGTH = 6;
-export const CODE_VALID_MINUTES = 15;
+export const CODE_VALID_MINUTES = 1;
 
 let initialized = false;
 function ensureInit() {
