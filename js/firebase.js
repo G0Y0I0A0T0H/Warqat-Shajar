@@ -303,6 +303,16 @@ export const Profile = {
     });
     if (input.accountType === "farmer") {
       SiteSettings.incrementRegisteredFarmers().catch(() => {});
+      // Public, Instagram-style profile doc -- see the SellerProfiles
+      // export below. Deliberately excludes phone/email (unlike
+      // users/{uid} above), so it's safe to expose to anyone.
+      SellerProfiles.upsertOnRegister({
+        uid: input.uid,
+        fullName: input.fullName,
+        photoURL: input.photoURL,
+        governorate: input.governorate,
+        crops: input.crops ?? [],
+      }).catch(() => {});
     }
   },
 
@@ -320,6 +330,7 @@ export const Profile = {
   // who calls this.
   async updatePhotoURL(uid, photoURL) {
     await updateDoc(userDocRef(uid), { photoURL });
+    await SellerProfiles.syncPhoto(uid, photoURL).catch(() => {});
   },
 
   // Called every time a user's own client blocks a phone-number-sharing
@@ -341,6 +352,105 @@ export const Profile = {
 
   async clearExpiredSuspension(uid) {
     await updateDoc(userDocRef(uid), { status: "active", suspendedUntil: null });
+  },
+};
+
+// ===========================================================================
+// Public, Instagram-style farmer profile -- a SEPARATE doc from users/{uid}
+// (which holds phone/email and is never publicly readable). Created once at
+// registration for farmer accounts only (see Profile.createUserProfile
+// above); photoURL kept in sync via Profile.updatePhotoURL; bio is the one
+// field a farmer edits directly, from js/pages/profile.js.
+// ===========================================================================
+const sellerProfilesCol = collection(db, "sellerProfiles");
+
+export const SellerProfiles = {
+  async upsertOnRegister({ uid, fullName, photoURL, governorate, crops }) {
+    await setDoc(doc(sellerProfilesCol, uid), {
+      uid,
+      fullName,
+      photoURL: photoURL ?? null,
+      governorate,
+      crops: crops ?? [],
+      bio: "",
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+  },
+
+  async syncPhoto(uid, photoURL) {
+    const ref = doc(sellerProfilesCol, uid);
+    const snap = await getDoc(ref);
+    if (snap.exists()) await updateDoc(ref, { photoURL, updatedAt: serverTimestamp() });
+  },
+
+  async updateBio(uid, bio) {
+    await updateDoc(doc(sellerProfilesCol, uid), { bio, updatedAt: serverTimestamp() });
+  },
+
+  async getOnce(uid) {
+    const snap = await getDoc(doc(sellerProfilesCol, uid));
+    return snap.exists() ? snap.data() : null;
+  },
+
+  // Directory listing (farmers.html) -- fetched in full and filtered
+  // client-side, same "fine at current scale" convention already used for
+  // Admin.listAllUsers()/Escrow.listAllOnce() elsewhere in this file.
+  async listAll(filters = {}) {
+    const snap = await getDocs(sellerProfilesCol);
+    let list = snap.docs.map((d) => d.data());
+    if (filters.governorate) list = list.filter((p) => p.governorate === filters.governorate);
+    if (filters.category) list = list.filter((p) => (p.crops || []).includes(filters.category));
+    return list.sort((a, b) => (b.createdAt?.toMillis() ?? 0) - (a.createdAt?.toMillis() ?? 0));
+  },
+};
+
+// ===========================================================================
+// Follow graph -- doc id is "{followerId}_{followingId}", so "already
+// following?" and unfollow are both a direct doc lookup/delete, never a
+// query. Follower/following counts are deliberately never stored -- see
+// countFollowers/countFollowing below -- matching this project's existing
+// "derive it live instead of syncing a counter" choice already made for
+// wallet "held" amounts.
+// ===========================================================================
+const followsCol = collection(db, "follows");
+
+function followId(followerId, followingId) {
+  return `${followerId}_${followingId}`;
+}
+
+export const Follows = {
+  async follow(followerId, followingId, followerName) {
+    await setDoc(doc(followsCol, followId(followerId, followingId)), {
+      followerId,
+      followingId,
+      createdAt: serverTimestamp(),
+    });
+    await Notifications.create({
+      uid: followingId,
+      key: "newFollower",
+      params: { name: followerName },
+      link: `seller-profile.html?uid=${followerId}`,
+    }).catch(() => {});
+  },
+
+  async unfollow(followerId, followingId) {
+    await deleteDoc(doc(followsCol, followId(followerId, followingId)));
+  },
+
+  async isFollowing(followerId, followingId) {
+    const snap = await getDoc(doc(followsCol, followId(followerId, followingId)));
+    return snap.exists();
+  },
+
+  async countFollowers(uid) {
+    const snap = await getCountFromServer(query(followsCol, where("followingId", "==", uid)));
+    return snap.data().count;
+  },
+
+  async countFollowing(uid) {
+    const snap = await getCountFromServer(query(followsCol, where("followerId", "==", uid)));
+    return snap.data().count;
   },
 };
 
@@ -456,6 +566,10 @@ export const Products = {
 
   async incrementProductDeals(id) {
     await updateDoc(doc(db, "products", id), { dealsCount: increment(1) });
+  },
+
+  async incrementProductShares(id) {
+    await updateDoc(doc(db, "products", id), { sharesCount: increment(1) });
   },
 
   async countActive() {
@@ -816,7 +930,26 @@ export const Escrow = {
   },
 
   async confirmDelivery(orderId) {
+    const snap = await getDoc(doc(db, "escrowOrders", orderId));
+    const order = snap.data();
     await updateDoc(doc(db, "escrowOrders", orderId), { status: "delivery_confirmed", deliveryConfirmedAt: serverTimestamp() });
+    // COD's terminal point -- no platform-held money to release, so this is
+    // also where the sold quantity actually leaves the product's stock (see
+    // the matching firestore.rules branch on products/{productId} for why
+    // only this order's own buyer may do this, and only once per order).
+    // Best-effort: a denied/failed decrement shouldn't block the delivery
+    // confirmation above, which has already succeeded.
+    if (order && order.noProofPayment) {
+      const productSnap = await getDoc(doc(db, "products", order.productId)).catch(() => null);
+      if (productSnap?.exists()) {
+        const currentQty = productSnap.data().quantity || 0;
+        await updateDoc(doc(db, "products", order.productId), {
+          quantity: currentQty - order.quantity,
+          updatedAt: serverTimestamp(),
+          lastOrderApplied: orderId,
+        }).catch(() => {});
+      }
+    }
   },
 
   async raiseDispute(orderId, uid, note) {
@@ -840,6 +973,18 @@ export const Escrow = {
     await updateDoc(doc(db, "escrowOrders", orderId), { status: "released", releasedAt: serverTimestamp() });
     if (order && !order.noProofPayment) {
       await Wallets.credit(order.sellerId, order.totalAmount, orderId);
+      // Live inventory: this is the completed-deal point for an electronic-
+      // payment order (mirrors the COD decrement in confirmDelivery above).
+      // isAdmin() already has unconditional product-update rights, so this
+      // needs no special firestore.rules branch.
+      const productSnap = await getDoc(doc(db, "products", order.productId)).catch(() => null);
+      if (productSnap?.exists()) {
+        const currentQty = productSnap.data().quantity || 0;
+        await updateDoc(doc(db, "products", order.productId), {
+          quantity: currentQty - order.quantity,
+          updatedAt: serverTimestamp(),
+        }).catch(() => {});
+      }
     }
   },
 
@@ -1013,10 +1158,12 @@ export const Favorites = {
       productId,
       createdAt: serverTimestamp(),
     });
+    await updateDoc(doc(db, "products", productId), { favoritesCount: increment(1) }).catch(() => {});
   },
 
   async removeFavorite(uid, productId) {
     await deleteDoc(doc(favoritesCol, favoriteId(uid, productId)));
+    await updateDoc(doc(db, "products", productId), { favoritesCount: increment(-1) }).catch(() => {});
   },
 
   subscribeFavorites(uid, callback) {
@@ -1081,10 +1228,16 @@ const commentsCol = collection(db, "productComments");
 export const Comments = {
   async addProductComment(input) {
     await addDoc(commentsCol, { ...input, createdAt: serverTimestamp() });
+    await updateDoc(doc(db, "products", input.productId), { commentsCount: increment(1) }).catch(() => {});
   },
 
-  async deleteProductComment(id) {
+  // productId is only used for the best-effort counter bump below --
+  // comment deletion itself is already admin-only (see productComments'
+  // own delete rule), matched by the commentsCount decrement branch on
+  // products/{productId} in firestore.rules.
+  async deleteProductComment(id, productId) {
     await deleteDoc(doc(db, "productComments", id));
+    if (productId) await updateDoc(doc(db, "products", productId), { commentsCount: increment(-1) }).catch(() => {});
   },
 
   subscribeProductComments(productId, callback) {

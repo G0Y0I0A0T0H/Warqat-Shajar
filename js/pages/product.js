@@ -2,7 +2,7 @@ import { initLayout } from "../layout.js";
 import { t, getLocale, onLocaleChange } from "../i18n.js";
 import { Products, Chat, Ads, Notifications, SiteSettings, Escrow } from "../firebase.js";
 import { governorateLabel, categoryLabelById, onCategoriesChange, computeFreshness, unitLabelKey } from "../constants.js";
-import { renderAdSlot, favoriteButtonHTML, wireFavoriteButtons, shareButtonsHTML, wireShareButtons, initReportDialog, initProductComments, icon, showMessage, escapeHtml, safeUrl, badgeClass } from "../ui.js";
+import { renderAdSlot, favoriteButtonHTML, wireFavoriteButtons, shareButtonsHTML, wireShareButtons, initReportDialog, initProductComments, icon, showMessage, escapeHtml, safeUrl, badgeClass, interpolate } from "../ui.js";
 import { authState, subscribe, addToCart } from "../state.js";
 
 const params = new URLSearchParams(location.search);
@@ -136,7 +136,10 @@ function render() {
       </div>
       ${product.title ? `<span class="${badgeClass("outline")}" style="margin-top:0.35rem;display:inline-block">${categoryLabelById(product.category, getLocale())}</span>` : ""}
       <p class="text-muted" style="display:flex;align-items:center;gap:0.25rem;margin-top:0.25rem;font-size:0.875rem">${icon("map-pin")} ${governorateLabel(product.governorate, getLocale())}</p>
-      <div style="margin-top:0.75rem">${shareButtonsHTML(buildShareData(product))}</div>
+      <div style="margin-top:0.75rem;display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap">
+        ${shareButtonsHTML(buildShareData(product))}
+        ${product.sharesCount ? `<span class="text-muted" style="font-size:0.8rem">${interpolate(t("share.timesShared"), { count: product.sharesCount })}</span>` : ""}
+      </div>
       <p class="product-detail-price" style="margin-top:1rem">${product.price} ${t("products.currency")}/${unitLabel}</p>
       <div class="product-detail-stats" style="margin-top:1rem">
         <div>
@@ -167,7 +170,7 @@ function render() {
         }
       </div>
       <p style="margin-top:1rem;white-space:pre-line">${escapeHtml(product.description)}</p>
-      <div class="text-muted" style="margin-top:1rem;font-size:0.875rem">${escapeHtml(product.ownerName)}</div>
+      <a href="seller-profile.html?uid=${product.ownerId}" class="text-muted" style="margin-top:1rem;font-size:0.875rem;display:inline-block;text-decoration:underline">${escapeHtml(product.ownerName)}</a>
       ${
         isOwner
           ? ""
@@ -179,9 +182,9 @@ function render() {
     </div>
   `;
 
-  document.getElementById("fav-btn-mount").innerHTML = favoriteButtonHTML(product.id, "is-static");
+  document.getElementById("fav-btn-mount").innerHTML = favoriteButtonHTML(product.id, "is-static", product.favoritesCount);
   wireFavoriteButtons(detailEl);
-  wireShareButtons(detailEl);
+  wireShareButtons(detailEl, product.id);
 
   const qtyInput = document.getElementById("qty-calc-input");
   const qtyTotalEl = document.getElementById("qty-calc-total");

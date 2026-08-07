@@ -179,7 +179,27 @@
     "copied": "اتنسخ",
     "share": "مشاركة",
     "email": "إيميل",
-    "sellerLabel": "البائع"
+    "sellerLabel": "البائع",
+    "timesShared": "اتشارك {count} مرة"
+  },
+  "sellerProfile": {
+    "followers": "المتابعين",
+    "following": "بيتابع",
+    "follow": "متابعة",
+    "unfollow": "إلغاء المتابعة",
+    "loginToFollow": "سجل دخول مشان تتابع",
+    "notFound": "الحساب ده ماله صفحة عامة.",
+    "productsTitle": "المنتجات",
+    "noProducts": "لسا مفيش منتجات.",
+    "bioLabel": "نبذة عامة",
+    "bioHint": "بتظهر في صفحتك العامة -- بيشوفها الكل."
+  },
+  "farmers": {
+    "title": "اكتشف المزارعين",
+    "discoverTitle": "اكتشف المزارعين",
+    "discoverSubtitle": "تابع مزارعينك المفضلين وشوف آخر منتجاتهم أول بأول",
+    "viewAll": "تصفح المزارعين",
+    "noFarmers": "مفيش مزارعين مطابقين للفلتر ده لسا."
   },
   "userMenu": {
     "dashboard": "لوحة التحكم",
@@ -315,6 +335,7 @@
     "myOrders": "طلباتي",
     "sourcingRequests": "طلبات التوريد",
     "messages": "الرسايل",
+    "farmersDirectory": "المزارعين",
     "profile": "الملف الشخصي"
   },
   "tour": {
@@ -349,6 +370,7 @@
     "totalOffers": "العروض المستلمة",
     "totalProducts": "المنتجات النشطة",
     "currentBalance": "الرصيد الحالي",
+    "viewPublicProfile": "شوف صفحتي العامة",
     "matchingSourcing": "طلبات توريد ممكن تهمك",
     "tourStats": "هنا هتلاقي بلمحة: كام واحد شاف منتجاتك، كام عرض شراء وصلك، وكام منتج عندك شغال حالياً.",
     "tourMatches": "دي طلبات شراء من تجار بتناسب المحاصيل اللي عندك — تواصل معاهم مباشرة من هنا."
@@ -670,7 +692,8 @@
     "productAddedToCart": { "title": "منتجك في السلة", "body": "{name} ضاف {product} لسلته" },
     "newProductComment": { "title": "تعليق جديد", "body": "{name} علّق على منتجك" },
     "paymentClaimed": { "title": "المشتري حوّل الدفعة", "body": "اتحول {amount} جنيه مقابل {product} عن طريق {method} من رقم {phone}، رقم العملية: {reference}. اتأكد إنك استلمت المبلغ من لوحة إدارة الدفع." },
-    "codOrderConfirmed": { "title": "طلب جديد — دفع عند الاستلام", "body": "المشتري أكد طلب {product} بمبلغ {amount} جنيه، الدفع نقدي عند التسليم." }
+    "codOrderConfirmed": { "title": "طلب جديد — دفع عند الاستلام", "body": "المشتري أكد طلب {product} بمبلغ {amount} جنيه، الدفع نقدي عند التسليم." },
+    "newFollower": { "title": "متابع جديد", "body": "{name} بدأ يتابعك" }
   },
   "ads": {
     "title": "إدارة الإعلانات",

@@ -3,6 +3,7 @@
 import { authState, subscribe } from "./state.js";
 import { t, onLocaleChange } from "./i18n.js";
 import { icon } from "./ui.js";
+import { SellerProfiles } from "./firebase.js";
 
 const NAV_ITEMS = [
   { href: "dashboard.html", key: "overview", roles: null },
@@ -12,8 +13,30 @@ const NAV_ITEMS = [
   { href: "dashboard-my-orders.html", key: "myOrders", roles: null },
   { href: "dashboard-sourcing.html", key: "sourcingRequests", roles: ["trader", "factory", "consumer"] },
   { href: "dashboard-messages.html", key: "messages", roles: null },
+  { href: "farmers.html", key: "farmersDirectory", roles: null },
   { href: "profile.html", key: "profile", roles: null },
 ];
+
+// One-time self-heal for a farmer account that registered before public
+// seller profiles existed (this is a client-only app with no migration
+// path) -- runs at most once per page load, cheap (a single getDoc), and
+// no-ops instantly once the doc exists.
+let backfillChecked = false;
+async function ensureSellerProfileExists(profile) {
+  if (backfillChecked || profile.accountType !== "farmer") return;
+  backfillChecked = true;
+  const existing = await SellerProfiles.getOnce(profile.uid).catch(() => "error");
+  if (existing === "error" || existing) return;
+  await SellerProfiles.upsertOnRegister({
+    uid: profile.uid,
+    fullName: profile.fullName,
+    photoURL: profile.photoURL,
+    governorate: profile.governorate,
+    crops: profile.crops ?? [],
+  }).catch(() => {
+    backfillChecked = false;
+  });
+}
 
 function renderNav(activeHref, accountType) {
   const nav = document.getElementById("dashboard-nav");
@@ -67,6 +90,7 @@ export function guardDashboard(activeHref) {
       if (shell) shell.removeAttribute("data-auth-pending");
       renderNav(activeHref, authState.profile.accountType);
       renderStatusBanner();
+      ensureSellerProfileExists(authState.profile);
       if (!resolved) {
         resolved = true;
         resolve(authState.profile);

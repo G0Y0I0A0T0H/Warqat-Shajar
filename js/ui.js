@@ -4,7 +4,7 @@
 // render helper.
 import { authState, favoritesState, toggleFavorite } from "./state.js";
 import { t, getLocale } from "./i18n.js";
-import { Reports, Comments, SiteSettings, Storage, PhoneAttempts, Notifications, Escrow } from "./firebase.js";
+import { Reports, Comments, SiteSettings, Storage, PhoneAttempts, Notifications, Escrow, Products } from "./firebase.js";
 import { computeFreshness, unitLabelKey } from "./constants.js";
 
 export function btnClass(variant = "default", size = "default", extra = "") {
@@ -306,9 +306,13 @@ export function wireDropdown(triggerEl, contentEl) {
 // ---------------------------------------------------------------------------
 // Favorite button — used on every product card + detail page
 // ---------------------------------------------------------------------------
-export function favoriteButtonHTML(productId, extraClass = "") {
+export function favoriteButtonHTML(productId, extraClass = "", count = null) {
   const isActive = favoritesState.favoriteIds.has(productId);
-  return `<button type="button" class="favorite-btn ${isActive ? "is-active" : ""} ${extraClass}" data-favorite-btn data-product-id="${productId}">${icon("heart")}</button>`;
+  return `
+    <button type="button" class="favorite-btn ${isActive ? "is-active" : ""} ${extraClass}" data-favorite-btn data-product-id="${productId}">
+      ${icon("heart")}${count ? `<span class="favorite-count">${count}</span>` : ""}
+    </button>
+  `;
 }
 
 export function wireFavoriteButtons(root = document) {
@@ -372,10 +376,19 @@ async function copyToClipboard(text) {
   }
 }
 
-export function wireShareButtons(root = document) {
+// productId is optional -- passing it bumps the product's sharesCount
+// (a fire-and-forget, non-blocking engagement counter, same honesty-by-
+// design as this app's view counter: firing on the action being taken,
+// not proof the recipient actually saw it) on any copy-link or platform
+// share click.
+export function wireShareButtons(root = document, productId = null) {
+  function bumpShareCount() {
+    if (productId) Products.incrementProductShares(productId).catch(() => {});
+  }
   root.querySelectorAll("[data-copy-link]").forEach((btn) => {
     btn.addEventListener("click", async () => {
       await copyToClipboard(btn.dataset.copyLink);
+      bumpShareCount();
       const original = btn.innerHTML;
       btn.innerHTML = `${icon("check")} ${t("share.copied")}`;
       setTimeout(() => {
@@ -386,6 +399,9 @@ export function wireShareButtons(root = document) {
   root.querySelectorAll("[data-share-toggle]").forEach((toggleBtn) => {
     const menu = toggleBtn.nextElementSibling;
     if (menu) wireDropdown(toggleBtn, menu);
+    menu?.querySelectorAll(".dropdown-item").forEach((link) => {
+      link.addEventListener("click", bumpShareCount);
+    });
   });
 }
 
@@ -896,10 +912,11 @@ export function initReportDialog(mountEl, reportedUid, reportedName) {
 // ---------------------------------------------------------------------------
 export function initProductComments(containerEl, productId, ownerId) {
   containerEl.innerHTML = `
-    <h2 class="card-title">${t("comments.title")}</h2>
+    <h2 class="card-title" id="comments-title">${t("comments.title")}</h2>
     <div id="comments-form-area"></div>
     <div id="comments-list" style="margin-top:1.5rem"></div>
   `;
+  const titleEl = containerEl.querySelector("#comments-title");
   const formArea = containerEl.querySelector("#comments-form-area");
   const listEl = containerEl.querySelector("#comments-list");
 
@@ -955,6 +972,7 @@ export function initProductComments(containerEl, productId, ownerId) {
   renderForm();
 
   Comments.subscribeProductComments(productId, (comments) => {
+    titleEl.textContent = comments.length > 0 ? `${t("comments.title")} (${comments.length})` : t("comments.title");
     if (comments.length === 0) {
       listEl.innerHTML = `<p class="empty-state">${t("comments.noComments")}</p>`;
       return;
@@ -978,7 +996,7 @@ export function initProductComments(containerEl, productId, ownerId) {
       })
       .join("");
     listEl.querySelectorAll("[data-delete-comment]").forEach((btn) => {
-      btn.addEventListener("click", () => Comments.deleteProductComment(btn.dataset.deleteComment));
+      btn.addEventListener("click", () => Comments.deleteProductComment(btn.dataset.deleteComment, productId));
     });
   });
 }

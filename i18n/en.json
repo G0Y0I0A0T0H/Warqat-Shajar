@@ -179,7 +179,27 @@
     "copied": "Copied",
     "share": "Share",
     "email": "Email",
-    "sellerLabel": "Seller"
+    "sellerLabel": "Seller",
+    "timesShared": "Shared {count} times"
+  },
+  "sellerProfile": {
+    "followers": "Followers",
+    "following": "Following",
+    "follow": "Follow",
+    "unfollow": "Unfollow",
+    "loginToFollow": "Log in to follow",
+    "notFound": "This account doesn't have a public profile.",
+    "productsTitle": "Products",
+    "noProducts": "No products yet.",
+    "bioLabel": "Public bio",
+    "bioHint": "Shown on your public profile page -- visible to everyone."
+  },
+  "farmers": {
+    "title": "Discover Farmers",
+    "discoverTitle": "Discover farmers",
+    "discoverSubtitle": "Follow your favorite farmers and see their latest products",
+    "viewAll": "Browse farmers",
+    "noFarmers": "No farmers match these filters yet."
   },
   "userMenu": {
     "dashboard": "Dashboard",
@@ -315,6 +335,7 @@
     "myOrders": "My Orders",
     "sourcingRequests": "Sourcing Requests",
     "messages": "Messages",
+    "farmersDirectory": "Farmers",
     "profile": "Profile"
   },
   "tour": {
@@ -349,6 +370,7 @@
     "totalOffers": "Offers Received",
     "totalProducts": "Active Products",
     "currentBalance": "Current Balance",
+    "viewPublicProfile": "View my public profile",
     "matchingSourcing": "Sourcing Requests That May Interest You",
     "tourStats": "A quick glance: how many people viewed your products, how many offers came in, and how many products are live right now.",
     "tourMatches": "These are buyer requests that match your crops — reach out to them directly from here."
@@ -670,7 +692,8 @@
     "productAddedToCart": { "title": "Your product was added to a cart", "body": "{name} added {product} to their cart" },
     "newProductComment": { "title": "New comment", "body": "{name} commented on your product" },
     "paymentClaimed": { "title": "Buyer sent the payment", "body": "{amount} EGP was sent for {product} via {method} from phone number {phone}, reference number: {reference}. Check your payments dashboard to confirm you received it." },
-    "codOrderConfirmed": { "title": "New order — cash on delivery", "body": "The buyer confirmed an order for {product} worth {amount} EGP, to be paid in cash on delivery." }
+    "codOrderConfirmed": { "title": "New order — cash on delivery", "body": "The buyer confirmed an order for {product} worth {amount} EGP, to be paid in cash on delivery." },
+    "newFollower": { "title": "New follower", "body": "{name} started following you" }
   },
   "ads": {
     "title": "Ad Management",
