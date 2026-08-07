@@ -8,6 +8,7 @@ const NAV_ITEMS = [
   { href: "dashboard.html", key: "overview", roles: null },
   { href: "dashboard-products.html", key: "myProducts", roles: ["farmer"] },
   { href: "dashboard-orders.html", key: "incomingOrders", roles: ["farmer"] },
+  { href: "dashboard-balance.html", key: "balance", roles: ["farmer"] },
   { href: "dashboard-my-orders.html", key: "myOrders", roles: null },
   { href: "dashboard-sourcing.html", key: "sourcingRequests", roles: ["trader", "factory", "consumer"] },
   { href: "dashboard-messages.html", key: "messages", roles: null },

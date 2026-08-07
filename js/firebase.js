@@ -768,20 +768,46 @@ export const Escrow = {
   // evidence isn't enough for the owner/granted admin to actually verify a
   // transfer happened. phoneNumber is the number the buyer paid FROM (e.g.
   // their Vodafone Cash number), which the seller needs to match the
-  // transfer in their own transaction history.
-  async markPaymentClaimed(orderId, { method, phoneNumber, referenceNumber, proofUrl }) {
+  // transfer in their own transaction history. methodId is the payment
+  // method's stable id (not just its display label) -- firestore.rules
+  // doesn't check it here (any electronic method still needs full proof),
+  // it's stored so the admin's Control Room and the buyer's own stepper can
+  // show which method was actually used.
+  async markPaymentClaimed(orderId, { method, methodId, phoneNumber, referenceNumber, proofUrl }) {
     await updateDoc(doc(db, "escrowOrders", orderId), {
       status: "payment_claimed",
       paymentClaimedAt: serverTimestamp(),
       paymentMethodChosen: method || null,
+      paymentMethodId: methodId || null,
       paymentPhoneNumber: phoneNumber,
       paymentReferenceNumber: referenceNumber,
       paymentProofUrl: proofUrl,
     });
   },
 
+  // Cash-on-delivery path -- no transfer to verify, so this jumps straight
+  // from awaiting_payment to payment_confirmed (skipping payment_claimed's
+  // "buyer attests, admin verifies" meaning entirely). firestore.rules
+  // checks methodId really is flagged noProofRequired in
+  // settings/paymentInfo before allowing this, so a buyer can't just claim
+  // "cod" to skip proof on what should be an electronic payment.
+  async confirmCodOrder(orderId, { methodId, methodLabel }) {
+    await updateDoc(doc(db, "escrowOrders", orderId), {
+      status: "payment_confirmed",
+      paymentConfirmedAt: serverTimestamp(),
+      paymentMethodId: methodId,
+      paymentMethodChosen: methodLabel || null,
+      // Explicit flag rather than checking paymentMethodId against a magic
+      // "cod" string -- the admin can flag ANY payment method as
+      // noProofRequired, not just the one seeded default, so this is what
+      // the stepper banner and release()'s wallet-skip actually key off.
+      noProofPayment: true,
+    });
+  },
+
   // Owner-only in firestore.rules -- confirms a real transfer was received
-  // against the owner's own settings/paymentInfo details.
+  // against the owner's own settings/paymentInfo details. Never reached for
+  // a COD order (confirmCodOrder above goes straight to payment_confirmed).
   async confirmPaymentReceived(orderId) {
     await updateDoc(doc(db, "escrowOrders", orderId), { status: "payment_confirmed", paymentConfirmedAt: serverTimestamp() });
   },
@@ -801,8 +827,17 @@ export const Escrow = {
 
   // Both owner-only in firestore.rules -- the owner physically pays the
   // farmer (or refunds the buyer) outside the app, then marks it here.
+  // release() is also the ONLY place a farmer's wallet ever gets credited --
+  // never for a COD order, since no money ever passed through the platform
+  // for one of those (see the doc comment on Wallets below for why the
+  // balance write itself isn't further delta-checked in firestore.rules).
   async release(orderId) {
+    const snap = await getDoc(doc(db, "escrowOrders", orderId));
+    const order = snap.data();
     await updateDoc(doc(db, "escrowOrders", orderId), { status: "released", releasedAt: serverTimestamp() });
+    if (order && !order.noProofPayment) {
+      await Wallets.credit(order.sellerId, order.totalAmount, orderId);
+    }
   },
 
   async refund(orderId) {
@@ -824,6 +859,111 @@ export const Escrow = {
     const q = query(escrowOrdersCol, where("buyerId", "==", buyerId));
     const snap = await getDocs(q);
     return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  },
+
+  // Every order a farmer/seller has ever sold -- mirrors listMyOrdersOnce
+  // above, used by the "held amount" + "recent deals" sections of the
+  // farmer's own balance page (dashboard-balance.js).
+  async listMySalesOnce(sellerId) {
+    const q = query(escrowOrdersCol, where("sellerId", "==", sellerId));
+    const snap = await getDocs(q);
+    return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  },
+};
+
+// ===========================================================================
+// Wallets -- a farmer's withdrawable balance. Lazily created (no doc yet ==
+// balance 0, same default-object pattern as every other settings-style doc
+// in this file). The "held" amount is deliberately never stored here -- it's
+// always live-derived by summing the farmer's own non-final, non-COD
+// escrowOrders (see dashboard-balance.js), so there's nothing to keep in
+// sync or let drift out of truth.
+//
+// Only a payments-granted admin (or Escrow.release()/WithdrawalRequests.
+// markPaid() below, both of which run as that same admin) may ever write
+// availableBalance -- firestore.rules doesn't try to cryptographically
+// enforce that a given write's *delta* matches a specific order/withdrawal
+// (Firestore rules can't cleanly correlate two separate document writes
+// without Cloud Functions); a payments-granted admin is already this
+// project's full financial trust boundary (they can already unilaterally
+// flip any escrow status). The immutable walletTransactions ledger below is
+// what makes any discrepancy reviewable after the fact, consistent with the
+// "audit trail, not payment verification" philosophy stated on Escrow above.
+// ===========================================================================
+function walletRef(uid) {
+  return doc(db, "wallets", uid);
+}
+const walletTransactionsCol = collection(db, "walletTransactions");
+
+export const Wallets = {
+  async getWalletOnce(uid) {
+    const snap = await getDoc(walletRef(uid));
+    return snap.exists() ? snap.data() : { availableBalance: 0 };
+  },
+
+  subscribeWallet(uid, callback) {
+    return onSnapshot(
+      walletRef(uid),
+      (snap) => callback(snap.exists() ? snap.data() : { availableBalance: 0 }),
+      () => callback({ availableBalance: 0 }),
+    );
+  },
+
+  // Internal -- called by Escrow.release() and WithdrawalRequests.markPaid()
+  // only, never exposed directly to a plain UI button.
+  async credit(uid, amount, orderId) {
+    const current = await Wallets.getWalletOnce(uid);
+    await setDoc(walletRef(uid), { availableBalance: (current.availableBalance || 0) + amount, updatedAt: serverTimestamp() }, { merge: true });
+    await addDoc(walletTransactionsCol, { uid, type: "credit", amount, orderId, withdrawalId: null, note: null, createdAt: serverTimestamp() });
+  },
+
+  async debit(uid, amount, withdrawalId) {
+    const current = await Wallets.getWalletOnce(uid);
+    await setDoc(walletRef(uid), { availableBalance: (current.availableBalance || 0) - amount, updatedAt: serverTimestamp() }, { merge: true });
+    await addDoc(walletTransactionsCol, { uid, type: "debit", amount, orderId: null, withdrawalId, note: null, createdAt: serverTimestamp() });
+  },
+};
+
+// ===========================================================================
+// Withdrawal requests -- a farmer asks to be paid out; a payments-granted
+// admin pays them manually (outside the app, same as every other payment
+// step in this project) and marks it here, which is what actually debits
+// the wallet. Farmer-created, capped against their own current balance at
+// creation time (firestore.rules re-checks this server-side via get()).
+// ===========================================================================
+const withdrawalRequestsCol = collection(db, "withdrawalRequests");
+
+export const WithdrawalRequests = {
+  async create({ uid, uidName, amount }) {
+    await addDoc(withdrawalRequestsCol, { uid, uidName: uidName || null, amount, status: "requested", adminNote: null, resolvedAt: null, createdAt: serverTimestamp() });
+  },
+
+  async cancel(id) {
+    await updateDoc(doc(db, "withdrawalRequests", id), { status: "cancelled" });
+  },
+
+  async listMineOnce(uid) {
+    const q = query(withdrawalRequestsCol, where("uid", "==", uid));
+    const snap = await getDocs(q);
+    return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  },
+
+  // Owner-only oversight (admin-payments.js) -- fetched in full and filtered
+  // client-side, same precedent as Escrow.listAllOnce().
+  async listAllPendingOnce() {
+    const snap = await getDocs(withdrawalRequestsCol);
+    return snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((r) => r.status === "requested");
+  },
+
+  async markPaid(id) {
+    const snap = await getDoc(doc(db, "withdrawalRequests", id));
+    const req = snap.data();
+    await updateDoc(doc(db, "withdrawalRequests", id), { status: "paid", resolvedAt: serverTimestamp() });
+    await Wallets.debit(req.uid, req.amount, id);
+  },
+
+  async reject(id, note) {
+    await updateDoc(doc(db, "withdrawalRequests", id), { status: "rejected", adminNote: note || null, resolvedAt: serverTimestamp() });
   },
 };
 
@@ -1224,7 +1364,7 @@ const siteImagesRef = doc(db, "settings", "siteImages");
 const DEFAULT_SITE_CONTENT = { ar: {}, en: {} };
 const siteContentRef = doc(db, "settings", "siteContent");
 
-const DEFAULT_SITE_THEME = { primaryColor: null, cursorSize: null, defaultDarkMode: false };
+const DEFAULT_SITE_THEME = { primaryColor: null, cursorSize: null, cursorEffectDisabled: false, defaultDarkMode: false };
 const siteThemeRef = doc(db, "settings", "siteTheme");
 
 const DEFAULT_SOCIAL_LINKS = { links: [], phone: null, whatsapp: null, email: null, policyLink: null };
@@ -1339,6 +1479,13 @@ export const SiteSettings = {
 
   async updateCursorSize(cursorSize) {
     await setDoc(siteThemeRef, { cursorSize }, { merge: true });
+  },
+
+  // Regular users only -- an admin's own view always keeps the cursor
+  // effect regardless of this setting (enforced client-side in layout.js by
+  // gating on authState.isAdmin, not here).
+  async updateCursorEffectDisabled(disabled) {
+    await setDoc(siteThemeRef, { cursorEffectDisabled: disabled }, { merge: true });
   },
 
   // The default light/dark mode shown to a visitor who has never touched

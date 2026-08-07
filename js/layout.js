@@ -274,6 +274,18 @@ async function applyLogo() {
   }
 }
 
+// The owner can turn off the leaf-cursor effect sitewide, but that decision
+// only ever applies to regular visitors -- an admin's own browsing always
+// keeps it, regardless of this setting (see the spec: "القرار يلي بيتم
+// اتخاذه بشأن الزر بيكون تطبيقه بس على المستخدمين العاديين، أما الادمن
+// دايمًا موجود"). The two independent Firestore subscriptions involved
+// (site theme, admin status) can resolve in either order, so this is
+// recomputed from both a theme update and any authState change.
+let cursorEffectDisabledSetting = false;
+function applyCursorDisabledClass() {
+  document.documentElement.classList.toggle("leaf-cursor-disabled", cursorEffectDisabledSetting && !authState.isAdmin);
+}
+
 function applyBrandColor() {
   SiteSettings.subscribeSiteTheme((theme) => {
     if (theme.primaryColor) {
@@ -286,8 +298,11 @@ function applyBrandColor() {
       document.documentElement.style.setProperty("--leaf-trail-size", theme.cursorSize * 0.55 + "px");
       document.documentElement.style.setProperty("--leaf-particle-size", theme.cursorSize * 0.125 + "px");
     }
+    cursorEffectDisabledSetting = Boolean(theme.cursorEffectDisabled);
+    applyCursorDisabledClass();
     applySiteDefaultDarkMode(theme.defaultDarkMode);
   });
+  subscribe(applyCursorDisabledClass);
 }
 
 function renderFooterSocial() {

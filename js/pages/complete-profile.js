@@ -42,7 +42,7 @@ async function main() {
     }
     pageMain.removeAttribute("data-auth-pending");
   }
-  subscribe(guard);
+  const unsubscribeGuard = subscribe(guard);
   guard();
 
   const form = document.getElementById("complete-profile-form");
@@ -53,6 +53,13 @@ async function main() {
     e.preventDefault();
     if (!authState.user) return;
     showMessage(formError, "");
+    // Firestore's local listener fires the instant createUserProfile's write
+    // lands (often before that call's own await even returns), so the live
+    // guard() above would race this handler and redirect to index.html
+    // before the identity-verification submit below ever runs. Disable the
+    // live redirect for the rest of this submission -- we navigate ourselves
+    // once everything below has actually finished.
+    unsubscribeGuard();
 
     const phone = document.getElementById("phone").value.trim();
     const nationalId = document.getElementById("nationalId").value.trim();

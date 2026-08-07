@@ -1,7 +1,7 @@
 import { initLayout } from "../layout.js";
 import { guardDashboard } from "../dashboard-shell.js";
 import { t, getLocale, onLocaleChange } from "../i18n.js";
-import { Products, Sourcing, Chat, Notifications } from "../firebase.js";
+import { Products, Sourcing, Chat, Notifications, Wallets } from "../firebase.js";
 import { governorateLabel, categoryLabelById, onCategoriesChange } from "../constants.js";
 import { badgeClass, btnClass, icon, escapeHtml } from "../ui.js";
 import { initHelpTour } from "../help-tour.js";
@@ -12,6 +12,7 @@ const contentEl = document.getElementById("overview-content");
 let myProducts = [];
 let currentProfile = null;
 let fulfilling = false;
+let myWalletBalance = 0;
 
 function renderOverview(profile) {
   welcomeEl.textContent = `${t("dashboardOverview.welcome")}, ${profile.fullName}`;
@@ -47,6 +48,10 @@ function renderOverview(profile) {
         <div class="stat-value">${activeCount}</div>
         <div class="stat-label">${t("dashboardOverview.totalProducts")}</div>
       </div>
+      <a class="card stat-card" href="dashboard-balance.html" style="text-decoration:none;color:inherit">
+        <div class="stat-value">${myWalletBalance} ${t("products.currency")}</div>
+        <div class="stat-label">${t("dashboardOverview.currentBalance")}</div>
+      </a>
     </div>
     <div id="matching-sourcing" style="margin-top:2rem">
       <h2 class="heading" style="font-size:1.1rem">${t("dashboardOverview.matchingSourcing")}</h2>
@@ -133,6 +138,10 @@ async function main() {
   if (profile.accountType === "farmer") {
     Products.subscribeMyProducts(profile.uid, (products) => {
       myProducts = products;
+      renderOverview(profile);
+    });
+    Wallets.subscribeWallet(profile.uid, (wallet) => {
+      myWalletBalance = wallet.availableBalance || 0;
       renderOverview(profile);
     });
     initHelpTour("farmer-overview", [
