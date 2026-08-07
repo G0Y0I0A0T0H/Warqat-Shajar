@@ -2641,6 +2641,31 @@ main {
   height: 1rem;
 }
 
+.content-tabs {
+  display: flex;
+  gap: 0.25rem;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--border);
+}
+
+.content-tab {
+  padding: 0.6rem 0.9rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--muted-foreground);
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+}
+
+.content-tab:hover {
+  color: var(--foreground);
+}
+
+.content-tab.is-active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
 .admin-gate {
   display: flex;
   align-items: center;

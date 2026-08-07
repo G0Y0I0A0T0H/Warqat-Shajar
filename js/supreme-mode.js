@@ -34,6 +34,8 @@ let userSearch = "";
 let editingPermsUid = null;
 let viewingPinUid = null;
 let viewedPin = null;
+let fakeDataCounts = { products: 0, deals: 0, chats: 0, notifications: 0 };
+let wipingKey = null;
 
 export async function openSupremeMode() {
   if (overlay) return;
@@ -72,6 +74,39 @@ function closeSupremeMode() {
 async function reload() {
   [users, admins] = await Promise.all([Admin.listAllUsers(), Admin.listAllAdmins()]);
   render();
+}
+
+async function reloadFakeDataCounts() {
+  fakeDataCounts = await Admin.countFakeData().catch(() => fakeDataCounts);
+  render();
+}
+
+// Type-to-confirm, not a plain OK/Cancel confirm() -- a misclick here is
+// unrecoverable, so the owner has to actually type the category's own name
+// back before anything happens. Re-fetches the count right before deleting
+// so the number shown in the confirmation matches what's about to be
+// deleted, not a stale value from whenever the tab was first opened.
+async function wipeCategory(key) {
+  const category = DANGER_CATEGORIES.find((c) => c.key === key);
+  if (!category || wipingKey) return;
+  const freshCounts = await Admin.countFakeData().catch(() => fakeDataCounts);
+  fakeDataCounts = freshCounts;
+  const expected = t(category.titleKey).trim();
+  const typed = prompt(t("supreme.danger.confirmPrompt", 'This deletes {count} {label} permanently. Type "{label}" to confirm.').replace("{count}", freshCounts[key]).replace(/\{label\}/g, expected));
+  if (typed === null) return;
+  if (typed.trim() !== expected) {
+    alert(t("supreme.danger.confirmMismatch", "Text didn't match -- nothing was deleted."));
+    return;
+  }
+  wipingKey = key;
+  render();
+  try {
+    await Admin[category.wipe]();
+    await reloadFakeDataCounts();
+  } finally {
+    wipingKey = null;
+    render();
+  }
 }
 
 function visibleUsersList() {
@@ -116,6 +151,42 @@ function userRowHTML(u) {
         <button type="button" class="${btnClass("destructive", "icon-sm")}" data-sm-delete="${u.uid}" aria-label="${t("admin.deleteUser")}">${icon("trash")}</button>
       </div>
     </div>
+  `;
+}
+
+// The pre-launch "reset fake data" tool -- each category is its own button
+// with its own typed confirmation, deliberately not one "wipe everything"
+// action (see js/firebase.js's Admin.wipeAllX() for what each one actually
+// deletes). Users are intentionally not a category here -- see the plan
+// this was built from for why.
+const DANGER_CATEGORIES = [
+  { key: "products", titleKey: "supreme.danger.productsTitle", descKey: "supreme.danger.productsDesc", wipe: "wipeAllProducts" },
+  { key: "deals", titleKey: "supreme.danger.dealsTitle", descKey: "supreme.danger.dealsDesc", wipe: "wipeAllDeals" },
+  { key: "chats", titleKey: "supreme.danger.chatsTitle", descKey: "supreme.danger.chatsDesc", wipe: "wipeAllChats" },
+  { key: "notifications", titleKey: "supreme.danger.notificationsTitle", descKey: "supreme.danger.notificationsDesc", wipe: "wipeAllNotifications" },
+];
+
+function dangerZoneHTML() {
+  return `
+    <p class="sm-row-sub" style="margin-bottom:1rem">${t("supreme.danger.hint", "Owner-only. Permanently deletes real data -- meant for clearing test/dummy data before real users arrive, not routine use.")}</p>
+    ${DANGER_CATEGORIES.map(
+      (c) => `
+      <div class="sm-row">
+        <div class="sm-row-main">
+          <div class="sm-row-title">
+            <span>${t(c.titleKey)}</span>
+            <span class="${badgeClass("secondary")}">${fakeDataCounts[c.key]}</span>
+          </div>
+          <div class="sm-row-sub">${t(c.descKey)}</div>
+        </div>
+        <div class="sm-row-actions">
+          <button type="button" class="${btnClass("destructive", "sm")}" data-sm-wipe="${c.key}" ${wipingKey === c.key ? "disabled" : ""}>
+            ${wipingKey === c.key ? t("supreme.danger.wiping", "Deleting...") : t("supreme.danger.wipeBtn", "Reset to zero")}
+          </button>
+        </div>
+      </div>
+    `,
+    ).join("")}
   `;
 }
 
@@ -300,6 +371,7 @@ function render() {
     <button type="button" class="sm-tab ${activeTab === "users" ? "is-active" : ""}" data-sm-tab="users">${t("admin.users")} (${users.length})</button>
     <button type="button" class="sm-tab ${activeTab === "admins" ? "is-active" : ""}" data-sm-tab="admins">${t("admin.admins")} (${admins.length})</button>
     <button type="button" class="sm-tab ${activeTab === "quick" ? "is-active" : ""}" data-sm-tab="quick">${t("supreme.quickAccess", "Quick Access")}</button>
+    <button type="button" class="sm-tab ${activeTab === "danger" ? "is-active" : ""}" data-sm-tab="danger">${icon("alert-triangle")} ${t("supreme.danger.tabTitle", "Danger Zone")}</button>
   `;
   bodyEl.innerHTML =
     activeTab === "users"
@@ -309,16 +381,26 @@ function render() {
       `
       : activeTab === "admins"
         ? admins.map(adminRowHTML).join("") || `<p class="sm-empty">${t("admin.noAdmins")}</p>`
-        : quickAccessHTML();
+        : activeTab === "danger"
+          ? dangerZoneHTML()
+          : quickAccessHTML();
 
   tabsEl.querySelectorAll("[data-sm-tab]").forEach((btn) => {
     btn.addEventListener("click", () => {
+      const wasDanger = activeTab === "danger";
       activeTab = btn.dataset.smTab;
       editingPermsUid = null;
       viewingPinUid = null;
       render();
+      if (activeTab === "danger" && !wasDanger) reloadFakeDataCounts();
     });
   });
+
+  if (activeTab === "danger") {
+    overlay.querySelectorAll("[data-sm-wipe]").forEach((btn) => {
+      btn.addEventListener("click", () => wipeCategory(btn.dataset.smWipe));
+    });
+  }
 
   if (activeTab === "users") {
     bodyEl.querySelector("#sm-user-search")?.addEventListener("input", (e) => {

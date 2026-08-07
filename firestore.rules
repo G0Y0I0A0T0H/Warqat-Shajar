@@ -482,6 +482,12 @@ service cloud.firestore {
          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'refundedAt']) &&
          request.resource.data.status == 'refunded')
       );
+
+      // Owner-only, strictly -- not delegable via isOwnerOrGranted. Exists
+      // purely for the pre-launch "reset fake data" tool in Supreme Mode
+      // (see js/supreme-mode.js's Danger Zone tab), never a normal
+      // operation once real deals are flowing through the marketplace.
+      allow delete: if isOwner();
     }
 
     // A farmer's withdrawable balance -- lazily created (no doc = 0 in the
@@ -494,28 +500,38 @@ service cloud.firestore {
     // Functions, and a payments-granted admin is already this project's
     // full financial trust boundary (see escrowOrders above). The
     // immutable walletTransactions ledger below is the audit trail.
+    // Delete is owner-only, strictly -- not delegable via isOwnerOrGranted
+    // -- and exists purely for the pre-launch "reset fake data" tool in
+    // Supreme Mode (see js/supreme-mode.js's Danger Zone tab), never a
+    // normal operation once real money is moving through the ledger.
     match /wallets/{uid} {
       allow read: if isSignedIn() && (request.auth.uid == uid || isOwnerOrGranted('payments'));
       allow create, update: if isOwnerOrGranted('payments') &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['availableBalance', 'updatedAt']) &&
         request.resource.data.availableBalance is number;
+      allow delete: if isOwner();
     }
 
-    // Immutable, append-only ledger entry per credit/debit -- never
-    // updatable or deletable, by anyone, ever.
+    // Append-only ledger entry per credit/debit -- never updatable by
+    // anyone, so the audit trail can never be silently rewritten. Deletable
+    // by the owner only, and only for the same pre-launch reset tool
+    // described above -- once real transactions exist this is the one
+    // escape hatch from an otherwise-permanent record, used deliberately
+    // and rarely, not a general-purpose edit path.
     match /walletTransactions/{txId} {
       allow read: if isSignedIn() && (request.auth.uid == resource.data.uid || isOwnerOrGranted('payments'));
       allow create: if isOwnerOrGranted('payments') &&
         request.resource.data.type in ['credit', 'debit'] &&
         request.resource.data.amount is number && request.resource.data.amount > 0;
-      allow update, delete: if false;
+      allow update: if false;
+      allow delete: if isOwner();
     }
 
     // A farmer's payout request -- self-created, capped against their own
     // current balance at creation time. Resolved by a payments-granted
     // admin (paid/rejected) or cancelled by the farmer themselves while
     // still pending -- same shape as every other self-attested request in
-    // this file.
+    // this file. Delete is owner-only, same reset-tool reasoning as above.
     match /withdrawalRequests/{reqId} {
       allow read: if isSignedIn() && (request.auth.uid == resource.data.uid || isOwnerOrGranted('payments'));
       allow create: if isSignedIn() &&
@@ -531,6 +547,7 @@ service cloud.firestore {
         (isOwnerOrGranted('payments') && resource.data.status == 'requested' &&
          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'resolvedAt', 'adminNote']) &&
          request.resource.data.status in ['paid', 'rejected']);
+      allow delete: if isOwner();
     }
 
     match /reviews/{reviewId} {

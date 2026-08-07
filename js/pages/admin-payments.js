@@ -19,6 +19,15 @@ let allOrders = [];
 let farmerRollups = [];
 let pendingWithdrawals = [];
 let migrated = false;
+let activeTab = "methods";
+
+const TABS = [
+  { key: "methods", labelKey: "payments.tabMethods" },
+  { key: "needsAction", labelKey: "payments.tabNeedsAction" },
+  { key: "allDeals", labelKey: "payments.tabAllDeals" },
+  { key: "withdrawals", labelKey: "payments.tabWithdrawals" },
+  { key: "farmers", labelKey: "payments.tabFarmers" },
+];
 
 const ESCROW_STATUS_KEY = {
   awaiting_payment: "escrow.statusAwaitingPayment",
@@ -181,80 +190,132 @@ function renderWithdrawalRow(req) {
   `;
 }
 
+// Small at-a-glance numbers computed from data already being fetched for
+// the tabs below -- no extra reads, just a summary of what's already there.
+function statCardHTML(label, value) {
+  return `
+    <div class="card" style="padding:0.85rem 1rem">
+      <div class="text-muted" style="font-size:0.75rem">${label}</div>
+      <div style="font-size:1.3rem;font-weight:700;margin-top:0.15rem">${value}</div>
+    </div>
+  `;
+}
+
+function summaryHTML() {
+  const pendingWithdrawalsTotal = pendingWithdrawals.reduce((sum, r) => sum + (r.amount || 0), 0);
+  const farmerBalancesTotal = farmerRollups.reduce((sum, r) => sum + (r.availableBalance || 0), 0);
+  const completedDeals = allOrders.filter(isCompletedDeal).length;
+  return `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(9rem,1fr));gap:0.6rem;margin-top:1rem">
+      ${statCardHTML(t("payments.summaryNeedsActionLabel"), activeOrders.length)}
+      ${statCardHTML(t("payments.summaryPendingWithdrawalsLabel"), `${pendingWithdrawalsTotal} ${t("products.currency")}`)}
+      ${statCardHTML(t("payments.summaryFarmerBalancesLabel"), `${farmerBalancesTotal} ${t("products.currency")}`)}
+      ${statCardHTML(t("payments.summaryCompletedDealsLabel"), completedDeals)}
+    </div>
+  `;
+}
+
+function tabPanelHTML() {
+  if (activeTab === "methods") {
+    return `
+      <div class="card" style="padding:1.5rem;margin-top:1rem">
+        <h2 class="card-title" style="font-size:1rem">${t("payments.methodsTitle", "Payment methods")}</h2>
+        <p class="text-muted" style="font-size:0.8rem;margin-top:0.25rem">${t("payments.methodsHint", "Add, remove, or enable/disable any payment method shown to buyers -- full control, nothing hardcoded.")}</p>
+        <div style="margin-top:1rem;display:flex;flex-direction:column;gap:0.5rem">
+          ${
+            paymentInfo.methods.length === 0
+              ? `<p class="empty-state">${t("payments.noMethods", "No payment methods yet")}</p>`
+              : paymentInfo.methods.map(methodRowHTML).join("")
+          }
+        </div>
+        <form id="add-method-form" class="form-stack" style="margin-top:1.25rem;padding-top:1rem;border-top:1px solid var(--border)">
+          <div class="grid-2" style="gap:0.75rem">
+            <div class="field">
+              <label class="label">${t("payments.methodNameLabel", "Method name")}</label>
+              <input class="input" id="new-method-label" placeholder="${t("payments.methodNamePlaceholder", "e.g. Vodafone Cash")}">
+            </div>
+            <div class="field">
+              <label class="label">${t("payments.methodIconLabel", "Icon")}</label>
+              <select class="select" id="new-method-icon">
+                ${ICON_CHOICES.map((i) => `<option value="${i}">${i}</option>`).join("")}
+              </select>
+            </div>
+          </div>
+          <div class="field">
+            <label class="label">${t("payments.methodValueLabel", "Receiving details (phone number, ID, card info -- optional)")}</label>
+            <input class="input force-ltr" dir="ltr" id="new-method-value">
+          </div>
+          <label class="checkbox-row">
+            <input type="checkbox" id="new-method-no-proof">
+            <span>${t("payments.noProofRequiredLabel")}</span>
+          </label>
+          <p id="add-method-error" class="error-text" style="display:none"></p>
+          <button type="submit" class="${btnClass("default", "sm")}" style="align-self:flex-start">${t("payments.addMethod", "Add method")}</button>
+        </form>
+      </div>
+
+      <form id="payment-notes-form" class="form-stack card" style="padding:1.5rem;margin-top:1rem">
+        <div class="field">
+          <label class="label" for="payment-notes-input">${t("payments.notesLabel")}</label>
+          <textarea class="textarea" rows="3" id="payment-notes-input">${paymentInfo.notes || ""}</textarea>
+        </div>
+        <span id="payment-notes-saved" class="success-text" style="display:none">${t("payments.saved")}</span>
+        <button type="submit" class="${btnClass("default")}" style="align-self:flex-start">${t("payments.save")}</button>
+      </form>
+    `;
+  }
+  if (activeTab === "needsAction") {
+    return `
+      <p class="text-muted" style="font-size:0.85rem;margin-top:1rem;max-width:40rem">${t("payments.ordersHint")}</p>
+      <div class="card" style="margin-top:0.75rem;padding:0 1rem">
+        ${activeOrders.length === 0 ? `<p class="empty-state">${t("payments.noOrders")}</p>` : activeOrders.map(renderOrderRow).join("")}
+      </div>
+    `;
+  }
+  if (activeTab === "withdrawals") {
+    return `
+      <p class="text-muted" style="font-size:0.85rem;margin-top:1rem;max-width:40rem">${t("payments.withdrawalsHint")}</p>
+      <div class="card" style="margin-top:0.75rem;padding:0 1rem">
+        ${pendingWithdrawals.length === 0 ? `<p class="empty-state">${t("payments.noWithdrawals")}</p>` : pendingWithdrawals.map(renderWithdrawalRow).join("")}
+      </div>
+    `;
+  }
+  if (activeTab === "farmers") {
+    return `
+      <p class="text-muted" style="font-size:0.85rem;margin-top:1rem;max-width:40rem">${t("payments.farmersOverviewHint")}</p>
+      <div class="card" style="margin-top:0.75rem;padding:0 1rem">
+        ${farmerRollups.length === 0 ? `<p class="empty-state">${t("payments.noFarmersYet")}</p>` : farmerRollups.map(renderFarmerRollupRow).join("")}
+      </div>
+    `;
+  }
+  return `
+    <p class="text-muted" style="font-size:0.85rem;margin-top:1rem;max-width:40rem">${t("payments.allDealsHint")}</p>
+    <div class="card" style="margin-top:0.75rem;padding:0 1rem">
+      ${allOrders.length === 0 ? `<p class="empty-state">${t("payments.noOrders")}</p>` : allOrders.map(renderDealRow).join("")}
+    </div>
+  `;
+}
+
 function render() {
   contentEl.innerHTML = `
     <h1 class="heading" style="font-size:1.5rem">${t("payments.title")}</h1>
     <p class="text-muted" style="font-size:0.85rem;margin-top:0.25rem;max-width:40rem">${t("payments.hint")}</p>
 
-    <div class="card" style="padding:1.5rem;margin-top:1rem">
-      <h2 class="card-title" style="font-size:1rem">${t("payments.methodsTitle", "Payment methods")}</h2>
-      <p class="text-muted" style="font-size:0.8rem;margin-top:0.25rem">${t("payments.methodsHint", "Add, remove, or enable/disable any payment method shown to buyers -- full control, nothing hardcoded.")}</p>
-      <div style="margin-top:1rem;display:flex;flex-direction:column;gap:0.5rem">
-        ${
-          paymentInfo.methods.length === 0
-            ? `<p class="empty-state">${t("payments.noMethods", "No payment methods yet")}</p>`
-            : paymentInfo.methods.map(methodRowHTML).join("")
-        }
-      </div>
-      <form id="add-method-form" class="form-stack" style="margin-top:1.25rem;padding-top:1rem;border-top:1px solid var(--border)">
-        <div class="grid-2" style="gap:0.75rem">
-          <div class="field">
-            <label class="label">${t("payments.methodNameLabel", "Method name")}</label>
-            <input class="input" id="new-method-label" placeholder="${t("payments.methodNamePlaceholder", "e.g. Vodafone Cash")}">
-          </div>
-          <div class="field">
-            <label class="label">${t("payments.methodIconLabel", "Icon")}</label>
-            <select class="select" id="new-method-icon">
-              ${ICON_CHOICES.map((i) => `<option value="${i}">${i}</option>`).join("")}
-            </select>
-          </div>
-        </div>
-        <div class="field">
-          <label class="label">${t("payments.methodValueLabel", "Receiving details (phone number, ID, card info -- optional)")}</label>
-          <input class="input force-ltr" dir="ltr" id="new-method-value">
-        </div>
-        <label class="checkbox-row">
-          <input type="checkbox" id="new-method-no-proof">
-          <span>${t("payments.noProofRequiredLabel")}</span>
-        </label>
-        <p id="add-method-error" class="error-text" style="display:none"></p>
-        <button type="submit" class="${btnClass("default", "sm")}" style="align-self:flex-start">${t("payments.addMethod", "Add method")}</button>
-      </form>
+    ${summaryHTML()}
+
+    <div class="content-tabs" style="margin-top:1.5rem">
+      ${TABS.map((tab) => `<button type="button" class="content-tab ${activeTab === tab.key ? "is-active" : ""}" data-payments-tab="${tab.key}">${t(tab.labelKey)}</button>`).join("")}
     </div>
 
-    <form id="payment-notes-form" class="form-stack card" style="padding:1.5rem;margin-top:1rem">
-      <div class="field">
-        <label class="label" for="payment-notes-input">${t("payments.notesLabel")}</label>
-        <textarea class="textarea" rows="3" id="payment-notes-input">${paymentInfo.notes || ""}</textarea>
-      </div>
-      <span id="payment-notes-saved" class="success-text" style="display:none">${t("payments.saved")}</span>
-      <button type="submit" class="${btnClass("default")}" style="align-self:flex-start">${t("payments.save")}</button>
-    </form>
-
-    <h2 class="heading" style="font-size:1.1rem;margin-top:2rem">${t("payments.ordersTitle")}</h2>
-    <p class="text-muted" style="font-size:0.85rem;margin-top:0.25rem;max-width:40rem">${t("payments.ordersHint")}</p>
-    <div class="card" style="margin-top:0.75rem;padding:0 1rem">
-      ${activeOrders.length === 0 ? `<p class="empty-state">${t("payments.noOrders")}</p>` : activeOrders.map(renderOrderRow).join("")}
-    </div>
-
-    <h2 class="heading" style="font-size:1.1rem;margin-top:2rem">${t("payments.withdrawalsTitle")}</h2>
-    <p class="text-muted" style="font-size:0.85rem;margin-top:0.25rem;max-width:40rem">${t("payments.withdrawalsHint")}</p>
-    <div class="card" style="margin-top:0.75rem;padding:0 1rem">
-      ${pendingWithdrawals.length === 0 ? `<p class="empty-state">${t("payments.noWithdrawals")}</p>` : pendingWithdrawals.map(renderWithdrawalRow).join("")}
-    </div>
-
-    <h2 class="heading" style="font-size:1.1rem;margin-top:2rem">${t("payments.farmersOverviewTitle")}</h2>
-    <p class="text-muted" style="font-size:0.85rem;margin-top:0.25rem;max-width:40rem">${t("payments.farmersOverviewHint")}</p>
-    <div class="card" style="margin-top:0.75rem;padding:0 1rem">
-      ${farmerRollups.length === 0 ? `<p class="empty-state">${t("payments.noFarmersYet")}</p>` : farmerRollups.map(renderFarmerRollupRow).join("")}
-    </div>
-
-    <h2 class="heading" style="font-size:1.1rem;margin-top:2rem">${t("payments.allDealsTitle")}</h2>
-    <p class="text-muted" style="font-size:0.85rem;margin-top:0.25rem;max-width:40rem">${t("payments.allDealsHint")}</p>
-    <div class="card" style="margin-top:0.75rem;padding:0 1rem">
-      ${allOrders.length === 0 ? `<p class="empty-state">${t("payments.noOrders")}</p>` : allOrders.map(renderDealRow).join("")}
-    </div>
+    ${tabPanelHTML()}
   `;
+
+  contentEl.querySelectorAll("[data-payments-tab]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      activeTab = btn.dataset.paymentsTab;
+      render();
+    });
+  });
 
   contentEl.querySelectorAll("[data-confirm-payment]").forEach((btn) => {
     btn.addEventListener("click", async () => {
@@ -311,7 +372,11 @@ function render() {
       await SiteSettings.setPaymentMethods(paymentInfo.methods.filter((m) => m.id !== id));
     });
   });
-  contentEl.querySelector("#add-method-form").addEventListener("submit", async (e) => {
+  // Both forms live only in the "methods" tab panel now -- absent (null)
+  // whenever a different tab is active, so these bindings have to be
+  // optional instead of the unconditional querySelector(...) calls this
+  // page used back when every section rendered on the same page at once.
+  contentEl.querySelector("#add-method-form")?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const errorEl = contentEl.querySelector("#add-method-error");
     showMessage(errorEl, "");
@@ -331,7 +396,7 @@ function render() {
     await SiteSettings.setPaymentMethods([...paymentInfo.methods, newMethod]);
   });
 
-  contentEl.querySelector("#payment-notes-form").addEventListener("submit", async (e) => {
+  contentEl.querySelector("#payment-notes-form")?.addEventListener("submit", async (e) => {
     e.preventDefault();
     await SiteSettings.updatePaymentNotes(contentEl.querySelector("#payment-notes-input").value.trim());
     const saved = contentEl.querySelector("#payment-notes-saved");
