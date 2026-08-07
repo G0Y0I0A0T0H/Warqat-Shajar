@@ -115,6 +115,15 @@
     "organic": "منتجات عضوية",
     "animal-feed": "علف حيواني",
     "nurseries": "مشاتل",
+    "corn": "ذرة",
+    "lentils": "عدس",
+    "chickpeas": "حمص",
+    "onions-garlic": "بصل وثوم",
+    "sesame-sunflower": "سمسم وعباد الشمس",
+    "sugar-crops": "قصب وبنجر السكر",
+    "green-legumes": "بقوليات خضراء",
+    "herbs": "أعشاب ونباتات طبية وعطرية",
+    "seeds": "بذور للزراعة",
     "shopNow": "تسوق دلوقتي"
   },
   "featured": {

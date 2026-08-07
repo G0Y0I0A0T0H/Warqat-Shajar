@@ -86,6 +86,12 @@ function renderCategoryGrid() {
     .map((cat) => {
       const label = categoryLabel(cat, getLocale());
       const image = cat.isCustom ? cat.image : lastCategoryImages[cat.id] || cat.image;
+      // A category with no photo yet (a newly-added built-in the admin
+      // hasn't uploaded an image for via admin-branding.js, or a custom one
+      // created without one) is still fully usable for listing/filtering
+      // products -- it just doesn't get a card on this decorative grid
+      // until a real photo exists, rather than showing a broken <img>.
+      if (!image) return "";
       return `
     <a href="products.html?category=${cat.id}" class="category-card">
       <img src="${safeUrl(image)}" alt="${escapeHtml(label)}" loading="lazy">
