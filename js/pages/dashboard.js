@@ -53,6 +53,9 @@ function renderOverview(profile) {
         <div class="stat-label">${t("dashboardOverview.currentBalance")}</div>
       </a>
     </div>
+    <a href="seller-profile.html?uid=${profile.uid}" class="${btnClass("outline", "sm")}" style="margin-top:1rem;display:inline-flex">
+      ${icon("user")} ${t("dashboardOverview.viewPublicProfile", "View my public profile")}
+    </a>
     <div id="matching-sourcing" style="margin-top:2rem">
       <h2 class="heading" style="font-size:1.1rem">${t("dashboardOverview.matchingSourcing")}</h2>
       <div id="matching-sourcing-list" class="sourcing-match-grid" style="margin-top:0.75rem"></div>

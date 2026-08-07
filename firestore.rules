@@ -174,6 +174,23 @@ service cloud.firestore {
       allow delete: if isOwner();
     }
 
+    // Public, Instagram-style farmer profile -- deliberately a SEPARATE doc
+    // from users/{uid} (which holds phone/email and is never publicly
+    // readable). Only fullName/photoURL/governorate/crops/bio are ever
+    // stored here; created once at registration for farmer accounts only
+    // (see js/firebase.js's Profile.createUserProfile), kept in sync for
+    // photoURL via Profile.updatePhotoURL, and self-healed for any farmer
+    // who registered before this existed via a one-time backfill check in
+    // js/dashboard-shell.js. bio is the one field the farmer can edit
+    // directly, through js/pages/profile.js.
+    match /sellerProfiles/{uid} {
+      allow read: if true;
+      allow create, update: if isSignedIn() && request.auth.uid == uid &&
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['fullName', 'photoURL', 'governorate', 'crops', 'bio', 'updatedAt', 'createdAt']) &&
+        request.resource.data.get('bio', '') is string && request.resource.data.get('bio', '').size() <= 500;
+    }
+
     match /ads/{adId} {
       allow read: if true;
       allow create, update, delete: if isAdmin();
@@ -288,6 +305,57 @@ service cloud.firestore {
         isSignedIn() &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['offersCount']) &&
         request.resource.data.offersCount == resource.data.offersCount + 1
+      ) || (
+        // Favorites/comments/shares counters -- cosmetic engagement numbers,
+        // not financial or authorization-sensitive, so they get exactly the
+        // same trust level as viewsCount above: any signed-in user may bump
+        // by exactly 1 in either direction (favorites can be un-hearted),
+        // no cross-document proof required.
+        isSignedIn() &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['favoritesCount']) &&
+        (request.resource.data.favoritesCount == resource.data.get('favoritesCount', 0) + 1 ||
+         request.resource.data.favoritesCount == resource.data.get('favoritesCount', 0) - 1)
+      ) || (
+        isSignedIn() &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['commentsCount']) &&
+        request.resource.data.commentsCount == resource.data.get('commentsCount', 0) + 1
+      ) || (
+        // Decrement only alongside an actual comment delete, which is
+        // already admin-only (see productComments' own delete rule) --
+        // matched here rather than loosened to any signed-in user.
+        isAdmin() &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['commentsCount']) &&
+        request.resource.data.commentsCount == resource.data.get('commentsCount', 0) - 1
+      ) || (
+        isSignedIn() &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['sharesCount']) &&
+        request.resource.data.sharesCount == resource.data.get('sharesCount', 0) + 1
+      ) || (
+        // Live inventory decrement for a cash-on-delivery order's own buyer
+        // (an admin already has unconditional update rights above, which
+        // covers the electronic-payment release path -- this branch exists
+        // only because a COD buyer is neither the product's owner nor an
+        // admin). Every fact is cross-checked against the real, already-
+        // validated escrowOrders doc -- its productId/buyerId/quantity were
+        // themselves locked in at order-creation time against this exact
+        // product -- so a buyer can only ever apply this once, for exactly
+        // the quantity of a real completed COD order they placed against
+        // this product. lastOrderApplied persists on the product as small
+        // audit metadata and its "must differ from the stored value" check
+        // blocks an immediate repeat click (not airtight against a
+        // contrived alternating pattern, but consistent with this
+        // project's already-stated reasonable-not-cryptographic bar for
+        // every other self-attested flow in this file).
+        isSignedIn() &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['quantity', 'updatedAt', 'lastOrderApplied']) &&
+        request.resource.data.quantity >= 0 &&
+        request.resource.data.lastOrderApplied is string &&
+        resource.data.get('lastOrderApplied', null) != request.resource.data.lastOrderApplied &&
+        get(/databases/$(database)/documents/escrowOrders/$(request.resource.data.lastOrderApplied)).data.buyerId == request.auth.uid &&
+        get(/databases/$(database)/documents/escrowOrders/$(request.resource.data.lastOrderApplied)).data.productId == productId &&
+        get(/databases/$(database)/documents/escrowOrders/$(request.resource.data.lastOrderApplied)).data.noProofPayment == true &&
+        get(/databases/$(database)/documents/escrowOrders/$(request.resource.data.lastOrderApplied)).data.status == 'delivery_confirmed' &&
+        request.resource.data.quantity == resource.data.quantity - get(/databases/$(database)/documents/escrowOrders/$(request.resource.data.lastOrderApplied)).data.quantity
       );
 
       allow delete: if isSignedIn() && (resource.data.ownerId == request.auth.uid || isAdmin());
@@ -571,6 +639,21 @@ service cloud.firestore {
         (resource.data.uid == request.auth.uid || isAdmin());
       allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
       allow delete: if isSignedIn() && resource.data.uid == request.auth.uid;
+    }
+
+    // Follow graph -- doc id is "{followerId}_{followingId}", which makes
+    // "already following?" and unfollow a direct doc lookup/delete instead
+    // of a query. Read is public so follower/following counts (live
+    // getCountFromServer queries, never a stored counter -- see
+    // js/firebase.js's Follows export) work for any visitor, not just the
+    // two people involved.
+    match /follows/{followId} {
+      allow read: if true;
+      allow create: if isSignedIn() &&
+        request.resource.data.followerId == request.auth.uid &&
+        request.resource.data.followerId != request.resource.data.followingId &&
+        followId == request.resource.data.followerId + '_' + request.resource.data.followingId;
+      allow delete: if isSignedIn() && resource.data.followerId == request.auth.uid;
     }
 
     match /cartItems/{itemId} {

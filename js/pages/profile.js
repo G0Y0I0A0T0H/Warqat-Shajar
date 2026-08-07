@@ -1,13 +1,15 @@
 import { initLayout } from "../layout.js";
 import { t, getLocale, onLocaleChange } from "../i18n.js";
-import { Reviews, Profile } from "../firebase.js";
+import { Reviews, Profile, SellerProfiles, PhoneAttempts } from "../firebase.js";
 import { governorateLabel, categoryLabelById, onCategoriesChange } from "../constants.js";
-import { renderAvatar, renderStars, badgeClass, icon, escapeHtml, renderImageInput } from "../ui.js";
+import { renderAvatar, renderStars, badgeClass, icon, escapeHtml, renderImageInput, containsPhoneNumber, showMessage } from "../ui.js";
 import { authState, subscribe } from "../state.js";
 
 const viewEl = document.getElementById("profile-view");
 let rating = { average: 0, count: 0 };
 let ratingLoadedFor = null;
+let sellerBio = "";
+let bioLoadedFor = null;
 
 async function render() {
   if (authState.loading) {
@@ -24,6 +26,13 @@ async function render() {
   if (ratingLoadedFor !== profile.uid) {
     ratingLoadedFor = profile.uid;
     rating = await Reviews.getUserRatingSummary(profile.uid).catch(() => ({ average: 0, count: 0 }));
+    render();
+    return;
+  }
+  if (profile.accountType === "farmer" && bioLoadedFor !== profile.uid) {
+    bioLoadedFor = profile.uid;
+    const sellerProfile = await SellerProfiles.getOnce(profile.uid).catch(() => null);
+    sellerBio = sellerProfile?.bio || "";
     render();
     return;
   }
@@ -73,7 +82,48 @@ async function render() {
           : ""
       }
     </div>
+    ${
+      profile.accountType === "farmer"
+        ? `<form id="bio-form" class="form-stack" style="margin-top:1.5rem;padding-top:1.25rem;border-top:1px solid var(--border)">
+            <div class="field">
+              <label class="label" for="bio-input">${t("sellerProfile.bioLabel", "Public bio")}</label>
+              <p class="text-muted" style="font-size:0.8rem;margin-bottom:0.4rem">${t("sellerProfile.bioHint", "Shown on your public profile page -- visible to everyone.")}</p>
+              <textarea class="textarea" id="bio-input" rows="3" maxlength="500">${escapeHtml(sellerBio)}</textarea>
+            </div>
+            <p id="bio-error" class="error-text" style="display:none"></p>
+            <span id="bio-saved" class="success-text" style="display:none">${t("payments.saved", "Saved")}</span>
+            <button type="submit" class="btn btn-default btn-sm" style="align-self:flex-start">${t("payments.save", "Save")}</button>
+          </form>`
+        : ""
+    }
   `;
+
+  if (profile.accountType === "farmer") {
+    viewEl.querySelector("#bio-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const errorEl = viewEl.querySelector("#bio-error");
+      const savedEl = viewEl.querySelector("#bio-saved");
+      showMessage(errorEl, "");
+      savedEl.style.display = "none";
+      const text = viewEl.querySelector("#bio-input").value.trim();
+      if (containsPhoneNumber(text)) {
+        showMessage(errorEl, t("comments.phoneNotAllowed"));
+        PhoneAttempts.logAttempt({
+          uid: profile.uid,
+          name: profile.fullName,
+          context: "profileBio",
+          contextId: profile.uid,
+          targetName: null,
+          snippet: text,
+        }).catch(() => {});
+        return;
+      }
+      await SellerProfiles.updateBio(profile.uid, text);
+      sellerBio = text;
+      savedEl.style.display = "inline";
+      setTimeout(() => (savedEl.style.display = "none"), 2500);
+    });
+  }
 
   if (authState.isOwner) {
     renderImageInput(viewEl.querySelector("#owner-photo-input-mount"), {

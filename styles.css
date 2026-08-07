@@ -1637,11 +1637,21 @@ main {
 
 .favorite-btn.is-static {
   position: static;
+  width: auto;
+  height: auto;
+  padding: 0.4rem 0.6rem;
+  gap: 0.3rem;
 }
 
 .favorite-btn.is-active svg {
   fill: var(--destructive);
   color: var(--destructive);
+}
+
+.favorite-count {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--foreground);
 }
 
 /* ---------------------------------------------------------------------- */
