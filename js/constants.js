@@ -3,26 +3,25 @@
 import { t } from "./i18n.js";
 import { SiteSettings } from "./firebase.js";
 
-// Fine-grained list -- what a farmer actually picks when listing a product,
-// or a trader/consumer picks for their own crops/sourcing categories (see
-// mergeCategories() below). "organic" and "animal-feed" were retired here
-// (confirmed zero live products used either before removing them) since
-// they're not part of the 16-category browse structure below. Field crops
-// keep their own specific ids (wheat, rice, ...) for real listings even
-// though browsing groups them under one umbrella -- see CATEGORY_GROUPS.
+// The full, and only, category structure -- exactly these 16, everywhere
+// (admin's photo-management list, a farmer's product-listing dropdown, the
+// crops/sourcing checkboxes, the homepage grid, the products.html filter).
+// Earlier rounds tried keeping specific sub-types (wheat, rice, corn, ...)
+// selectable behind a "Field Crops" umbrella just for browsing -- the owner
+// explicitly asked for those to disappear everywhere instead, not just off
+// the homepage grid, so there is no fine-grained tier anymore.
+//
+// The one real wrinkle: 4 products already live in Firestore with
+// category set to a now-retired specific id (wheat/cotton/barley/rice) --
+// their data is untouched (no migration performed, and none is possible
+// from this client-only codebase), so their own product card/detail page
+// shows that raw id as its label until whoever listed it re-saves with one
+// of the 16 below. Browsing/filtering by "Field Crops" still surfaces them
+// correctly regardless -- see CATEGORY_GROUPS below and
+// Products.listActiveProducts() in firebase.js, which expands the id into
+// a Firestore `in` query over the old retired ids too.
 export const CATEGORIES = [
   "field-crops",
-  "wheat",
-  "cotton",
-  "barley",
-  "rice",
-  "corn",
-  "lentils",
-  "chickpeas",
-  "onions-garlic",
-  "sesame-sunflower",
-  "sugar-crops",
-  "green-legumes",
   "vegetables",
   "fruits",
   "trees",
@@ -40,11 +39,11 @@ export const CATEGORIES = [
   "services",
 ];
 
-// Which specific CATEGORIES ids collapse into one browse-level umbrella (see
-// mergeBrowseCategories() below and Products.listActiveProducts() in
-// firebase.js, which expands a group id into a Firestore `in` query over
-// its members -- kept in sync by hand there, same as BUILTIN_CATEGORY_IDS).
-// Every umbrella not listed here is already 1:1 with its own CATEGORIES id.
+// Retired ids that pre-existing product documents may still carry, mapped
+// to whichever current umbrella they'd fall under -- purely a filter-query
+// expansion (see firebase.js's CATEGORY_GROUP_MEMBERS, kept in sync by
+// hand) so old listings stay findable. Never shown as a selectable option
+// anywhere; nothing here is user-facing.
 export const CATEGORY_GROUPS = {
   "field-crops": [
     "field-crops",
@@ -61,29 +60,6 @@ export const CATEGORY_GROUPS = {
     "green-legumes",
   ],
 };
-
-// The exact 16 top-level categories shown when browsing (homepage grid,
-// products.html filter) -- everything else in CATEGORIES above is a
-// fine-grained type selectable when actually listing/describing a product,
-// grouped under one of these for browsing purposes.
-const CATEGORY_BROWSE_IDS = [
-  "field-crops",
-  "vegetables",
-  "fruits",
-  "trees",
-  "nurseries",
-  "herbs",
-  "seeds",
-  "fertilizers",
-  "pesticides",
-  "irrigation",
-  "equipment",
-  "farm-supplies",
-  "livestock",
-  "poultry",
-  "bee-products",
-  "services",
-];
 
 export const ACCOUNT_TYPES = ["farmer", "trader", "factory", "consumer"];
 
@@ -243,18 +219,6 @@ export function mergeCategories() {
   return [...builtins, ...extras];
 }
 
-// The 16-category browse list (homepage grid, products.html filter) --
-// unlike mergeCategories() above, this never mixes in admin-added custom
-// categories and ignores the hidden-list, since these 16 are a fixed
-// top-level structure, not the fine-grained per-product list. A group's own
-// image (once the admin sets one) wins; callers that want to fall back to
-// one of its members' photos (home.js does, since e.g. "wheat" already has
-// a real photo the "field-crops" umbrella can borrow) do that themselves
-// using CATEGORY_GROUPS + CATEGORY_IMAGES.
-export function mergeBrowseCategories() {
-  return CATEGORY_BROWSE_IDS.map((id) => ({ id, isCustom: false, image: CATEGORY_IMAGES[id] }));
-}
-
 export function categoryLabel(category, locale) {
   if (category.isCustom) return category[locale] || category.en;
   return t(`categories.${category.id}`);
@@ -267,5 +231,13 @@ export function categoryLabel(category, locale) {
 export function categoryLabelById(id, locale) {
   if (CATEGORIES.includes(id)) return t(`categories.${id}`);
   const custom = (categoriesConfigCache.extra || []).find((c) => c.id === id);
-  return custom ? custom[locale] || custom.en : id;
+  if (custom) return custom[locale] || custom.en;
+  // A retired specific-crop id (wheat, rice, cotton, ...) from before the
+  // category list was pruned down to the 16 real ones -- the old i18n
+  // label is kept around on purpose so the handful of already-live
+  // products using one still show a real translated label instead of the
+  // bare id. t() echoes the key back unchanged when it truly doesn't exist.
+  const key = `categories.${id}`;
+  const legacyLabel = t(key);
+  return legacyLabel === key ? id : legacyLabel;
 }

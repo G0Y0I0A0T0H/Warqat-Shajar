@@ -1,7 +1,7 @@
 import { initLayout } from "../layout.js";
 import { t, getLocale, onLocaleChange } from "../i18n.js";
 import { SiteSettings, Products, Ads } from "../firebase.js";
-import { mergeBrowseCategories, CATEGORY_GROUPS, CATEGORY_IMAGES, categoryLabel, categoryLabelById, onCategoriesChange, governorateLabel } from "../constants.js";
+import { mergeCategories, CATEGORY_GROUPS, CATEGORY_IMAGES, categoryLabel, categoryLabelById, onCategoriesChange, governorateLabel } from "../constants.js";
 import { renderAdSlot, wireFavoriteButtons, productCardHTML, icon, escapeHtml, safeUrl, btnClass } from "../ui.js";
 import { authState, subscribe } from "../state.js";
 
@@ -81,7 +81,7 @@ let lastCategoryImages = {};
 
 function renderCategoryGrid() {
   const el = document.getElementById("category-grid");
-  const categories = mergeBrowseCategories();
+  const categories = mergeCategories();
   el.innerHTML = categories
     .map((cat) => {
       const label = categoryLabel(cat, getLocale());
