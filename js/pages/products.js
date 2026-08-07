@@ -1,7 +1,7 @@
 import { initLayout } from "../layout.js";
 import { t, getLocale, onLocaleChange } from "../i18n.js";
 import { Products, Ads } from "../firebase.js";
-import { GOVERNORATES, governorateLabel, mergeCategories, categoryLabel, categoryLabelById, onCategoriesChange } from "../constants.js";
+import { GOVERNORATES, governorateLabel, mergeBrowseCategories, categoryLabel, categoryLabelById, onCategoriesChange } from "../constants.js";
 import { renderAdSlot, wireFavoriteButtons, productCardHTML } from "../ui.js";
 import { subscribe } from "../state.js";
 import { initHelpTour } from "../help-tour.js";
@@ -38,7 +38,7 @@ function populateFilters() {
   const governorate = governorateSelect.value;
   categorySelect.innerHTML =
     `<option value="">${t("categories.title", "All categories")}</option>` +
-    mergeCategories()
+    mergeBrowseCategories()
       .map((c) => `<option value="${c.id}">${categoryLabel(c, getLocale())}</option>`)
       .join("");
   governorateSelect.innerHTML =
@@ -77,7 +77,7 @@ async function main() {
 
   const params = new URLSearchParams(location.search);
   const initialCategory = params.get("category");
-  if (initialCategory && mergeCategories().some((c) => c.id === initialCategory)) {
+  if (initialCategory && mergeBrowseCategories().some((c) => c.id === initialCategory)) {
     categorySelect.value = initialCategory;
   }
 

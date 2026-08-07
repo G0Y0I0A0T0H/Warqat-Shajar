@@ -3,16 +3,19 @@
 import { t } from "./i18n.js";
 import { SiteSettings } from "./firebase.js";
 
+// Fine-grained list -- what a farmer actually picks when listing a product,
+// or a trader/consumer picks for their own crops/sourcing categories (see
+// mergeCategories() below). "organic" and "animal-feed" were retired here
+// (confirmed zero live products used either before removing them) since
+// they're not part of the 16-category browse structure below. Field crops
+// keep their own specific ids (wheat, rice, ...) for real listings even
+// though browsing groups them under one umbrella -- see CATEGORY_GROUPS.
 export const CATEGORIES = [
-  "vegetables",
-  "fruits",
+  "field-crops",
   "wheat",
   "cotton",
   "barley",
   "rice",
-  "organic",
-  "animal-feed",
-  "nurseries",
   "corn",
   "lentils",
   "chickpeas",
@@ -20,8 +23,66 @@ export const CATEGORIES = [
   "sesame-sunflower",
   "sugar-crops",
   "green-legumes",
+  "vegetables",
+  "fruits",
+  "trees",
+  "nurseries",
   "herbs",
   "seeds",
+  "fertilizers",
+  "pesticides",
+  "irrigation",
+  "equipment",
+  "farm-supplies",
+  "livestock",
+  "poultry",
+  "bee-products",
+  "services",
+];
+
+// Which specific CATEGORIES ids collapse into one browse-level umbrella (see
+// mergeBrowseCategories() below and Products.listActiveProducts() in
+// firebase.js, which expands a group id into a Firestore `in` query over
+// its members -- kept in sync by hand there, same as BUILTIN_CATEGORY_IDS).
+// Every umbrella not listed here is already 1:1 with its own CATEGORIES id.
+export const CATEGORY_GROUPS = {
+  "field-crops": [
+    "field-crops",
+    "wheat",
+    "cotton",
+    "barley",
+    "rice",
+    "corn",
+    "lentils",
+    "chickpeas",
+    "onions-garlic",
+    "sesame-sunflower",
+    "sugar-crops",
+    "green-legumes",
+  ],
+};
+
+// The exact 16 top-level categories shown when browsing (homepage grid,
+// products.html filter) -- everything else in CATEGORIES above is a
+// fine-grained type selectable when actually listing/describing a product,
+// grouped under one of these for browsing purposes.
+const CATEGORY_BROWSE_IDS = [
+  "field-crops",
+  "vegetables",
+  "fruits",
+  "trees",
+  "nurseries",
+  "herbs",
+  "seeds",
+  "fertilizers",
+  "pesticides",
+  "irrigation",
+  "equipment",
+  "farm-supplies",
+  "livestock",
+  "poultry",
+  "bee-products",
+  "services",
 ];
 
 export const ACCOUNT_TYPES = ["farmer", "trader", "factory", "consumer"];
@@ -180,6 +241,18 @@ export function mergeCategories() {
     .filter((c) => !hidden.has(c.id))
     .map((c) => ({ id: c.id, isCustom: true, ar: c.ar, en: c.en, image: c.imageUrl }));
   return [...builtins, ...extras];
+}
+
+// The 16-category browse list (homepage grid, products.html filter) --
+// unlike mergeCategories() above, this never mixes in admin-added custom
+// categories and ignores the hidden-list, since these 16 are a fixed
+// top-level structure, not the fine-grained per-product list. A group's own
+// image (once the admin sets one) wins; callers that want to fall back to
+// one of its members' photos (home.js does, since e.g. "wheat" already has
+// a real photo the "field-crops" umbrella can borrow) do that themselves
+// using CATEGORY_GROUPS + CATEGORY_IMAGES.
+export function mergeBrowseCategories() {
+  return CATEGORY_BROWSE_IDS.map((id) => ({ id, isCustom: false, image: CATEGORY_IMAGES[id] }));
 }
 
 export function categoryLabel(category, locale) {
