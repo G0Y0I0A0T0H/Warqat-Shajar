@@ -713,6 +713,15 @@
   "payments": {
     "title": "Payment Receiving System",
     "hint": "There's no live payment gateway wired into the site yet, so the idea is you manage every receiving method shown to buyers here -- add any method, remove one, or disable it temporarily, and confirm transfers with the buyer manually.",
+    "summaryNeedsActionLabel": "Deals needing action",
+    "summaryPendingWithdrawalsLabel": "Pending withdrawals",
+    "summaryFarmerBalancesLabel": "Total farmer balances",
+    "summaryCompletedDealsLabel": "Completed deals",
+    "tabMethods": "Payment methods",
+    "tabNeedsAction": "Needs action",
+    "tabAllDeals": "All deals",
+    "tabWithdrawals": "Withdrawals",
+    "tabFarmers": "Farmers",
     "methodsTitle": "Payment methods",
     "methodsHint": "Add, remove, or enable/disable any payment method shown to buyers -- full control, nothing hardcoded.",
     "noMethods": "No payment methods yet",
@@ -804,7 +813,23 @@
     "newPinPlaceholder": "New PIN",
     "noSections": "No sections",
     "allSections": "All sections (ungated)",
-    "quickAccess": "All Sections"
+    "quickAccess": "All Sections",
+    "danger": {
+      "tabTitle": "Danger Zone",
+      "hint": "Owner-only. Permanently deletes real data -- meant for clearing test/dummy data before real users arrive, not routine use.",
+      "productsTitle": "Products",
+      "productsDesc": "Deletes every product listed on the site.",
+      "dealsTitle": "Deals",
+      "dealsDesc": "Deletes every deal (order), wallet balance, financial transaction record, and withdrawal request tied to them.",
+      "chatsTitle": "Chats",
+      "chatsDesc": "Deletes every user chat and its messages (not the internal admin team chat).",
+      "notificationsTitle": "Notifications",
+      "notificationsDesc": "Deletes every notification for every user.",
+      "wipeBtn": "Reset to zero",
+      "wiping": "Deleting...",
+      "confirmPrompt": "This deletes {count} \"{label}\" permanently. Type \"{label}\" to confirm.",
+      "confirmMismatch": "Text didn't match -- nothing was deleted."
+    }
   },
   "escrow": {
     "title": "Track order status",

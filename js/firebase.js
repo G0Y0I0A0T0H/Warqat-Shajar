@@ -1160,6 +1160,23 @@ export const OWNER_EMAIL = "sgyiath@gmail.com";
 // actually unrevokable by anyone, enforced in firestore.rules purely to
 // prevent a self-lockout.
 
+// Shared by the "reset fake data" bulk-delete helpers below -- chunks into
+// well under Firestore's 500-writes-per-batch hard limit so this keeps
+// working regardless of how large a collection has grown.
+async function deleteDocsBatched(docs) {
+  for (let i = 0; i < docs.length; i += 450) {
+    const batch = writeBatch(db);
+    docs.slice(i, i + 450).forEach((d) => batch.delete(d.ref));
+    await batch.commit();
+  }
+  return docs.length;
+}
+
+async function deleteAllInPath(path) {
+  const snap = await getDocs(collection(db, path));
+  return deleteDocsBatched(snap.docs);
+}
+
 export const Admin = {
   async grantSelfAdmin(uid, email) {
     await setDoc(doc(db, "admins", uid), { email, grantedAt: serverTimestamp() });
@@ -1351,6 +1368,63 @@ export const Admin = {
       totalComments: commentsSnap.data().count,
       activeAds: adsSnap.data().count,
     };
+  },
+
+  // ---------------------------------------------------------------------
+  // Pre-launch "reset fake data" tool -- owner-only (enforced in
+  // firestore.rules, not just here), reachable only from Supreme Mode's
+  // Danger Zone tab (js/supreme-mode.js). Deliberately excludes users --
+  // this is a client-only app with no backend/Cloud Functions, so wiping a
+  // users/{uid} profile doc can never touch the real Firebase Auth
+  // account behind it.
+  // ---------------------------------------------------------------------
+  async countFakeData() {
+    const [products, deals, chats, notifications] = await Promise.all([
+      getCountFromServer(collection(db, "products")),
+      getCountFromServer(collection(db, "escrowOrders")),
+      getCountFromServer(collection(db, "chats")),
+      getCountFromServer(collection(db, "notifications")),
+    ]);
+    return {
+      products: products.data().count,
+      deals: deals.data().count,
+      chats: chats.data().count,
+      notifications: notifications.data().count,
+    };
+  },
+
+  async wipeAllProducts() {
+    return deleteAllInPath("products");
+  },
+
+  // Bundled together on purpose -- an escrow order, its wallet credit, its
+  // ledger entry, and any withdrawal request against it are one connected
+  // financial picture. Wiping the order alone would leave stale, orphaned
+  // balances behind on the farmer balance page.
+  async wipeAllDeals() {
+    const [deals] = await Promise.all([
+      deleteAllInPath("escrowOrders"),
+      deleteAllInPath("wallets"),
+      deleteAllInPath("walletTransactions"),
+      deleteAllInPath("withdrawalRequests"),
+    ]);
+    return deals;
+  },
+
+  // Each chat's messages live in a subcollection, which a parent-doc
+  // delete never cascades into -- has to be cleared explicitly per chat
+  // before the chat doc itself goes. Never touches adminChats (the
+  // internal admin team room), which isn't customer-facing test data.
+  async wipeAllChats() {
+    const chatsSnap = await getDocs(collection(db, "chats"));
+    for (const chatDoc of chatsSnap.docs) {
+      await deleteAllInPath(`chats/${chatDoc.id}/messages`);
+    }
+    return deleteDocsBatched(chatsSnap.docs);
+  },
+
+  async wipeAllNotifications() {
+    return deleteAllInPath("notifications");
   },
 };
 
