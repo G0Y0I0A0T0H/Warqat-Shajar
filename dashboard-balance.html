@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Waraqat Shajar — Current Balance</title>
+  <link rel="icon" href="images/logo-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@200..1000&family=Inter:wght@100..900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="cursor/cursor.css">
+</head>
+<body>
+  <div id="splash-screen" class="splash-screen is-hidden">
+    <img src="images/logo-icon.png" class="splash-logo" alt="">
+    <span class="splash-wordmark" data-i18n="brand.name">Waraqat Shajar</span>
+  </div>
+
+  <header class="site-header">
+    <div class="container site-header-row">
+      <a class="logo" href="index.html">
+        <img src="images/logo-icon.png" alt="">
+        <span class="logo-text">
+          <span class="logo-wordmark" data-i18n="brand.name">Waraqat Shajar</span>
+          <span class="logo-tagline" data-i18n="brand.tagline">Egypt's Agricultural Marketplace</span>
+        </span>
+      </a>
+      <div class="header-search">
+        <span data-icon="search" aria-hidden="true"></span>
+        <input type="search" class="input" data-i18n-placeholder="header.searchPlaceholder" placeholder="Search products, farmers, governorates...">
+      </div>
+      <div class="header-actions">
+        <div class="header-actions-scroll">
+          <button type="button" class="btn btn-ghost btn-icon" id="theme-toggle" aria-label="Toggle dark mode"></button>
+          <button type="button" class="btn btn-outline btn-sm" id="lang-switch">English</button>
+          <a href="cart.html" class="btn btn-ghost btn-icon icon-badge" id="header-cart-link">
+            <span data-icon="shopping-cart"></span>
+            <span class="icon-badge-count" id="header-cart-badge" style="display:none">0</span>
+          </a>
+          <a href="favorites.html" class="btn btn-ghost btn-icon icon-badge" id="header-wishlist-link">
+            <span data-icon="heart"></span>
+            <span class="icon-badge-count" id="header-wishlist-badge" style="display:none">0</span>
+          </a>
+        </div>
+        <div id="header-notif-area"></div>
+        <div id="header-auth-area"></div>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="shell" id="dashboard-shell" data-auth-pending>
+      <aside class="shell-sidebar">
+        <nav class="shell-nav" id="dashboard-nav"></nav>
+      </aside>
+      <div class="shell-content">
+        <div id="status-banner-mount"></div>
+        <div>
+          <h1 class="heading" style="font-size:1.5rem" data-i18n="balance.title">Current Balance</h1>
+          <p class="text-muted" data-i18n="balance.subtitle">What you can withdraw, what's still held, and your recent deals</p>
+        </div>
+        <div id="balance-content"></div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-grid">
+      <div>
+        <h3 class="footer-heading" data-i18n="footer.accountTypes">Account Types</h3>
+        <ul class="footer-list">
+          <li data-i18n="footer.farmer">Farmer</li>
+          <li data-i18n="footer.trader">Trader</li>
+          <li data-i18n="footer.factory">Factory</li>
+          <li data-i18n="footer.consumer">Consumer</li>
+        </ul>
+      </div>
+      <div>
+        <h3 class="footer-heading" data-i18n="footer.links">Links</h3>
+        <ul class="footer-list">
+          <li><a href="about.html" data-i18n="footer.about">About the Platform</a></li>
+          <li><a href="terms.html" data-i18n="footer.terms">Terms of Use</a></li>
+          <li><a href="terms.html" id="footer-privacy-link" data-i18n="footer.privacy">Privacy Policy</a></li>
+          <li><a href="contact.html" data-i18n="footer.contact">Contact Us</a></li>
+          <li><a href="contact.html" id="footer-help-link" data-i18n="footer.help">Help Center</a></li>
+        </ul>
+      </div>
+      <div class="footer-col-brand">
+        <a class="logo" href="index.html">
+          <img src="images/logo-icon.png" alt="">
+          <span class="logo-wordmark" style="color:#eef2ec" data-i18n="brand.name">Waraqat Shajar</span>
+        </a>
+        <p style="font-size:0.875rem;color:#c9d6c8;margin-top:0.5rem" data-i18n="footer.tagline">Egypt's agricultural marketplace</p>
+        <div class="footer-phone force-ltr" id="footer-phone"><span data-icon="phone"></span> <span>19XXX</span></div>
+        <div class="footer-phone force-ltr" id="footer-whatsapp" style="display:none"><span data-icon="whatsapp"></span> <span></span></div>
+        <div class="footer-social" id="footer-social"></div>
+      </div>
+    </div>
+    <div class="container footer-bottom">
+      <span>&copy; <span id="footer-year">2026</span> <span data-i18n="brand.name">Waraqat Shajar</span>. <span data-i18n="footer.rights">All rights reserved.</span></span>
+      <span data-i18n="footer.madeIn">Made with care in Egypt</span> 🇪🇬
+    </div>
+  </footer>
+
+  <script type="module" src="js/pages/dashboard-balance.js"></script>
+  <script src="cursor/cursor.js" defer></script>
+</body>
+</html>

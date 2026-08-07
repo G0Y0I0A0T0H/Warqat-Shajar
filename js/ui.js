@@ -480,6 +480,26 @@ const ESCROW_STEPS = [
 export function escrowStepperHTML(order) {
   const total = `${order.totalAmount} ${t("products.currency", "EGP")}`;
 
+  // Cash-on-delivery (or any other admin-flagged noProofRequired method)
+  // never has a payment to verify or funds to release -- it's done the
+  // moment the buyer confirms delivery, no 5th "released" step applies.
+  if (order.noProofPayment && order.status === "delivery_confirmed") {
+    return `
+      <div class="escrow-stepper">
+        <div class="escrow-stepper-header">
+          <span>${t("escrow.title", "Order status")}</span>
+          <span class="escrow-stepper-price">${total}</span>
+        </div>
+        <div class="escrow-stepper-banner is-success">
+          ${icon("check")}
+          <div>
+            <div class="escrow-stepper-banner-title">${t("escrow.statusCodCompleted")}</div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
   if (order.status === "disputed" || order.status === "refunded") {
     const isDisputed = order.status === "disputed";
     return `
@@ -534,6 +554,8 @@ function paymentMethodCircle(orderId, method) {
         value="${escapeHtml(method.value || method.label)}"
         data-method-value="${escapeHtml(method.value || "")}"
         data-method-label="${escapeHtml(method.label)}"
+        data-method-id="${escapeHtml(method.id || "")}"
+        data-no-proof="${method.noProofRequired ? "1" : "0"}"
       >
       <span class="escrow-method-circle-icon">${icon(method.icon || "credit-card")}</span>
       <span class="escrow-method-circle-label">${escapeHtml(method.label)}</span>
@@ -583,24 +605,31 @@ export function renderEscrowActions(containerEl, { order, viewerUid, paymentInfo
   let primaryBtnHtml = "";
   if (isAwaitingPaymentAsBuyer) {
     topHtml = escrowPaymentMethodsHTML(order.id, paymentInfo);
+    // Wrapped so it can be hidden entirely once a noProofRequired method
+    // (cash on delivery, or anything else the admin flags that way) is
+    // picked -- see updateMarkPaidState below, which toggles this and swaps
+    // the button's label/behavior based on the selected method.
     proofFormHtml = `
-      <div class="field">
-        <label class="label" for="escrow-phone-input-${order.id}">${t("escrow.phoneNumberLabel")}</label>
-        <input class="input force-ltr" dir="ltr" type="tel" id="escrow-phone-input-${order.id}" placeholder="${t("escrow.phoneNumberPlaceholder")}">
-      </div>
-      <div class="field">
-        <label class="label" for="escrow-ref-input-${order.id}">${t("escrow.referenceNumberLabel")}</label>
-        <input class="input force-ltr" dir="ltr" id="escrow-ref-input-${order.id}" placeholder="${t("escrow.referenceNumberPlaceholder")}">
-      </div>
-      <div class="field">
-        <label class="label">${t("escrow.proofScreenshotLabel")}</label>
-        <div id="escrow-proof-mount-${order.id}"></div>
+      <div id="escrow-proof-form-${order.id}">
+        <div class="field">
+          <label class="label" for="escrow-phone-input-${order.id}">${t("escrow.phoneNumberLabel")}</label>
+          <input class="input force-ltr" dir="ltr" type="tel" id="escrow-phone-input-${order.id}" placeholder="${t("escrow.phoneNumberPlaceholder")}">
+        </div>
+        <div class="field">
+          <label class="label" for="escrow-ref-input-${order.id}">${t("escrow.referenceNumberLabel")}</label>
+          <input class="input force-ltr" dir="ltr" id="escrow-ref-input-${order.id}" placeholder="${t("escrow.referenceNumberPlaceholder")}">
+        </div>
+        <div class="field">
+          <label class="label">${t("escrow.proofScreenshotLabel")}</label>
+          <div id="escrow-proof-mount-${order.id}"></div>
+        </div>
       </div>
     `;
     // Starts disabled regardless of whether methods exist yet -- method +
     // phone number + reference number + screenshot are all required,
-    // checked in updateMarkPaidState below.
-    primaryBtnHtml = `<button type="button" class="${btnClass("default", "sm")}" id="escrow-mark-paid-btn" disabled>${icon("check")} ${t("escrow.markPaidBtn")}</button>`;
+    // checked in updateMarkPaidState below (unless a no-proof method is
+    // picked, in which case just choosing it is enough).
+    primaryBtnHtml = `<button type="button" class="${btnClass("default", "sm")}" id="escrow-mark-paid-btn" disabled>${icon("check")} <span id="escrow-mark-paid-label-${order.id}">${t("escrow.markPaidBtn")}</span></button>`;
   } else if (isBuyer && order.status === "payment_confirmed") {
     primaryBtnHtml = `<button type="button" class="${btnClass("default", "sm")}" id="escrow-confirm-delivery-btn">${icon("package")} ${t("escrow.confirmDeliveryBtn")}</button>`;
   }
@@ -635,6 +664,15 @@ export function renderEscrowActions(containerEl, { order, viewerUid, paymentInfo
   function updateMarkPaidState() {
     if (!markPaidBtn) return;
     const chosen = containerEl.querySelector(`input[name="escrow-payment-method-${order.id}"]:checked`);
+    const proofFormEl = containerEl.querySelector(`#escrow-proof-form-${order.id}`);
+    const labelEl = containerEl.querySelector(`#escrow-mark-paid-label-${order.id}`);
+    const isNoProof = chosen?.dataset.noProof === "1";
+    if (proofFormEl) proofFormEl.style.display = isNoProof ? "none" : "";
+    if (labelEl) labelEl.textContent = isNoProof ? t("escrow.confirmCodBtn") : t("escrow.markPaidBtn");
+    if (isNoProof) {
+      markPaidBtn.disabled = false;
+      return;
+    }
     const phoneValue = containerEl.querySelector(`#escrow-phone-input-${order.id}`)?.value.trim();
     const refValue = containerEl.querySelector(`#escrow-ref-input-${order.id}`)?.value.trim();
     const proofUrl = proofInput?.getValue();
@@ -679,12 +717,29 @@ export function renderEscrowActions(containerEl, { order, viewerUid, paymentInfo
   if (markPaidBtn) {
     markPaidBtn.addEventListener("click", async () => {
       const chosen = containerEl.querySelector(`input[name="escrow-payment-method-${order.id}"]:checked`);
+      markPaidBtn.disabled = true;
+
+      if (chosen?.dataset.noProof === "1") {
+        await Escrow.confirmCodOrder(order.id, {
+          methodId: chosen.dataset.methodId,
+          methodLabel: chosen.dataset.methodLabel,
+        });
+        Notifications.create({
+          uid: order.sellerId,
+          key: "codOrderConfirmed",
+          params: { product: order.productLabel || "", amount: String(order.totalAmount) },
+          link: "dashboard-orders.html",
+        }).catch(() => {});
+        onChange?.();
+        return;
+      }
+
       const phoneNumber = containerEl.querySelector(`#escrow-phone-input-${order.id}`)?.value.trim();
       const referenceNumber = containerEl.querySelector(`#escrow-ref-input-${order.id}`)?.value.trim();
       const proofUrl = proofInput?.getValue();
-      markPaidBtn.disabled = true;
       await Escrow.markPaymentClaimed(order.id, {
         method: chosen ? chosen.value : null,
+        methodId: chosen?.dataset.methodId || null,
         phoneNumber,
         referenceNumber,
         proofUrl,

@@ -431,11 +431,25 @@ service cloud.firestore {
         // just the buyer's bare word.
         (request.auth.uid == resource.data.buyerId &&
          resource.data.status == 'awaiting_payment' &&
-         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'paymentClaimedAt', 'paymentMethodChosen', 'paymentPhoneNumber', 'paymentReferenceNumber', 'paymentProofUrl']) &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'paymentClaimedAt', 'paymentMethodChosen', 'paymentMethodId', 'paymentPhoneNumber', 'paymentReferenceNumber', 'paymentProofUrl']) &&
          request.resource.data.status == 'payment_claimed' &&
          request.resource.data.paymentPhoneNumber is string && request.resource.data.paymentPhoneNumber.size() > 0 &&
          request.resource.data.paymentReferenceNumber is string && request.resource.data.paymentReferenceNumber.size() > 0 &&
          request.resource.data.paymentProofUrl is string && request.resource.data.paymentProofUrl.size() > 0)
+        ||
+        // Cash-on-delivery (or any other method the admin flags
+        // noProofRequired) -- no transfer to verify, so this skips
+        // payment_claimed entirely and jumps straight to payment_confirmed.
+        // The chosen method must actually exist in settings/paymentInfo and
+        // be flagged noProofRequired -- a buyer can't just claim "cod" on a
+        // method that requires real proof.
+        (request.auth.uid == resource.data.buyerId &&
+         resource.data.status == 'awaiting_payment' &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'paymentConfirmedAt', 'paymentMethodId', 'paymentMethodChosen', 'noProofPayment']) &&
+         request.resource.data.status == 'payment_confirmed' &&
+         request.resource.data.noProofPayment == true &&
+         get(/databases/$(database)/documents/settings/paymentInfo).data.methods
+           .exists(m, m.id == request.resource.data.paymentMethodId && m.noProofRequired == true))
         ||
         (request.auth.uid == resource.data.buyerId &&
          resource.data.status == 'payment_confirmed' &&
@@ -468,6 +482,55 @@ service cloud.firestore {
          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'refundedAt']) &&
          request.resource.data.status == 'refunded')
       );
+    }
+
+    // A farmer's withdrawable balance -- lazily created (no doc = 0 in the
+    // app's own default-object handling), written only by a payments-
+    // granted admin (directly, or via Escrow.release()/
+    // WithdrawalRequests.markPaid() in js/firebase.js, which run as that
+    // same admin). This doesn't try to enforce that a write's *delta*
+    // matches a specific order/withdrawal amount -- Firestore rules can't
+    // cleanly correlate two separate document writes without Cloud
+    // Functions, and a payments-granted admin is already this project's
+    // full financial trust boundary (see escrowOrders above). The
+    // immutable walletTransactions ledger below is the audit trail.
+    match /wallets/{uid} {
+      allow read: if isSignedIn() && (request.auth.uid == uid || isOwnerOrGranted('payments'));
+      allow create, update: if isOwnerOrGranted('payments') &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['availableBalance', 'updatedAt']) &&
+        request.resource.data.availableBalance is number;
+    }
+
+    // Immutable, append-only ledger entry per credit/debit -- never
+    // updatable or deletable, by anyone, ever.
+    match /walletTransactions/{txId} {
+      allow read: if isSignedIn() && (request.auth.uid == resource.data.uid || isOwnerOrGranted('payments'));
+      allow create: if isOwnerOrGranted('payments') &&
+        request.resource.data.type in ['credit', 'debit'] &&
+        request.resource.data.amount is number && request.resource.data.amount > 0;
+      allow update, delete: if false;
+    }
+
+    // A farmer's payout request -- self-created, capped against their own
+    // current balance at creation time. Resolved by a payments-granted
+    // admin (paid/rejected) or cancelled by the farmer themselves while
+    // still pending -- same shape as every other self-attested request in
+    // this file.
+    match /withdrawalRequests/{reqId} {
+      allow read: if isSignedIn() && (request.auth.uid == resource.data.uid || isOwnerOrGranted('payments'));
+      allow create: if isSignedIn() &&
+        request.resource.data.uid == request.auth.uid &&
+        request.resource.data.status == 'requested' &&
+        request.resource.data.amount is number && request.resource.data.amount > 0 &&
+        request.resource.data.amount <= get(/databases/$(database)/documents/wallets/$(request.auth.uid)).data.get('availableBalance', 0);
+      allow update: if
+        (request.auth.uid == resource.data.uid && resource.data.status == 'requested' &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) &&
+         request.resource.data.status == 'cancelled')
+        ||
+        (isOwnerOrGranted('payments') && resource.data.status == 'requested' &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'resolvedAt', 'adminNote']) &&
+         request.resource.data.status in ['paid', 'rejected']);
     }
 
     match /reviews/{reviewId} {
