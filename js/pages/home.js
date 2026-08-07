@@ -1,7 +1,7 @@
 import { initLayout } from "../layout.js";
 import { t, getLocale, onLocaleChange } from "../i18n.js";
 import { SiteSettings, Products, Ads } from "../firebase.js";
-import { mergeCategories, categoryLabel, categoryLabelById, onCategoriesChange, governorateLabel } from "../constants.js";
+import { mergeBrowseCategories, CATEGORY_GROUPS, CATEGORY_IMAGES, categoryLabel, categoryLabelById, onCategoriesChange, governorateLabel } from "../constants.js";
 import { renderAdSlot, wireFavoriteButtons, productCardHTML, icon, escapeHtml, safeUrl, btnClass } from "../ui.js";
 import { authState, subscribe } from "../state.js";
 
@@ -81,16 +81,26 @@ let lastCategoryImages = {};
 
 function renderCategoryGrid() {
   const el = document.getElementById("category-grid");
-  const categories = mergeCategories();
+  const categories = mergeBrowseCategories();
   el.innerHTML = categories
     .map((cat) => {
       const label = categoryLabel(cat, getLocale());
-      const image = cat.isCustom ? cat.image : lastCategoryImages[cat.id] || cat.image;
-      // A category with no photo yet (a newly-added built-in the admin
-      // hasn't uploaded an image for via admin-branding.js, or a custom one
-      // created without one) is still fully usable for listing/filtering
-      // products -- it just doesn't get a card on this decorative grid
-      // until a real photo exists, rather than showing a broken <img>.
+      let image = lastCategoryImages[cat.id] || cat.image;
+      // An umbrella like "field-crops" has no photo of its own until the
+      // admin sets one -- borrow whichever grouped member (wheat, rice, ...)
+      // already has a real photo, so a genuinely well-photographed group
+      // doesn't show up empty just because the umbrella itself is new.
+      if (!image && CATEGORY_GROUPS[cat.id]) {
+        for (const memberId of CATEGORY_GROUPS[cat.id]) {
+          image = lastCategoryImages[memberId] || CATEGORY_IMAGES[memberId];
+          if (image) break;
+        }
+      }
+      // A category with no photo at all yet (a newly-added umbrella the
+      // admin hasn't uploaded an image for via admin-branding.js) is still
+      // fully usable for listing/filtering products -- it just doesn't get
+      // a card on this decorative grid until a real photo exists, rather
+      // than showing a broken <img>.
       if (!image) return "";
       return `
     <a href="products.html?category=${cat.id}" class="category-card">

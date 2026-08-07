@@ -435,7 +435,10 @@ export const Products = {
 
   async listActiveProducts(filters = {}) {
     const constraints = [where("status", "==", "active")];
-    if (filters.category) constraints.push(where("category", "==", filters.category));
+    if (filters.category) {
+      const members = CATEGORY_GROUP_MEMBERS[filters.category];
+      constraints.push(members ? where("category", "in", members) : where("category", "==", filters.category));
+    }
     if (filters.governorate) constraints.push(where("governorate", "==", filters.governorate));
     constraints.push(orderBy("createdAt", "desc"));
     if (filters.limitCount) constraints.push(limit(filters.limitCount));
@@ -1419,15 +1422,11 @@ const paymentInfoRef = doc(db, "settings", "paymentInfo");
 // directly to avoid a circular import (constants.js already imports
 // SiteSettings from this file).
 const BUILTIN_CATEGORY_IDS = [
-  "vegetables",
-  "fruits",
+  "field-crops",
   "wheat",
   "cotton",
   "barley",
   "rice",
-  "organic",
-  "animal-feed",
-  "nurseries",
   "corn",
   "lentils",
   "chickpeas",
@@ -1435,9 +1434,44 @@ const BUILTIN_CATEGORY_IDS = [
   "sesame-sunflower",
   "sugar-crops",
   "green-legumes",
+  "vegetables",
+  "fruits",
+  "trees",
+  "nurseries",
   "herbs",
   "seeds",
+  "fertilizers",
+  "pesticides",
+  "irrigation",
+  "equipment",
+  "farm-supplies",
+  "livestock",
+  "poultry",
+  "bee-products",
+  "services",
 ];
+
+// Kept in sync by hand with js/constants.js's CATEGORY_GROUPS -- the one
+// browse-level umbrella ("field-crops") that maps to more than just its own
+// id, so a filter query for it can expand into every real member instead of
+// an exact match on a literal "field-crops" category value most products
+// never actually have.
+const CATEGORY_GROUP_MEMBERS = {
+  "field-crops": [
+    "field-crops",
+    "wheat",
+    "cotton",
+    "barley",
+    "rice",
+    "corn",
+    "lentils",
+    "chickpeas",
+    "onions-garlic",
+    "sesame-sunflower",
+    "sugar-crops",
+    "green-legumes",
+  ],
+};
 
 function slugify(name) {
   return (
