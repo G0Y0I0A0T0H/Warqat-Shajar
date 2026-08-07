@@ -1423,17 +1423,6 @@ const paymentInfoRef = doc(db, "settings", "paymentInfo");
 // SiteSettings from this file).
 const BUILTIN_CATEGORY_IDS = [
   "field-crops",
-  "wheat",
-  "cotton",
-  "barley",
-  "rice",
-  "corn",
-  "lentils",
-  "chickpeas",
-  "onions-garlic",
-  "sesame-sunflower",
-  "sugar-crops",
-  "green-legumes",
   "vegetables",
   "fruits",
   "trees",
@@ -1451,11 +1440,12 @@ const BUILTIN_CATEGORY_IDS = [
   "services",
 ];
 
-// Kept in sync by hand with js/constants.js's CATEGORY_GROUPS -- the one
-// browse-level umbrella ("field-crops") that maps to more than just its own
-// id, so a filter query for it can expand into every real member instead of
-// an exact match on a literal "field-crops" category value most products
-// never actually have.
+// Kept in sync by hand with js/constants.js's CATEGORY_GROUPS -- lets
+// filtering by "field-crops" also surface the handful of products already
+// live with a now-retired specific id (wheat/cotton/barley/rice/...) from
+// before the category list was pruned down to just the 16 real ones. None
+// of these retired ids are selectable anywhere anymore; this is purely a
+// query-expansion so old listings don't become unfindable.
 const CATEGORY_GROUP_MEMBERS = {
   "field-crops": [
     "field-crops",
