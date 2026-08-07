@@ -1,10 +1,10 @@
 import { initLayout } from "../layout.js";
 import { guardDashboard } from "../dashboard-shell.js";
 import { t, onLocaleChange } from "../i18n.js";
-import { Chat, Products, Reviews, PhoneAttempts, Notifications, SiteSettings, Escrow } from "../firebase.js";
+import { Chat, Products, Reviews, PhoneAttempts, Notifications, SiteSettings, Escrow, SellerProfiles } from "../firebase.js";
 import { UNITS, unitLabelKey } from "../constants.js";
 import { authState } from "../state.js";
-import { btnClass, badgeClass, icon, initReportDialog, renderStarButtons, showMessage, containsPhoneNumber, escapeHtml, renderEscrowActions } from "../ui.js";
+import { btnClass, badgeClass, icon, initReportDialog, renderStarButtons, showMessage, containsPhoneNumber, escapeHtml, renderEscrowActions, renderLocationPicker } from "../ui.js";
 import { initHelpTour } from "../help-tour.js";
 
 const params = new URLSearchParams(location.search);
@@ -28,6 +28,13 @@ let dealParties = null;
 let escrowOrderId = null;
 let escrowOrder = null;
 let escrowUnsub = null;
+// Delivery-method state for the currently-open offer form -- reset each time
+// the form (re)opens. sellerPickupPoint is fetched lazily the first time
+// "pickup" is actually shown, not up front for every chat.
+let offerDeliveryMethod = "pickup";
+let offerDeliveryLocation = null;
+let sellerPickupPoint = undefined; // undefined = not fetched yet, null = fetched but farmer hasn't set one
+let deliveryLocationPicker = null;
 // The platform's own payment-receiving details -- fetched once in main(),
 // shown to the buyer while awaiting_payment so they actually know where to
 // send money (see escrowPaymentMethodsHTML in ui.js).
@@ -309,6 +316,8 @@ async function acceptOffer(messageId) {
         quantity: offerMsg.offer.quantity,
         unit: offerMsg.offer.unit,
         pricePerUnit: offerMsg.offer.pricePerUnit,
+        deliveryMethod: offerMsg.offer.deliveryMethod,
+        deliveryLocation: offerMsg.offer.deliveryLocation,
       });
     } catch {
       // The offer itself is already accepted at this point -- this only
@@ -319,12 +328,62 @@ async function acceptOffer(messageId) {
   }
 }
 
+// Only shown for real product deals (dealParties is only ever set when
+// chat.contextType === "product") -- a sourcing/support chat has no
+// physical good to pick up or deliver in this sense.
+function deliveryMethodSectionHTML() {
+  if (!dealParties) return "";
+  return `
+    <div class="offer-delivery-section" style="margin-top:0.5rem">
+      <div class="label">${t("deliveryMethod.title", "Delivery method")}</div>
+      <div style="display:flex;gap:1rem;margin-top:0.3rem;flex-wrap:wrap">
+        <label style="display:flex;align-items:center;gap:0.3rem">
+          <input type="radio" name="of-delivery-method" value="pickup" ${offerDeliveryMethod === "pickup" ? "checked" : ""}>
+          ${t("deliveryMethod.pickup", "Pickup (free)")}
+        </label>
+        <label style="display:flex;align-items:center;gap:0.3rem">
+          <input type="radio" name="of-delivery-method" value="delivery" ${offerDeliveryMethod === "delivery" ? "checked" : ""}>
+          ${t("deliveryMethod.delivery", "Home delivery")}
+        </label>
+      </div>
+      <div id="of-delivery-detail" style="margin-top:0.5rem"></div>
+    </div>
+  `;
+}
+
+async function renderDeliveryDetail() {
+  const detailEl = offerFormMount.querySelector("#of-delivery-detail");
+  if (!detailEl) return;
+  if (offerDeliveryMethod === "delivery") {
+    detailEl.innerHTML = `<div id="of-delivery-map"></div>`;
+    deliveryLocationPicker = renderLocationPicker(detailEl.querySelector("#of-delivery-map"), {
+      lat: offerDeliveryLocation?.lat,
+      lng: offerDeliveryLocation?.lng,
+      onChange: (v) => (offerDeliveryLocation = v),
+    });
+    return;
+  }
+  deliveryLocationPicker = null;
+  if (sellerPickupPoint === undefined) {
+    detailEl.innerHTML = `<p class="text-muted" style="font-size:0.85rem">${t("map.loadingPickupPoint", "Loading pickup point...")}</p>`;
+    const record = await SellerProfiles.getOnce(dealParties.sellerId).catch(() => null);
+    sellerPickupPoint = record?.pickupPoint || null;
+    if (offerFormOpen && offerDeliveryMethod === "pickup") renderDeliveryDetail();
+    return;
+  }
+  detailEl.innerHTML = sellerPickupPoint
+    ? `<p class="text-muted" style="font-size:0.85rem">${t("map.pickupPointSet", "The farmer's pickup point is set -- location shown in the order details once accepted.")}</p>`
+    : `<p class="text-muted" style="font-size:0.85rem">${t("map.pickupPointNotSet", "The farmer hasn't set a pickup point yet.")}</p>`;
+}
+
 function renderOfferForm() {
   if (!offerFormOpen) {
     offerFormMount.innerHTML = "";
     return;
   }
   const initial = counterSource?.offer || {};
+  offerDeliveryMethod = initial.deliveryMethod || "pickup";
+  offerDeliveryLocation = initial.deliveryLocation || null;
   offerFormMount.innerHTML = `
     <form id="offer-form" class="offer-form">
       <div class="offer-form-grid">
@@ -335,6 +394,7 @@ function renderOfferForm() {
         <input class="input" id="of-price" type="number" min="0" step="0.01" placeholder="${t("chat.offerPrice")}" value="${initial.pricePerUnit ?? ""}">
       </div>
       <input class="input" id="of-notes" placeholder="${t("sourcing.notesLabel")}" value="${initial.deliveryNotes ?? ""}">
+      ${deliveryMethodSectionHTML()}
       <p id="of-error" class="error-text" style="display:none"></p>
       <div class="offer-form-total" id="of-total">${t("chat.offerTotal")}: 0</div>
       <div style="display:flex;gap:0.5rem">
@@ -356,6 +416,16 @@ function renderOfferForm() {
   priceEl.addEventListener("input", updateTotal);
   updateTotal();
 
+  if (dealParties) {
+    renderDeliveryDetail();
+    offerFormMount.querySelectorAll("input[name=of-delivery-method]").forEach((radio) => {
+      radio.addEventListener("change", () => {
+        offerDeliveryMethod = radio.value;
+        renderDeliveryDetail();
+      });
+    });
+  }
+
   offerFormMount.querySelector("#of-cancel").addEventListener("click", () => {
     offerFormOpen = false;
     counterSource = null;
@@ -371,6 +441,10 @@ function renderOfferForm() {
     const errorEl = offerFormMount.querySelector("#of-error");
     showMessage(errorEl, "");
     if (!quantity || !pricePerUnit) return;
+    if (dealParties && offerDeliveryMethod === "delivery" && !deliveryLocationPicker?.getValue()) {
+      showMessage(errorEl, t("map.locationRequired", "Drop a pin for the delivery address"));
+      return;
+    }
     if (containsPhoneNumber(deliveryNotes)) {
       showMessage(errorEl, t("chat.phoneNotAllowed"));
       PhoneAttempts.logAttempt({
@@ -393,6 +467,8 @@ function renderOfferForm() {
       pricePerUnit,
       totalPrice: quantity * pricePerUnit,
       deliveryNotes: deliveryNotes || undefined,
+      deliveryMethod: dealParties ? offerDeliveryMethod : undefined,
+      deliveryLocation: dealParties && offerDeliveryMethod === "delivery" ? deliveryLocationPicker.getValue() : undefined,
       buyerAccountType: profile.accountType,
     });
     Notifications.create({

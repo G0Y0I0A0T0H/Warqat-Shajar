@@ -3439,6 +3439,13 @@ main {
   gap: 0.5rem;
 }
 
+.location-picker-map {
+  height: 260px;
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
 .image-input-url {
   flex: 1;
   min-width: 12rem;

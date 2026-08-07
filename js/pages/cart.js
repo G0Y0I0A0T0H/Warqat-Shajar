@@ -202,6 +202,10 @@ async function handleOrderNow(productId) {
         quantity,
         unit: product.unit,
         pricePerUnit: product.price,
+        // Quick single-click order, no delivery-method form here (that
+        // lives on the full chat offer form) -- defaults to the free
+        // option; buyer/seller can still sort out delivery via chat.
+        deliveryMethod: "pickup",
       });
       Notifications.create({ uid: authState.user.uid, key: "orderConfirmed", params: { product: productLabel } }).catch(() => {});
       Notifications.create({
@@ -229,6 +233,7 @@ async function handleOrderNow(productId) {
       unit: product.unit,
       pricePerUnit: product.price,
       totalPrice: quantity * product.price,
+      deliveryMethod: "pickup",
       buyerAccountType: authState.profile.accountType,
     });
     await Products.incrementProductOffers(product.id).catch(() => {});

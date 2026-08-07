@@ -187,6 +187,19 @@ export function safeUrl(value) {
   return escapeHtml(url);
 }
 
+// Shared by dashboard-orders.js, dashboard-my-orders.js, and admin-payments.js's
+// deal rows -- one line, next to the existing deliveryNotes display, for
+// whichever method the buyer picked when they sent the offer.
+export function deliveryMethodLineHTML(order) {
+  if (!order.deliveryMethod) return "";
+  if (order.deliveryMethod === "delivery" && order.deliveryLocation) {
+    const { lat, lng } = order.deliveryLocation;
+    const mapUrl = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=16/${lat}/${lng}`;
+    return `<div>${t("deliveryMethod.deliveryLabel", "Delivery to")}: <a href="${mapUrl}" target="_blank" rel="noopener noreferrer" class="force-ltr" style="display:inline-block">${lat.toFixed(4)}, ${lng.toFixed(4)}</a></div>`;
+  }
+  return `<div>${t("deliveryMethod.pickupLabel", "Pickup")}</div>`;
+}
+
 export function interpolate(str, params) {
   if (!params) return str;
   return Object.entries(params).reduce((s, [k, v]) => s.replaceAll(`{${k}}`, escapeHtml(v)), str);
@@ -473,6 +486,88 @@ export function renderImageInput(mountEl, { value = "", uploadPathPrefix, accept
       urlInput.value = v;
     },
   };
+}
+
+// ---------------------------------------------------------------------------
+// Location picker (pickup points, delivery addresses) — Leaflet + OpenStreetMap,
+// not Google Maps: no API key, no billing account, same "drop a pin, get
+// {lat,lng}" result. Leaflet itself is only fetched once, on first actual use.
+// ---------------------------------------------------------------------------
+let leafletLoadPromise = null;
+function ensureLeafletLoaded() {
+  if (window.L) return Promise.resolve();
+  if (leafletLoadPromise) return leafletLoadPromise;
+  leafletLoadPromise = new Promise((resolve, reject) => {
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
+    document.head.appendChild(link);
+    const script = document.createElement("script");
+    script.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
+    script.onload = resolve;
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+  return leafletLoadPromise;
+}
+
+// Cairo -- a reasonable default center before any real point is picked.
+const MAP_DEFAULT_LAT = 30.0444;
+const MAP_DEFAULT_LNG = 31.2357;
+
+export function renderLocationPicker(mountEl, { lat, lng, onChange } = {}) {
+  const mapId = `map-picker-${Math.random().toString(36).slice(2)}`;
+  mountEl.innerHTML = `
+    <div class="location-picker">
+      <div id="${mapId}" class="location-picker-map"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;margin-top:0.5rem;flex-wrap:wrap">
+        <span class="text-muted location-picker-coords" style="font-size:0.8rem"></span>
+        <button type="button" class="btn btn-outline btn-sm location-picker-locate">${icon("map-pin")} ${t("map.useMyLocation", "Use my location")}</button>
+      </div>
+    </div>
+  `;
+  const coordsEl = mountEl.querySelector(".location-picker-coords");
+  let map = null;
+  let marker = null;
+  let current = lat != null && lng != null ? { lat, lng } : null;
+
+  function updateCoordsLabel() {
+    coordsEl.textContent = current
+      ? `${current.lat.toFixed(5)}, ${current.lng.toFixed(5)}`
+      : t("map.noLocationSet", "No location set yet -- click the map to drop a pin");
+  }
+  updateCoordsLabel();
+
+  function setPoint(newLat, newLng) {
+    current = { lat: newLat, lng: newLng };
+    updateCoordsLabel();
+    if (marker) marker.setLatLng([newLat, newLng]);
+    else marker = window.L.marker([newLat, newLng]).addTo(map);
+    onChange?.(current);
+  }
+
+  ensureLeafletLoaded().then(() => {
+    const L = window.L;
+    const startLat = current?.lat ?? MAP_DEFAULT_LAT;
+    const startLng = current?.lng ?? MAP_DEFAULT_LNG;
+    map = L.map(mapId).setView([startLat, startLng], current ? 13 : 6);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: "&copy; OpenStreetMap contributors",
+      maxZoom: 19,
+    }).addTo(map);
+    if (current) marker = L.marker([current.lat, current.lng]).addTo(map);
+    map.on("click", (e) => setPoint(e.latlng.lat, e.latlng.lng));
+  });
+
+  mountEl.querySelector(".location-picker-locate").addEventListener("click", () => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition((pos) => {
+      setPoint(pos.coords.latitude, pos.coords.longitude);
+      map?.setView([pos.coords.latitude, pos.coords.longitude], 15);
+    });
+  });
+
+  return { getValue: () => current };
 }
 
 // ---------------------------------------------------------------------------

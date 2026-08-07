@@ -182,6 +182,23 @@
     "sellerLabel": "البائع",
     "timesShared": "اتشارك {count} مرة"
   },
+  "map": {
+    "useMyLocation": "استخدم موقعي الحالي",
+    "noLocationSet": "لسا ما تحدد موقع -- دوس على الخريطة تحط دبوس",
+    "pickupPointLabel": "نقطة الاستلام",
+    "pickupPointHint": "المكان يلي المشتري يلي بيختار الاستلام بيقدر ياخد طلبه منه -- ببلاش، من غير أي توصيل.",
+    "loadingPickupPoint": "جاري تحميل نقطة الاستلام...",
+    "pickupPointSet": "نقطة استلام المزارع محددة -- الموقع بيظهر بتفاصيل الطلب بعد ما يتقبل.",
+    "pickupPointNotSet": "المزارع لسا ما حدد نقطة استلام.",
+    "locationRequired": "حط دبوس على الخريطة لعنوان التوصيل"
+  },
+  "deliveryMethod": {
+    "title": "طريقة الاستلام",
+    "pickup": "استلام (ببلاش)",
+    "delivery": "توصيل للبيت",
+    "pickupLabel": "استلام",
+    "deliveryLabel": "توصيل لـ"
+  },
   "sellerProfile": {
     "followers": "المتابعين",
     "following": "بيتابع",
@@ -405,6 +422,7 @@
     "save": "احفظ",
     "cancel": "إلغاء",
     "delete": "امسح",
+    "edit": "تعديل",
     "pause": "وقّف مؤقتاً",
     "activate": "شغّل",
     "confirmDelete": "متأكد إنك عايز تمسح المنتج ده؟",
@@ -617,7 +635,14 @@
     "identityNotSubmitted": "المستخدم ده لسه ما رفعش بيانات التحقق من الهوية",
     "identityLoadError": "معرفناش نحمّل بيانات الهوية",
     "loadingIdentity": "جاري التحميل...",
-    "decryptingPhoto": "جاري فك تشفير الصورة..."
+    "decryptingPhoto": "جاري فك تشفير الصورة...",
+    "replaceIdPhotoLabel": "استبدال صورة الهوية (اختياري)",
+    "managePickupPoint": "نقطة الاستلام",
+    "hidePickupPoint": "إخفاء نقطة الاستلام",
+    "addProductForFarmer": "ضيف منتج لمزارع",
+    "searchFarmerPlaceholder": "دوّر على مزارع بالاسم أو رقم التلفون أو الإيميل",
+    "selectFarmer": "اختيار",
+    "addedByAdminBadge": "أضافه الأدمن"
   },
   "phoneAttempts": {
     "hint": "كل محاولة لمشاركة رقم تليفون في أي حقل على الموقع بتتسجل هنا تلقائياً — بعد 3 محاولات من نفس المستخدم بيتحظر حسابه تلقائياً 24 ساعة.",

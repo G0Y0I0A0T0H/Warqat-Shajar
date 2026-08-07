@@ -182,6 +182,23 @@
     "sellerLabel": "Seller",
     "timesShared": "Shared {count} times"
   },
+  "map": {
+    "useMyLocation": "Use my location",
+    "noLocationSet": "No location set yet -- click the map to drop a pin",
+    "pickupPointLabel": "Pickup point",
+    "pickupPointHint": "Where buyers who choose pickup can collect their order -- free, no delivery involved.",
+    "loadingPickupPoint": "Loading pickup point...",
+    "pickupPointSet": "The farmer's pickup point is set -- location shown in the order details once accepted.",
+    "pickupPointNotSet": "The farmer hasn't set a pickup point yet.",
+    "locationRequired": "Drop a pin for the delivery address"
+  },
+  "deliveryMethod": {
+    "title": "Delivery method",
+    "pickup": "Pickup (free)",
+    "delivery": "Home delivery",
+    "pickupLabel": "Pickup",
+    "deliveryLabel": "Delivery to"
+  },
   "sellerProfile": {
     "followers": "Followers",
     "following": "Following",
@@ -405,6 +422,7 @@
     "save": "Save",
     "cancel": "Cancel",
     "delete": "Delete",
+    "edit": "Edit",
     "pause": "Pause",
     "activate": "Activate",
     "confirmDelete": "Are you sure you want to delete this product?",
@@ -617,7 +635,14 @@
     "identityNotSubmitted": "This user hasn't submitted identity verification data yet",
     "identityLoadError": "Could not load identity data",
     "loadingIdentity": "Loading...",
-    "decryptingPhoto": "Decrypting photo..."
+    "decryptingPhoto": "Decrypting photo...",
+    "replaceIdPhotoLabel": "Replace ID photo (optional)",
+    "managePickupPoint": "Pickup point",
+    "hidePickupPoint": "Hide pickup point",
+    "addProductForFarmer": "Add product for a farmer",
+    "searchFarmerPlaceholder": "Search farmer by name, phone, or email",
+    "selectFarmer": "Select",
+    "addedByAdminBadge": "Added by admin"
   },
   "phoneAttempts": {
     "hint": "Every attempt to share a phone number anywhere on the site is logged here automatically — 3 attempts from the same user auto-suspends their account for 24h.",
