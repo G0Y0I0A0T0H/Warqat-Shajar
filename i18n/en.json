@@ -61,7 +61,8 @@
     "addFailed": "Couldn't add to cart, please try again",
     "updateFailed": "Couldn't update the cart, please try again",
     "orderFailed": "Couldn't send the order, please try again",
-    "awaitingFarmerResponse": "Waiting for the farmer's response"
+    "awaitingFarmerResponse": "Waiting for the farmer's response",
+    "loadingStatus": "Checking order status..."
   },
   "roles": {
     "farmer": "Farmer",

@@ -61,7 +61,8 @@
     "addFailed": "معرفناش نضيفه للسلة، جرب تاني",
     "updateFailed": "معرفناش نحدّث السلة، جرب تاني",
     "orderFailed": "معرفناش نبعت الطلب، جرب تاني",
-    "awaitingFarmerResponse": "مستني رد المزارع"
+    "awaitingFarmerResponse": "مستني رد المزارع",
+    "loadingStatus": "جاري التحقق من حالة الطلب..."
   },
   "roles": {
     "farmer": "مزارع",
