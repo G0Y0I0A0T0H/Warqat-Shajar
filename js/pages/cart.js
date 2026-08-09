@@ -18,6 +18,11 @@ let chatDisabled = false;
 // "Order Now" was clicked, which meant there was nothing left to track here.
 let myOffersByProduct = {};
 let myEscrowByProduct = {};
+// False until loadOrderState()'s first fetch resolves. Without this, a
+// fresh page load would render every row as "not yet ordered" for the
+// brief window before that fetch completes -- on a slow connection this
+// looked like an already-ordered item's tracking status had been reset.
+let orderStateLoaded = false;
 // The platform's own payment-receiving details (settings/paymentInfo),
 // shown to the buyer once an order reaches awaiting_payment -- see
 // renderEscrowActions in ui.js. Fetched once; it rarely changes.
@@ -42,6 +47,7 @@ async function loadOrderState() {
   escrowOrders.forEach((o) => {
     myEscrowByProduct[o.productId] = newerByCreatedAt(myEscrowByProduct[o.productId], o);
   });
+  orderStateLoaded = true;
   render();
 }
 
@@ -89,8 +95,12 @@ async function render() {
       const pendingOffer = myOffersByProduct[productId];
       const isPending = !escrowOrder && pendingOffer?.status === "pending";
       const isTracking = Boolean(escrowOrder || isPending);
-      // Only items still actually being shopped for count toward the total.
-      if (!isTracking) grandTotal += subtotal;
+      // Only items still actually being shopped for count toward the total --
+      // and while order state hasn't loaded yet, we don't know which this is,
+      // so it's deliberately left out until loadOrderState() resolves (see
+      // the loading branch below) rather than risk counting an already-
+      // ordered item or briefly showing then hiding it from the total.
+      if (orderStateLoaded && !isTracking) grandTotal += subtotal;
 
       return `
         <div class="cart-row" data-product="${productId}">
@@ -101,22 +111,24 @@ async function render() {
             <a href="product.html?id=${productId}" style="font-weight:600;color:var(--foreground)">${product.title ? escapeHtml(product.title) : categoryLabelById(product.category, getLocale())}</a>
             <div class="text-muted" style="font-size:0.8rem">${escapeHtml(product.ownerName)}</div>
             ${
-              escrowOrder
-                ? `<div style="margin-top:0.6rem;max-width:26rem">
-                     <div data-escrow-actions="${productId}"></div>
-                     <div style="margin-top:0.75rem">${escrowStepperHTML(escrowOrder)}</div>
-                   </div>`
-                : isPending
-                  ? `<div style="margin-top:0.5rem"><span class="${btnClass("outline", "sm")}" style="pointer-events:none">${icon("headset")} ${t("cart.awaitingFarmerResponse", "Waiting for the farmer's response")}</span></div>`
-                  : `<div style="display:flex;align-items:center;gap:0.5rem;margin-top:0.5rem;flex-wrap:wrap">
-                      <input class="input" type="number" min="${product.minOrderQuantity}" max="${product.quantity}" value="${quantity}" data-qty-input="${productId}" style="max-width:6rem">
-                      <span class="text-muted" style="font-size:0.8rem">${unitLabel}</span>
-                      <span class="cart-row-subtotal" data-subtotal="${productId}">${subtotal.toLocaleString(getLocale())} ${t("products.currency")}</span>
-                    </div>`
+              !orderStateLoaded
+                ? `<div class="text-muted" style="margin-top:0.5rem;font-size:0.85rem">${t("cart.loadingStatus", "Checking order status...")}</div>`
+                : escrowOrder
+                  ? `<div style="margin-top:0.6rem;max-width:26rem">
+                       <div data-escrow-actions="${productId}"></div>
+                       <div style="margin-top:0.75rem">${escrowStepperHTML(escrowOrder)}</div>
+                     </div>`
+                  : isPending
+                    ? `<div style="margin-top:0.5rem"><span class="${btnClass("outline", "sm")}" style="pointer-events:none">${icon("headset")} ${t("cart.awaitingFarmerResponse", "Waiting for the farmer's response")}</span></div>`
+                    : `<div style="display:flex;align-items:center;gap:0.5rem;margin-top:0.5rem;flex-wrap:wrap">
+                        <input class="input" type="number" min="${product.minOrderQuantity}" max="${product.quantity}" value="${quantity}" data-qty-input="${productId}" style="max-width:6rem">
+                        <span class="text-muted" style="font-size:0.8rem">${unitLabel}</span>
+                        <span class="cart-row-subtotal" data-subtotal="${productId}">${subtotal.toLocaleString(getLocale())} ${t("products.currency")}</span>
+                      </div>`
             }
           </div>
           <div class="list-row-actions">
-            ${isTracking ? "" : `<button type="button" class="${btnClass("default", "sm")}" data-order="${productId}">${icon("message-square")} ${t("products.orderNow")}</button>`}
+            ${!orderStateLoaded || isTracking ? "" : `<button type="button" class="${btnClass("default", "sm")}" data-order="${productId}">${icon("message-square")} ${t("products.orderNow")}</button>`}
             <button type="button" class="${btnClass("ghost", "icon-sm")}" data-remove="${productId}" aria-label="${t("cart.remove")}">${icon("trash")}</button>
           </div>
         </div>

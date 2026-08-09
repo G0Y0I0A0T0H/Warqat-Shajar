@@ -1,6 +1,6 @@
 import { initLayout } from "../layout.js";
 import { t, getLocale, onLocaleChange } from "../i18n.js";
-import { Products, Chat, Ads, Notifications, SiteSettings, Escrow } from "../firebase.js";
+import { Products, Chat, Ads, Notifications, SiteSettings } from "../firebase.js";
 import { governorateLabel, categoryLabelById, onCategoriesChange, computeFreshness, unitLabelKey } from "../constants.js";
 import { renderAdSlot, favoriteButtonHTML, wireFavoriteButtons, shareButtonsHTML, wireShareButtons, initReportDialog, initProductComments, icon, showMessage, escapeHtml, safeUrl, badgeClass, interpolate } from "../ui.js";
 import { authState, subscribe, addToCart } from "../state.js";
@@ -269,6 +269,12 @@ async function handleNegotiate() {
   }
 }
 
+// "Order Now" no longer creates a chat offer or a direct order by itself --
+// it adds the product to the cart (same as "Add to Cart") and takes the
+// buyer straight to cart.html, where the real order gets created and its
+// status tracked (see cart.js's own handleOrderNow). "Add to Cart" stays on
+// this page for continued browsing; "Order Now" is the buy-now shortcut
+// straight to checkout.
 async function handleOrderNow(quantity) {
   if (!authState.user || !authState.profile) {
     location.href = "login.html";
@@ -278,75 +284,8 @@ async function handleOrderNow(quantity) {
   starting = true;
   try {
     const qty = quantity || product.minOrderQuantity;
-    const productLabel = product.title || categoryLabelById(product.category, getLocale());
-
-    if (chatDisabled) {
-      // Chat is down sitewide -- don't touch chats/messages at all (it
-      // would be rejected by firestore.rules anyway). There's no offer to
-      // accept in this path, so the escrow order is created directly
-      // (orderId self-tagged "direct_" -- see the matching firestore.rules
-      // branch), starting straight at awaiting_payment -- this is what lets
-      // the cart page show real tracking for it afterwards.
-      const orderId = `direct_${authState.user.uid}_${product.id}_${Date.now()}`;
-      await Escrow.createOrder({
-        orderId,
-        chatId: null,
-        productId: product.id,
-        productLabel,
-        buyerId: authState.user.uid,
-        buyerName: authState.profile.fullName,
-        sellerId: product.ownerId,
-        sellerName: product.ownerName,
-        quantity: qty,
-        unit: product.unit,
-        pricePerUnit: product.price,
-        // Quick single-click order, no delivery-method form here (that
-        // lives on the full chat offer form) -- defaults to the free
-        // option; buyer/seller can still sort out delivery via chat.
-        deliveryMethod: "pickup",
-      });
-      Notifications.create({
-        uid: authState.user.uid,
-        key: "orderConfirmed",
-        params: { product: productLabel },
-      }).catch(() => {});
-      Notifications.create({
-        uid: product.ownerId,
-        key: "newOrderRequest",
-        params: { name: authState.profile.fullName, product: productLabel },
-      }).catch(() => {});
-      const btn = document.getElementById("order-now-btn");
-      if (btn) {
-        const original = btn.innerHTML;
-        btn.innerHTML = `${icon("check")} ${t("products.orderConfirmed", "Order confirmed")}`;
-        setTimeout(() => {
-          btn.innerHTML = original;
-        }, 1800);
-      }
-      return;
-    }
-
-    const chatId = await Chat.findOrCreateChat({
-      currentUid: authState.user.uid,
-      currentName: authState.profile.fullName,
-      currentPhone: authState.profile.phone,
-      otherUid: product.ownerId,
-      otherName: product.ownerName,
-      otherPhone: product.ownerPhone,
-      contextType: "product",
-      contextId: product.id,
-      contextLabel: productLabel,
-    });
-    await Chat.sendOfferMessage(chatId, authState.user.uid, {
-      quantity: qty,
-      unit: product.unit,
-      pricePerUnit: product.price,
-      totalPrice: qty * product.price,
-      deliveryMethod: "pickup",
-      buyerAccountType: authState.profile.accountType,
-    });
-    await Products.incrementProductOffers(product.id).catch(() => {});
-    location.href = `dashboard-chat.html?id=${chatId}`;
+    await addToCart(product.id, qty);
+    location.href = "cart.html";
   } finally {
     starting = false;
   }
