@@ -23,6 +23,12 @@ let myEscrowByProduct = {};
 // brief window before that fetch completes -- on a slow connection this
 // looked like an already-ordered item's tracking status had been reset.
 let orderStateLoaded = false;
+// uid we've already triggered loadOrderState() for -- lets main()'s
+// subscribe(render) callback safely call this on every state change without
+// re-fetching every time, while still firing it the moment authState.user
+// actually becomes available (auth resolves asynchronously, sometime after
+// initLayout() returns, so it isn't necessarily set yet on first render).
+let orderStateRequestedForUid = null;
 // The platform's own payment-receiving details (settings/paymentInfo),
 // shown to the buyer once an order reaches awaiting_payment -- see
 // renderEscrowActions in ui.js. Fetched once; it rarely changes.
@@ -259,11 +265,20 @@ async function handleOrderNow(productId) {
   }
 }
 
+function maybeLoadOrderState() {
+  if (!authState.user || orderStateRequestedForUid === authState.user.uid) return;
+  orderStateRequestedForUid = authState.user.uid;
+  loadOrderState();
+}
+
 async function main() {
   await initLayout();
   await render();
-  if (authState.user) await loadOrderState();
-  subscribe(render);
+  maybeLoadOrderState();
+  subscribe(() => {
+    render();
+    maybeLoadOrderState();
+  });
   onLocaleChange(render);
   onCategoriesChange(render);
   SiteSettings.subscribeChatDisabled((active) => {
