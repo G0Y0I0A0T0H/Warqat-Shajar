@@ -766,8 +766,10 @@ export function renderEscrowActions(containerEl, { order, viewerUid, paymentInfo
             </div>`
           : ""
       }
+      <p id="escrow-action-error-${order.id}" class="error-text" style="display:none"></p>
     </div>
   `;
+  const actionErrorEl = containerEl.querySelector(`#escrow-action-error-${order.id}`);
 
   let proofInput = null;
   const markPaidBtn = containerEl.querySelector("#escrow-mark-paid-btn");
@@ -825,65 +827,90 @@ export function renderEscrowActions(containerEl, { order, viewerUid, paymentInfo
     containerEl.querySelector(`#escrow-ref-input-${order.id}`)?.addEventListener("input", updateMarkPaidState);
   }
 
+  // Every escrow action below is a real Firestore write that firestore.rules
+  // can reject (a stale/mismatched payment method, a network hiccup, etc.) --
+  // without a try/catch here, a rejected write left the button disabled
+  // forever with zero feedback, looking exactly like the whole order was
+  // "stuck." Each handler now shows a real error and re-enables its button
+  // so the buyer/seller can actually see what happened and try again.
   if (markPaidBtn) {
     markPaidBtn.addEventListener("click", async () => {
       const chosen = containerEl.querySelector(`input[name="escrow-payment-method-${order.id}"]:checked`);
       markPaidBtn.disabled = true;
+      showMessage(actionErrorEl, "");
 
-      if (chosen?.dataset.noProof === "1") {
-        await Escrow.confirmCodOrder(order.id, {
-          methodId: chosen.dataset.methodId,
-          methodLabel: chosen.dataset.methodLabel,
+      try {
+        if (chosen?.dataset.noProof === "1") {
+          await Escrow.confirmCodOrder(order.id, {
+            methodId: chosen.dataset.methodId,
+            methodLabel: chosen.dataset.methodLabel,
+          });
+          Notifications.create({
+            uid: order.sellerId,
+            key: "codOrderConfirmed",
+            params: { product: order.productLabel || "", amount: String(order.totalAmount) },
+            link: "dashboard-orders.html",
+          }).catch(() => {});
+          onChange?.();
+          return;
+        }
+
+        const phoneNumber = containerEl.querySelector(`#escrow-phone-input-${order.id}`)?.value.trim();
+        const referenceNumber = containerEl.querySelector(`#escrow-ref-input-${order.id}`)?.value.trim();
+        const proofUrl = proofInput?.getValue();
+        await Escrow.markPaymentClaimed(order.id, {
+          method: chosen ? chosen.value : null,
+          methodId: chosen?.dataset.methodId || null,
+          phoneNumber,
+          referenceNumber,
+          proofUrl,
         });
         Notifications.create({
           uid: order.sellerId,
-          key: "codOrderConfirmed",
-          params: { product: order.productLabel || "", amount: String(order.totalAmount) },
+          key: "paymentClaimed",
+          params: {
+            product: order.productLabel || "",
+            amount: String(order.totalAmount),
+            method: chosen?.dataset.methodLabel || "",
+            phone: phoneNumber || "",
+            reference: referenceNumber || "",
+          },
           link: "dashboard-orders.html",
         }).catch(() => {});
         onChange?.();
-        return;
+      } catch {
+        showMessage(actionErrorEl, t("escrow.actionFailed", "Something went wrong -- please try again."));
+        markPaidBtn.disabled = false;
       }
-
-      const phoneNumber = containerEl.querySelector(`#escrow-phone-input-${order.id}`)?.value.trim();
-      const referenceNumber = containerEl.querySelector(`#escrow-ref-input-${order.id}`)?.value.trim();
-      const proofUrl = proofInput?.getValue();
-      await Escrow.markPaymentClaimed(order.id, {
-        method: chosen ? chosen.value : null,
-        methodId: chosen?.dataset.methodId || null,
-        phoneNumber,
-        referenceNumber,
-        proofUrl,
-      });
-      Notifications.create({
-        uid: order.sellerId,
-        key: "paymentClaimed",
-        params: {
-          product: order.productLabel || "",
-          amount: String(order.totalAmount),
-          method: chosen?.dataset.methodLabel || "",
-          phone: phoneNumber || "",
-          reference: referenceNumber || "",
-        },
-        link: "dashboard-orders.html",
-      }).catch(() => {});
-      onChange?.();
     });
   }
   containerEl.querySelector("#escrow-confirm-delivery-btn")?.addEventListener("click", async (e) => {
     e.target.disabled = true;
-    await Escrow.confirmDelivery(order.id);
-    onChange?.();
+    showMessage(actionErrorEl, "");
+    try {
+      await Escrow.confirmDelivery(order.id);
+      onChange?.();
+    } catch {
+      showMessage(actionErrorEl, t("escrow.actionFailed", "Something went wrong -- please try again."));
+      e.target.disabled = false;
+    }
   });
   containerEl.querySelector("#escrow-dispute-toggle-btn")?.addEventListener("click", () => {
     const form = containerEl.querySelector("#escrow-dispute-form");
     form.style.display = form.style.display === "none" ? "flex" : "none";
   });
-  containerEl.querySelector("#escrow-dispute-submit-btn")?.addEventListener("click", async () => {
+  containerEl.querySelector("#escrow-dispute-submit-btn")?.addEventListener("click", async (e) => {
     const note = containerEl.querySelector("#escrow-dispute-note").value.trim();
     if (!note) return;
-    await Escrow.raiseDispute(order.id, viewerUid, note);
-    onChange?.();
+    e.target.disabled = true;
+    showMessage(actionErrorEl, "");
+    try {
+      await Escrow.raiseDispute(order.id, viewerUid, note);
+      onChange?.();
+    } catch {
+      showMessage(actionErrorEl, t("escrow.actionFailed", "Something went wrong -- please try again."));
+      e.target.disabled = false;
+    }
   });
 }
 
