@@ -915,7 +915,8 @@
     "disputeNotePlaceholder": "Briefly describe the problem...",
     "disputeSubmitBtn": "Submit report",
     "tourExplain": "This card tracks payment for this deal — it shows exactly where things stand: payment, delivery, and payout. If anything goes wrong, you can report it here any time.",
-    "actionFailed": "Something went wrong -- please try again."
+    "actionFailed": "Something went wrong -- please try again.",
+    "methodMissingId": "This payment method needs to be re-added by the site admin before it can be used -- please contact support."
   },
   "branding": {
     "title": "Visual Identity Control",
