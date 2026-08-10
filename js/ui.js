@@ -841,6 +841,16 @@ export function renderEscrowActions(containerEl, { order, viewerUid, paymentInfo
 
       try {
         if (chosen?.dataset.noProof === "1") {
+          // firestore.rules cross-checks this exact id against
+          // settings/paymentInfo.methods server-side -- a method with no id
+          // (only possible for data saved before that field existed) can
+          // never pass that check no matter how correctly noProofRequired is
+          // set, and the resulting permission-denied looks identical to any
+          // other failure. Catching it here gives a precise, actionable
+          // error instead of the generic one below.
+          if (!chosen.dataset.methodId) {
+            throw new Error("payment method missing id");
+          }
           await Escrow.confirmCodOrder(order.id, {
             methodId: chosen.dataset.methodId,
             methodLabel: chosen.dataset.methodLabel,
@@ -878,8 +888,13 @@ export function renderEscrowActions(containerEl, { order, viewerUid, paymentInfo
           link: "dashboard-orders.html",
         }).catch(() => {});
         onChange?.();
-      } catch {
-        showMessage(actionErrorEl, t("escrow.actionFailed", "Something went wrong -- please try again."));
+      } catch (err) {
+        showMessage(
+          actionErrorEl,
+          err.message === "payment method missing id"
+            ? t("escrow.methodMissingId", "This payment method needs to be re-added by the site admin before it can be used -- please contact support.")
+            : t("escrow.actionFailed", "Something went wrong -- please try again."),
+        );
         markPaidBtn.disabled = false;
       }
     });
