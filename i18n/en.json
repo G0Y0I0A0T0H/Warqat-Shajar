@@ -643,8 +643,7 @@
     "addProductForFarmer": "Add product for a farmer",
     "searchFarmerPlaceholder": "Search farmer by name, phone, or email",
     "selectFarmer": "Select",
-    "addedByAdminBadge": "Added by admin",
-    "superAdmin": "Admin Audit Log"
+    "addedByAdminBadge": "Added by admin"
   },
   "phoneAttempts": {
     "hint": "Every attempt to share a phone number anywhere on the site is logged here automatically — 3 attempts from the same user auto-suspends their account for 24h.",
@@ -892,6 +891,7 @@
     "noSections": "No sections",
     "allSections": "All sections (ungated)",
     "quickAccess": "All Sections",
+    "auditTabTitle": "Audit Log",
     "danger": {
       "tabTitle": "Danger Zone",
       "hint": "Owner-only. Permanently deletes real data -- meant for clearing test/dummy data before real users arrive, not routine use.",

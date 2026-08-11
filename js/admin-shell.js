@@ -20,11 +20,6 @@ export const NAV_ITEMS = [
   { href: "admin-ads.html", key: "ads", icon: "megaphone" },
   { href: "admin-branding.html", key: "branding", icon: "image" },
   { href: "admin-payments.html", key: "payments", icon: "credit-card" },
-  // Reuses the "superAdmin" key as both the nav entry AND the SENSITIVE_KEYS
-  // flag (same dual-duty pattern as "payments"/"admins" above) -- a future
-  // live-activity page can share this same grant as a tab inside this page
-  // rather than needing a second NAV_ITEMS entry/checkbox for one flag.
-  { href: "admin-audit-log.html", key: "superAdmin", icon: "clipboard-list" },
 ];
 
 // Keys that require an EXPLICIT grant in an admin's allowedSections --
@@ -41,12 +36,14 @@ export const NAV_ITEMS = [
 // toggle), only the ability to actually manage other admins is gated --
 // see canManageAdmins(). "identity" isn't a NAV_ITEMS page either (it's the
 // National ID / ID card photo section inside admin-users.html) -- owner-only
-// by default, same reasoning as systemControls. "superAdmin" gates
-// admin-audit-log.html (full cross-admin action trail) plus, in a later
-// batch, the View-As/live-activity tooling -- deliberately in this list
-// since it's visibility into every OTHER admin's actions, not just a normal
-// capability grant.
-export const SENSITIVE_KEYS = ["payments", "systemControls", "admins", "identity", "superAdmin"];
+// by default, same reasoning as systemControls.
+//
+// The full cross-admin audit trail (js/supreme-mode.js's audit tab) and the
+// View-As/live-activity tooling deliberately do NOT get a SENSITIVE_KEYS
+// entry here -- they stay inside the hidden, owner-only Supreme Mode
+// overlay instead of a delegable admin nav section, since they're
+// visibility into every OTHER admin's (or every user's) actions.
+export const SENSITIVE_KEYS = ["payments", "systemControls", "admins", "identity"];
 
 // Owner always has every section. A sensitive key (see SENSITIVE_KEYS)
 // requires explicit inclusion in allowedSections, full stop. Every other

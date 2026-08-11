@@ -18,7 +18,7 @@
 // anything unless they're also authenticated as the real owner account.
 import { Admin, Auth, OWNER_EMAIL, Notifications, AuditLog } from "./firebase.js";
 import { NAV_ITEMS, SENSITIVE_KEYS } from "./admin-shell.js";
-import { t } from "./i18n.js";
+import { t, getLocale } from "./i18n.js";
 import { escapeHtml, btnClass, badgeClass, icon } from "./ui.js";
 import { authState } from "./state.js";
 
@@ -52,6 +52,9 @@ let viewingPinUid = null;
 let viewedPin = null;
 let fakeDataCounts = { products: 0, deals: 0, chats: 0, notifications: 0 };
 let wipingKey = null;
+let auditEntries = [];
+let auditFilterAdmin = "";
+let auditFilterAction = "";
 
 export async function openSupremeMode() {
   if (overlay) return;
@@ -85,11 +88,101 @@ function closeSupremeMode() {
   viewingPinUid = null;
   viewedPin = null;
   userSearch = "";
+  auditFilterAdmin = "";
+  auditFilterAction = "";
 }
 
 async function reload() {
-  [users, admins] = await Promise.all([Admin.listAllUsers(), Admin.listAllAdmins()]);
+  [users, admins, auditEntries] = await Promise.all([Admin.listAllUsers(), Admin.listAllAdmins(), AuditLog.listRecent(300)]);
   render();
+}
+
+// Every action string any AuditLog.record() call site in the app can write
+// -- kept in sync manually (no dynamic registry exists). Falls back to the
+// raw action string untranslated if a new one is added here without a label.
+const AUDIT_ACTION_KEYS = {
+  product_added_for_farmer: "auditLog.action.productAddedForFarmer",
+  product_edited: "auditLog.action.productEdited",
+  admin_granted: "auditLog.action.adminGranted",
+  admin_permissions_changed: "auditLog.action.adminPermissionsChanged",
+  admin_revoked: "auditLog.action.adminRevoked",
+  user_suspended: "auditLog.action.userSuspended",
+  user_banned: "auditLog.action.userBanned",
+  user_reactivated: "auditLog.action.userReactivated",
+  user_deleted: "auditLog.action.userDeleted",
+  identity_edited: "auditLog.action.identityEdited",
+  pickup_point_edited: "auditLog.action.pickupPointEdited",
+  payment_method_added: "auditLog.action.paymentMethodAdded",
+  payment_method_changed: "auditLog.action.paymentMethodChanged",
+  payment_method_removed: "auditLog.action.paymentMethodRemoved",
+  data_wiped: "auditLog.action.dataWiped",
+  view_as_started: "auditLog.action.viewAsStarted",
+  view_as_stopped: "auditLog.action.viewAsStopped",
+};
+
+function auditActionLabel(action) {
+  const key = AUDIT_ACTION_KEYS[action];
+  return key ? t(key) : action;
+}
+
+function auditFormatDate(ts) {
+  if (!ts?.toDate) return "";
+  return ts.toDate().toLocaleString(getLocale() === "ar" ? "ar-EG" : "en-US");
+}
+
+function auditMetaSummary(meta) {
+  if (!meta || typeof meta !== "object" || Object.keys(meta).length === 0) return "";
+  const parts = Object.entries(meta)
+    .filter(([, v]) => v !== null && v !== undefined && v !== "")
+    .map(([k, v]) => `${escapeHtml(k)}: ${escapeHtml(typeof v === "object" ? JSON.stringify(v) : String(v))}`);
+  return parts.length ? `<div class="sm-row-sub force-ltr" dir="ltr">${parts.join(" · ")}</div>` : "";
+}
+
+function filteredAuditEntries() {
+  return auditEntries.filter((e) => {
+    if (auditFilterAdmin && e.adminUid !== auditFilterAdmin) return false;
+    if (auditFilterAction && e.action !== auditFilterAction) return false;
+    return true;
+  });
+}
+
+function auditLogHTML() {
+  const list = filteredAuditEntries();
+  const actionsUsed = [...new Set(auditEntries.map((e) => e.action))];
+  return `
+    <p class="sm-row-sub" style="margin-bottom:1rem">${t("auditLog.hint")}</p>
+    <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.75rem">
+      <select class="input" id="sm-audit-filter-admin" style="max-width:220px">
+        <option value="">${t("auditLog.allAdmins")}</option>
+        ${admins.map((a) => `<option value="${a.uid}" ${auditFilterAdmin === a.uid ? "selected" : ""}>${escapeHtml(a.email)}</option>`).join("")}
+      </select>
+      <select class="input" id="sm-audit-filter-action" style="max-width:220px">
+        <option value="">${t("auditLog.allActions")}</option>
+        ${actionsUsed.map((a) => `<option value="${a}" ${auditFilterAction === a ? "selected" : ""}>${escapeHtml(auditActionLabel(a))}</option>`).join("")}
+      </select>
+    </div>
+    ${
+      list.length === 0
+        ? `<p class="sm-empty">${t("auditLog.empty")}</p>`
+        : list
+            .map(
+              (e) => `
+          <div class="sm-row" style="flex-direction:column;align-items:stretch">
+            <div class="sm-row-title">
+              <span class="${badgeClass("outline")}">${escapeHtml(auditActionLabel(e.action))}</span>
+              <span class="sm-row-sub" style="margin:0">${auditFormatDate(e.createdAt)}</span>
+            </div>
+            <div class="sm-row-sub">
+              <strong>${t("auditLog.by")}:</strong> ${escapeHtml(e.adminName || e.adminUid)}
+              ${e.targetLabel ? ` &rarr; <strong>${t("auditLog.on")}:</strong> ${escapeHtml(e.targetLabel)}` : ""}
+            </div>
+            ${auditMetaSummary(e.meta)}
+          </div>
+        `,
+            )
+            .join("")
+    }
+  `;
 }
 
 async function reloadFakeDataCounts() {
@@ -397,6 +490,7 @@ function render() {
     <button type="button" class="sm-tab ${activeTab === "users" ? "is-active" : ""}" data-sm-tab="users">${t("admin.users")} (${users.length})</button>
     <button type="button" class="sm-tab ${activeTab === "admins" ? "is-active" : ""}" data-sm-tab="admins">${t("admin.admins")} (${admins.length})</button>
     <button type="button" class="sm-tab ${activeTab === "quick" ? "is-active" : ""}" data-sm-tab="quick">${t("supreme.quickAccess", "Quick Access")}</button>
+    <button type="button" class="sm-tab ${activeTab === "audit" ? "is-active" : ""}" data-sm-tab="audit">${icon("clipboard-list")} ${t("supreme.auditTabTitle", "Audit Log")}</button>
     <button type="button" class="sm-tab ${activeTab === "danger" ? "is-active" : ""}" data-sm-tab="danger">${icon("alert-triangle")} ${t("supreme.danger.tabTitle", "Danger Zone")}</button>
   `;
   bodyEl.innerHTML =
@@ -407,9 +501,11 @@ function render() {
       `
       : activeTab === "admins"
         ? admins.map(adminRowHTML).join("") || `<p class="sm-empty">${t("admin.noAdmins")}</p>`
-        : activeTab === "danger"
-          ? dangerZoneHTML()
-          : quickAccessHTML();
+        : activeTab === "audit"
+          ? auditLogHTML()
+          : activeTab === "danger"
+            ? dangerZoneHTML()
+            : quickAccessHTML();
 
   tabsEl.querySelectorAll("[data-sm-tab]").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -425,6 +521,17 @@ function render() {
   if (activeTab === "danger") {
     overlay.querySelectorAll("[data-sm-wipe]").forEach((btn) => {
       btn.addEventListener("click", () => wipeCategory(btn.dataset.smWipe));
+    });
+  }
+
+  if (activeTab === "audit") {
+    bodyEl.querySelector("#sm-audit-filter-admin")?.addEventListener("change", (e) => {
+      auditFilterAdmin = e.target.value;
+      render();
+    });
+    bodyEl.querySelector("#sm-audit-filter-action")?.addEventListener("change", (e) => {
+      auditFilterAction = e.target.value;
+      render();
     });
   }
 

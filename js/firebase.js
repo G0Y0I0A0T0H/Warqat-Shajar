@@ -2005,13 +2005,14 @@ export const AdminChat = {
 
 // ===========================================================================
 // Admin action audit trail — every consequential thing any admin account
-// does gets one entry here (who, what, on what, when), so a "superAdmin"-
-// granted admin (or the owner) can review full cross-admin activity. Any
-// admin may write their own entries (adminUid is pinned to the real caller
-// server-side, same anti-spoofing shape as AdminChat.sendMessage's senderId
-// above), but reading the trail back requires the superAdmin grant.
-// record() never blocks the real admin action it's documenting -- a failed
-// audit write is logged to the console and swallowed, not thrown.
+// does gets one entry here (who, what, on what, when), reviewable only from
+// js/supreme-mode.js's audit tab (owner-only, never a delegable section --
+// this is visibility into every OTHER admin's actions). Any admin may write
+// their own entries (adminUid is pinned to the real caller server-side, same
+// anti-spoofing shape as AdminChat.sendMessage's senderId above), but
+// reading the trail back is owner-only. record() never blocks the real
+// admin action it's documenting -- a failed audit write is logged to the
+// console and swallowed, not thrown.
 // ===========================================================================
 const adminAuditLogCol = collection(db, "adminAuditLog");
 

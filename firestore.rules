@@ -733,12 +733,13 @@ service cloud.firestore {
     // Full admin-action audit trail (who did what, to what, when). Any admin
     // can write their own entries -- adminUid must be the real caller, same
     // anti-spoofing pattern as adminChats' senderId below, so the trail
-    // stays complete even for admins who don't hold "superAdmin" -- but only
-    // a "superAdmin" grant (or the owner) can read it, and only the owner
-    // can edit/delete an entry, so the trail stays tamper-resistant even
-    // from other Super Admins.
+    // stays complete even for admins who aren't the owner -- but reading it
+    // back (js/supreme-mode.js's audit tab) is owner-only, strictly, not
+    // delegable via any section grant: this is visibility into every OTHER
+    // admin's actions, so it stays behind the same hidden Supreme Mode
+    // trigger as the rest of that module, never a normal admin nav page.
     match /adminAuditLog/{entryId} {
-      allow read: if isOwnerOrGranted('superAdmin');
+      allow read: if isOwner();
       allow create: if isAdmin() && request.resource.data.adminUid == request.auth.uid;
       allow update, delete: if isOwner();
     }
