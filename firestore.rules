@@ -133,7 +133,11 @@ service cloud.firestore {
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'suspendedUntil'])
         ) || (
         isSignedIn() && request.auth.uid == uid &&
-        !request.resource.data.diff(resource.data).affectedKeys().hasAny(userProtectedFields())
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny(userProtectedFields()) &&
+        // Buyer's own persistent delivery address (js/pages/profile.js) --
+        // same shape check as sellerProfiles' pickupPoint.
+        (!('deliveryAddress' in request.resource.data) ||
+         (request.resource.data.deliveryAddress.lat is number && request.resource.data.deliveryAddress.lng is number))
       ) || (
         // Client-driven phone-violation enforcement, with no backend/cron to
         // run it server-side: a user may only ever flip their OWN status in
@@ -498,6 +502,13 @@ service cloud.firestore {
         request.resource.data.status == 'awaiting_payment' &&
         request.resource.data.quantity > 0 &&
         request.resource.data.totalAmount == request.resource.data.quantity * request.resource.data.pricePerUnit &&
+        // Flat placeholder delivery fee (js/firebase.js's Escrow.createOrder
+        // computes it, never trusted from the client's own claim) -- kept
+        // OUT of totalAmount on purpose, since totalAmount is what the
+        // farmer actually gets paid (Escrow.release() -> Wallets.credit),
+        // and the delivery fee isn't the farmer's money.
+        request.resource.data.get('deliveryFee', 0) ==
+          (request.resource.data.get('deliveryMethod', 'pickup') == 'delivery' ? 100 : 0) &&
         (
           (
             request.resource.data.chatId != null &&

@@ -60,6 +60,11 @@ function renderWithdrawalRow(req) {
       <div class="list-row-main">
         <span style="font-weight:600">${req.amount} ${t("products.currency")}</span>
         <div class="text-muted" style="font-size:0.8rem;margin-top:0.25rem">${t(WITHDRAWAL_STATUS_KEY[req.status] || req.status)} · ${date}</div>
+        ${
+          req.receivingAccount
+            ? `<div class="text-muted force-ltr" dir="ltr" style="font-size:0.78rem;margin-top:0.15rem">${t("balance.receivingAccountLabel", "Receiving wallet/account number")}: ${escapeHtml(req.receivingAccount)}</div>`
+            : ""
+        }
         ${req.status === "rejected" && req.adminNote ? `<p class="error-text" style="font-size:0.8rem;margin-top:0.25rem">${escapeHtml(req.adminNote)}</p>` : ""}
       </div>
       ${
@@ -95,6 +100,11 @@ function render() {
         <label class="label" for="withdraw-amount-input">${t("balance.amountLabel")}</label>
         <input class="input force-ltr" dir="ltr" type="number" min="1" max="${wallet.availableBalance}" id="withdraw-amount-input">
       </div>
+      <div class="field">
+        <label class="label" for="withdraw-account-input">${t("balance.receivingAccountLabel", "Receiving wallet/account number")}</label>
+        <p class="text-muted" style="font-size:0.8rem;margin-bottom:0.3rem">${t("balance.receivingAccountHint", "You're responsible for making sure this is correct -- see the withdrawal section of the Terms of Use.")}</p>
+        <input class="input force-ltr" dir="ltr" id="withdraw-account-input">
+      </div>
       <p id="withdraw-error" class="error-text" style="display:none"></p>
       <button type="submit" class="${btnClass("default", "sm")}" style="align-self:flex-start" ${wallet.availableBalance <= 0 ? "disabled" : ""}>${t("balance.requestWithdrawalBtn")}</button>
     </form>
@@ -115,6 +125,7 @@ function render() {
     const errorEl = contentEl.querySelector("#withdraw-error");
     showMessage(errorEl, "");
     const amount = Number(contentEl.querySelector("#withdraw-amount-input").value);
+    const receivingAccount = contentEl.querySelector("#withdraw-account-input").value.trim();
     if (!amount || amount <= 0) {
       showMessage(errorEl, t("balance.enterValidAmount"));
       return;
@@ -123,8 +134,12 @@ function render() {
       showMessage(errorEl, t("balance.amountExceedsBalance"));
       return;
     }
+    if (!receivingAccount) {
+      showMessage(errorEl, t("balance.receivingAccountRequired", "Enter the account/wallet number to receive on"));
+      return;
+    }
     try {
-      await WithdrawalRequests.create({ uid: profileRef.uid, uidName: profileRef.fullName, amount });
+      await WithdrawalRequests.create({ uid: profileRef.uid, uidName: profileRef.fullName, amount, receivingAccount });
       await reload();
     } catch {
       showMessage(errorEl, t("balance.withdrawalRequestFailed"));

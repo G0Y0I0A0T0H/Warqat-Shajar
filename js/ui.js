@@ -491,6 +491,62 @@ export function renderImageInput(mountEl, { value = "", uploadPathPrefix, accept
 }
 
 // ---------------------------------------------------------------------------
+// Zoomable image (payment-proof screenshots, etc.) — same hover-magnifier
+// mechanism as product.js's gallery zoom, but generic and instance-scoped
+// (no hardcoded ids) so any number of these can coexist on one page and
+// survive being torn down/rebuilt via innerHTML on every re-render, unlike
+// product.js's initGalleryZoom() which is hardcoded to one fixed set of ids.
+// ---------------------------------------------------------------------------
+export function renderZoomableImage(url, altText = "") {
+  return `
+    <div class="zoomable-image" data-zoomable>
+      <img class="zoomable-image-img" src="${safeUrl(url)}" alt="${escapeHtml(altText)}">
+      <div class="zoomable-image-lens"></div>
+      <div class="zoomable-image-result"></div>
+    </div>
+  `;
+}
+
+export function wireZoomableImages(root) {
+  root.querySelectorAll("[data-zoomable]").forEach((wrap) => {
+    const img = wrap.querySelector(".zoomable-image-img");
+    const lens = wrap.querySelector(".zoomable-image-lens");
+    const result = wrap.querySelector(".zoomable-image-result");
+    if (!img || !lens || !result) return;
+    const zoomFactor = 2.5;
+
+    function positionResult() {
+      result.style.backgroundImage = `url('${img.src}')`;
+      result.style.backgroundSize = `${img.clientWidth * zoomFactor}px ${img.clientHeight * zoomFactor}px`;
+      lens.style.width = `${result.offsetWidth / zoomFactor}px`;
+      lens.style.height = `${result.offsetHeight / zoomFactor}px`;
+    }
+
+    function moveLens(e) {
+      const rect = img.getBoundingClientRect();
+      let x = e.clientX - rect.left - lens.offsetWidth / 2;
+      let y = e.clientY - rect.top - lens.offsetHeight / 2;
+      x = Math.max(0, Math.min(x, img.clientWidth - lens.offsetWidth));
+      y = Math.max(0, Math.min(y, img.clientHeight - lens.offsetHeight));
+      lens.style.left = `${x}px`;
+      lens.style.top = `${y}px`;
+      result.style.backgroundPosition = `-${x * zoomFactor}px -${y * zoomFactor}px`;
+    }
+
+    wrap.addEventListener("mouseenter", () => {
+      positionResult();
+      lens.style.display = "block";
+      result.style.display = "block";
+    });
+    wrap.addEventListener("mousemove", moveLens);
+    wrap.addEventListener("mouseleave", () => {
+      lens.style.display = "none";
+      result.style.display = "none";
+    });
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Location picker (pickup points, delivery addresses) — Leaflet + OpenStreetMap,
 // not Google Maps: no API key, no billing account, same "drop a pin, get
 // {lat,lng}" result. Leaflet itself is only fetched once, on first actual use.
@@ -590,8 +646,27 @@ const ESCROW_STEPS = [
   { status: "released", icon: "star", labelKey: "escrow.stepReleased" },
 ];
 
+// Buyer-facing "what do I actually owe" breakdown -- order.totalAmount is
+// always just the product price (quantity*pricePerUnit, see
+// Escrow.createOrder), kept separate from deliveryFee so the farmer's
+// payout (Wallets.credit in Escrow.release()) never includes it. Used right
+// above the payment-method picker in renderEscrowActions, so the buyer
+// knows the real amount to transfer, not just the product price.
+export function escrowAmountBreakdownHTML(order) {
+  const currency = t("products.currency", "EGP");
+  if (!order.deliveryFee) return "";
+  const grandTotal = order.totalAmount + order.deliveryFee;
+  return `
+    <div class="escrow-amount-breakdown">
+      <div class="escrow-amount-row"><span>${t("escrow.productPriceLabel", "Product price")}</span><span>${order.totalAmount} ${currency}</span></div>
+      <div class="escrow-amount-row"><span>${t("escrow.deliveryFeeLabel", "Delivery fee")}</span><span>${order.deliveryFee} ${currency}</span></div>
+      <div class="escrow-amount-row is-total"><span>${t("escrow.grandTotalLabel", "Total to pay")}</span><span>${grandTotal} ${currency}</span></div>
+    </div>
+  `;
+}
+
 export function escrowStepperHTML(order) {
-  const total = `${order.totalAmount} ${t("products.currency", "EGP")}`;
+  const total = `${order.totalAmount + (order.deliveryFee || 0)} ${t("products.currency", "EGP")}`;
 
   // Cash-on-delivery (or any other admin-flagged noProofRequired method)
   // never has a payment to verify or funds to release -- it's done the
@@ -717,7 +792,7 @@ export function renderEscrowActions(containerEl, { order, viewerUid, paymentInfo
   let proofFormHtml = "";
   let primaryBtnHtml = "";
   if (isAwaitingPaymentAsBuyer) {
-    topHtml = escrowPaymentMethodsHTML(order.id, paymentInfo);
+    topHtml = escrowAmountBreakdownHTML(order) + escrowPaymentMethodsHTML(order.id, paymentInfo);
     // Wrapped so it can be hidden entirely once a noProofRequired method
     // (cash on delivery, or anything else the admin flags that way) is
     // picked -- see updateMarkPaidState below, which toggles this and swaps

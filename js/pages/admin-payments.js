@@ -2,7 +2,7 @@ import { initLayout } from "../layout.js";
 import { guardAdmin } from "../admin-shell.js";
 import { t, onLocaleChange } from "../i18n.js";
 import { SiteSettings, Escrow, Wallets, WithdrawalRequests, AuditLog } from "../firebase.js";
-import { btnClass, badgeClass, icon, showMessage, escapeHtml, safeUrl, deliveryMethodLineHTML } from "../ui.js";
+import { btnClass, badgeClass, icon, showMessage, escapeHtml, deliveryMethodLineHTML, renderZoomableImage, wireZoomableImages } from "../ui.js";
 import { authState } from "../state.js";
 
 function auditPaymentMethod(action, targetId, targetLabel, meta) {
@@ -76,7 +76,7 @@ function renderOrderRow(o) {
           <span class="${badgeClass(o.status === "disputed" ? "destructive" : "outline")}">${t(ESCROW_STATUS_KEY[o.status] || o.status)}</span>
         </div>
         <div class="text-muted" style="font-size:0.8rem;margin-top:0.25rem">
-          ${t("payments.buyerLabel")}: ${escapeHtml(o.buyerName || "")} · ${t("payments.sellerLabel")}: ${escapeHtml(o.sellerName || "")} · ${t("escrow.totalLabel")}: ${o.totalAmount}
+          ${t("payments.buyerLabel")}: ${escapeHtml(o.buyerName || "")} · ${t("payments.sellerLabel")}: ${escapeHtml(o.sellerName || "")} · ${t("escrow.totalLabel")}: ${o.totalAmount}${o.deliveryFee ? ` (+${o.deliveryFee} ${t("escrow.deliveryFeeLabel")})` : ""}
         </div>
         ${
           o.paymentMethodChosen
@@ -96,13 +96,7 @@ function renderOrderRow(o) {
                      ? `<div class="payment-proof-ref">${t("escrow.referenceNumberLabel")}: <span class="force-ltr" dir="ltr">${escapeHtml(o.paymentReferenceNumber)}</span></div>`
                      : ""
                  }
-                 ${
-                   o.paymentProofUrl
-                     ? `<a href="${safeUrl(o.paymentProofUrl)}" target="_blank" rel="noopener noreferrer" class="payment-proof-thumb">
-                          <img src="${safeUrl(o.paymentProofUrl)}" alt="${t("payments.proofScreenshotAlt", "Payment screenshot")}">
-                        </a>`
-                     : ""
-                 }
+                 ${o.paymentProofUrl ? renderZoomableImage(o.paymentProofUrl, t("payments.proofScreenshotAlt", "Payment screenshot")) : ""}
                </div>`
             : ""
         }
@@ -151,7 +145,7 @@ function renderDealRow(o) {
           ${o.noProofPayment ? `<span class="${badgeClass("secondary")}">${t("payments.codBadge")}</span>` : ""}
         </div>
         <div class="text-muted" style="font-size:0.8rem;margin-top:0.25rem">
-          ${t("payments.buyerLabel")}: ${escapeHtml(o.buyerName || "")} · ${t("payments.sellerLabel")}: ${escapeHtml(o.sellerName || "")} · ${t("escrow.totalLabel")}: ${o.totalAmount} · ${date}
+          ${t("payments.buyerLabel")}: ${escapeHtml(o.buyerName || "")} · ${t("payments.sellerLabel")}: ${escapeHtml(o.sellerName || "")} · ${t("escrow.totalLabel")}: ${o.totalAmount}${o.deliveryFee ? ` (+${o.deliveryFee} ${t("escrow.deliveryFeeLabel")})` : ""} · ${date}
         </div>
         <div class="text-muted" style="font-size:0.8rem;margin-top:0.15rem">
           ${t("payments.quantityLabel")}: ${o.quantity} ${escapeHtml(o.unit || "")}
@@ -163,7 +157,7 @@ function renderDealRow(o) {
             ? `<div class="payment-proof">
                  ${o.paymentPhoneNumber ? `<div class="payment-proof-ref">${t("escrow.phoneNumberLabel")}: <span class="force-ltr" dir="ltr">${escapeHtml(o.paymentPhoneNumber)}</span></div>` : ""}
                  ${o.paymentReferenceNumber ? `<div class="payment-proof-ref">${t("escrow.referenceNumberLabel")}: <span class="force-ltr" dir="ltr">${escapeHtml(o.paymentReferenceNumber)}</span></div>` : ""}
-                 ${o.paymentProofUrl ? `<a href="${safeUrl(o.paymentProofUrl)}" target="_blank" rel="noopener noreferrer" class="payment-proof-thumb"><img src="${safeUrl(o.paymentProofUrl)}" alt="${t("payments.proofScreenshotAlt", "Payment screenshot")}"></a>` : ""}
+                 ${o.paymentProofUrl ? renderZoomableImage(o.paymentProofUrl, t("payments.proofScreenshotAlt", "Payment screenshot")) : ""}
                </div>`
             : ""
         }
@@ -195,6 +189,11 @@ function renderWithdrawalRow(req) {
       <div class="list-row-main">
         <span style="font-weight:600">${req.amount} ${t("products.currency")}</span>
         <div class="text-muted" style="font-size:0.8rem;margin-top:0.25rem">${escapeHtml(req.uidName || req.uid)} · ${date}</div>
+        ${
+          req.receivingAccount
+            ? `<div class="text-muted force-ltr" dir="ltr" style="font-size:0.8rem;margin-top:0.15rem">${t("payments.receivingAccountLabel", "Receiving account")}: ${escapeHtml(req.receivingAccount)}</div>`
+            : ""
+        }
       </div>
       <div style="display:flex;gap:0.4rem">
         <button type="button" class="${btnClass("default", "sm")}" data-mark-paid="${req.id}">${t("payments.markPaidBtn")}</button>
@@ -323,6 +322,8 @@ function render() {
 
     ${tabPanelHTML()}
   `;
+
+  wireZoomableImages(contentEl);
 
   contentEl.querySelectorAll("[data-payments-tab]").forEach((btn) => {
     btn.addEventListener("click", () => {

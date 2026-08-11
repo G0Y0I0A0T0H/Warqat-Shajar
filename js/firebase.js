@@ -333,6 +333,14 @@ export const Profile = {
     await SellerProfiles.syncPhoto(uid, photoURL).catch(() => {});
   },
 
+  // A buyer's own persistent delivery address (js/pages/profile.js), set
+  // once and reused as the default at order/offer time instead of dropping
+  // a fresh pin every order -- see the delivery-method flows in cart.js,
+  // product.js, and dashboard-chat.js's renderOfferForm.
+  async updateDeliveryAddress(uid, { lat, lng }) {
+    await updateDoc(userDocRef(uid), { deliveryAddress: { lat, lng } });
+  },
+
   // Called every time a user's own client blocks a phone-number-sharing
   // attempt. Every 3rd strike self-suspends the account for 24h — see the
   // matching firestore.rules carve-out that allows only this exact
@@ -886,10 +894,15 @@ export const Escrow = {
       pricePerUnit,
       totalAmount: quantity * pricePerUnit,
       // "pickup" (free, from the seller's own sellerProfiles.pickupPoint) or
-      // "delivery" (deliveryLocation is the buyer's own {lat,lng}) -- no
-      // delivery fee involved yet, this is logistics-only for now.
+      // "delivery" (deliveryLocation is the buyer's own {lat,lng}), in which
+      // case a flat placeholder fee applies. Computed here, in one place, so
+      // every call site gets it automatically -- kept OUT of totalAmount on
+      // purpose (totalAmount is what Escrow.release() pays the farmer via
+      // Wallets.credit; the delivery fee isn't the farmer's money). Matches
+      // the firestore.rules escrowOrders create-rule's own hardcoded check.
       deliveryMethod: deliveryMethod || null,
       deliveryLocation: deliveryLocation || null,
+      deliveryFee: deliveryMethod === "delivery" ? 100 : 0,
       status: "awaiting_payment",
       paymentClaimedAt: null,
       paymentConfirmedAt: null,
@@ -985,6 +998,26 @@ export const Escrow = {
           lastOrderApplied: orderId,
         }).catch(() => {});
       }
+    }
+    // Electronic-payment orders still need an admin to manually click
+    // "release funds" (see Escrow.release() below) -- unlike COD above,
+    // there's real platform-held money here, so every current admin gets
+    // notified the moment delivery is confirmed instead of having to check
+    // admin-payments.html on their own. Best-effort: never block the
+    // delivery confirmation itself, which has already succeeded.
+    if (order && !order.noProofPayment) {
+      Admin.listAllAdmins()
+        .then((admins) =>
+          Notifications.broadcastToAll(
+            admins.map((a) => a.uid),
+            {
+              key: "deliveryConfirmedNeedsRelease",
+              params: { product: order.productLabel || "", buyer: order.buyerName || "" },
+              link: "admin-payments.html",
+            },
+          ),
+        )
+        .catch(() => {});
     }
   },
 
@@ -1118,8 +1151,21 @@ export const Wallets = {
 const withdrawalRequestsCol = collection(db, "withdrawalRequests");
 
 export const WithdrawalRequests = {
-  async create({ uid, uidName, amount }) {
-    await addDoc(withdrawalRequestsCol, { uid, uidName: uidName || null, amount, status: "requested", adminNote: null, resolvedAt: null, createdAt: serverTimestamp() });
+  async create({ uid, uidName, amount, receivingAccount }) {
+    await addDoc(withdrawalRequestsCol, {
+      uid,
+      uidName: uidName || null,
+      amount,
+      // Where the admin should actually send the money -- the farmer is
+      // solely responsible for entering this correctly (see the withdrawal
+      // section of terms.html); the admin's own "mark paid" step relies on
+      // this field being right, since transfers happen manually.
+      receivingAccount: receivingAccount || null,
+      status: "requested",
+      adminNote: null,
+      resolvedAt: null,
+      createdAt: serverTimestamp(),
+    });
   },
 
   async cancel(id) {
