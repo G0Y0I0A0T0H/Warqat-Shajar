@@ -313,38 +313,42 @@
       },
       {
         "heading": "2. Payment and Delivery",
-        "body": "All payment and delivery arrangements happen directly between the buyer and seller, entirely off-platform. Waraqat Shajar does not collect funds or arrange shipping, and is not responsible for any financial dispute, delay, or damage arising from these arrangements."
+        "body": "Payments are made through the methods designated by the platform administration (bank transfer, e-wallet, or cash on delivery, at the buyer's choice), whereby the buyer sends the amount due and documents the transfer, and the platform administration manually verifies receipt before confirming the deal. At checkout, the buyer chooses between collecting the product from the seller's designated pickup point (at no additional charge) or having it delivered to an address they specify (for a fixed delivery fee shown at the time of the order, which may change in the future without affecting any order already confirmed). Once receipt of the product is confirmed, the amount due is credited to the seller's balance within the platform in preparation for withdrawal under the following clause."
       },
       {
-        "heading": "3. Data Accuracy and Responsibility",
+        "heading": "3. Withdrawals and Responsibility for Receiving Account Details",
+        "body": "A seller (farmer) may request a withdrawal of their available balance within the platform at any time by entering the e-wallet or bank account number they wish to receive the funds on. The user acknowledges and agrees that they are solely and fully responsible for verifying the accuracy of the account or wallet number they enter before submitting a withdrawal request. The platform administration undertakes to process valid withdrawal requests and transfer the amount due within 24 hours of submission. Should a user enter an incorrect account or wallet number, or one belonging to another party, the platform disclaims all responsibility for any resulting error or loss; its obligation is deemed discharged once the transfer is executed according to the details the user themselves entered, and neither the platform nor its operators bear any legal or financial liability for recovering funds from the party to whom they were mistakenly transferred as a result of incorrect details entered by the user."
+      },
+      {
+        "heading": "4. Data Accuracy and Responsibility",
         "body": "The platform currently does not verify identity, farm ownership, or business registration. Each user is fully responsible for the accuracy of the information they provide, including self-declared product quality ratings, crop descriptions, and quantities."
       },
       {
-        "heading": "4. Phone Number Privacy",
+        "heading": "5. Phone Number Privacy",
         "body": "Your phone number is never shown to other users on the platform. It is used only for delivery, technical support, and contacting you as needed by site administration. All negotiation and communication between users happens exclusively through the in-platform chat system."
       },
       {
-        "heading": "5. User Conduct",
+        "heading": "6. User Conduct",
         "body": "Using the platform to post misleading, abusive, or fraudulent content is prohibited. The platform administration may remove any listing or content that violates these terms without prior notice."
       },
       {
-        "heading": "6. Ratings and Reports",
+        "heading": "7. Ratings and Reports",
         "body": "After each interaction, both parties may rate each other. Any user may also file a report against another user (e.g. quality mismatch, non-payment, abusive behavior). The platform administration manually reviews every report and decides on the appropriate action, which may include a temporary or permanent account suspension."
       },
       {
-        "heading": "7. Limitation of Liability",
-        "body": "The platform is provided \"as is\" without any warranties. Waraqat Shajar is not responsible for product quality, pricing accuracy, or the outcome of any negotiation or deal between users."
+        "heading": "8. Limitation of Liability",
+        "body": "The platform is provided \"as is\" without any warranties. Waraqat Shajar is not responsible for product quality, pricing accuracy, or the outcome of any negotiation or deal between users, except for its undertakings to manually verify received transfers and pay out sellers' balances under clauses 2 and 3 above."
       },
       {
-        "heading": "8. Changes to These Terms",
+        "heading": "9. Changes to These Terms",
         "body": "These terms may be updated from time to time. Continued use of the platform after any change constitutes acceptance of the updated terms."
       },
       {
-        "heading": "9. Phone Number Sharing Is Prohibited",
+        "heading": "10. Phone Number Sharing Is Prohibited",
         "body": "Writing or sharing any phone number in chats, comments, or any other text field on the platform is strictly prohibited. The system automatically detects, blocks, and logs any attempt to share a phone number. Three attempts by the same user automatically suspends their account for 24 hours, and administration may take further action, up to permanently stopping the conversation or the account, if the violation continues."
       },
       {
-        "heading": "10. Contact",
+        "heading": "11. Contact",
         "body": "For any questions about these terms, please reach out via the \"Contact Us\" page."
       }
     ]
