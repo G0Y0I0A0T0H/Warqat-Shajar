@@ -1,7 +1,7 @@
 import { initLayout } from "../layout.js";
 import { guardAdmin, hasSection } from "../admin-shell.js";
 import { t, onLocaleChange } from "../i18n.js";
-import { Admin, OWNER_EMAIL, Notifications, IdentityVerification, SellerProfiles } from "../firebase.js";
+import { Admin, OWNER_EMAIL, Notifications, IdentityVerification, SellerProfiles, AuditLog } from "../firebase.js";
 import { authState } from "../state.js";
 import { badgeClass, btnClass, icon, escapeHtml, renderLocationPicker, showMessage } from "../ui.js";
 import { isValidNationalId } from "./auth-shared.js";
@@ -17,6 +17,21 @@ let openPickupUid = null;
 const identityCache = new Map();
 // uid -> sellerProfiles record (or null), lazily fetched the same way.
 const pickupCache = new Map();
+
+// Small shared helper for AuditLog call sites below -- every one of them
+// needs "who is the acting admin" and "who/what is the target user."
+function auditRecord(action, targetUid, meta) {
+  const target = users.find((u) => u.uid === targetUid);
+  AuditLog.record({
+    adminUid: authState.user.uid,
+    adminName: authState.profile?.fullName || "",
+    action,
+    targetType: "user",
+    targetId: targetUid,
+    targetLabel: target?.fullName || target?.email || "",
+    meta,
+  });
+}
 
 const STATUS_VARIANT = { active: "default", suspended: "secondary", banned: "destructive" };
 const STATUS_KEY = { active: "admin.statusActive", suspended: "admin.statusSuspended", banned: "admin.statusBanned" };
@@ -177,6 +192,7 @@ function render() {
       if (!days) return;
       await Admin.setUserStatus(btn.dataset.suspend, "suspended", Number(days));
       Notifications.create({ uid: btn.dataset.suspend, key: "accountSuspended" }).catch(() => {});
+      auditRecord("user_suspended", btn.dataset.suspend, { days: Number(days) });
       await reload();
     });
   });
@@ -184,6 +200,7 @@ function render() {
     btn.addEventListener("click", async () => {
       if (!confirm(t("admin.confirmBan"))) return;
       await Admin.setUserStatus(btn.dataset.ban, "banned");
+      auditRecord("user_banned", btn.dataset.ban);
       await reload();
     });
   });
@@ -191,6 +208,7 @@ function render() {
     btn.addEventListener("click", async () => {
       await Admin.setUserStatus(btn.dataset.reactivate, "active");
       Notifications.create({ uid: btn.dataset.reactivate, key: "accountReactivated" }).catch(() => {});
+      auditRecord("user_reactivated", btn.dataset.reactivate);
       await reload();
     });
   });
@@ -228,6 +246,7 @@ function render() {
         } else {
           await IdentityVerification.updateNationalId(uid, nationalId);
         }
+        auditRecord("identity_edited", uid, { replacedPhoto: Boolean(file) });
         await loadIdentity(uid);
       } catch {
         showMessage(errorEl, t("admin.identityLoadError"));
@@ -270,6 +289,7 @@ function render() {
       if (!value) return;
       btn.disabled = true;
       await SellerProfiles.updatePickupPoint(uid, value).catch(() => {});
+      auditRecord("pickup_point_edited", uid, value);
       pickupCache.delete(uid);
       btn.disabled = false;
       const savedEl = btn.parentElement.querySelector(".pickup-saved");
@@ -295,6 +315,7 @@ function render() {
   contentEl.querySelectorAll("[data-delete]").forEach((btn) => {
     btn.addEventListener("click", async () => {
       if (!confirm(t("admin.confirmDeleteUser"))) return;
+      auditRecord("user_deleted", btn.dataset.delete);
       await Admin.deleteUserAccount(btn.dataset.delete);
       await reload();
     });

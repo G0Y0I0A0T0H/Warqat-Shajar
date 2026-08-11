@@ -146,7 +146,11 @@ function mountForm() {
   const mount = contentEl.querySelector("#admin-product-form-mount");
   if (!mount || !formTarget) return;
   renderProductForm(mount, formTarget.profile, formTarget.existingProduct, {
-    addedByAdminUid: formTarget.existingProduct ? undefined : authState.user.uid,
+    // Passed on BOTH create and edit now -- create still uses it as the
+    // product's own addedByAdminUid stamp, edit uses it purely as an audit
+    // signal (dashboard-product-form.js only writes it onto the doc in the
+    // create branch, so this can't leak onto an edited product).
+    addedByAdminUid: authState.user.uid,
     redirectTo: "admin-listings.html",
     cancelHref: "admin-listings.html",
   });

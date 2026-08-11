@@ -1,7 +1,7 @@
 import { initLayout } from "../layout.js";
 import { guardAdmin, NAV_ITEMS, SENSITIVE_KEYS, hasSection, canManageAdmins } from "../admin-shell.js";
 import { t, onLocaleChange } from "../i18n.js";
-import { Admin, OWNER_EMAIL, auth, SiteSettings } from "../firebase.js";
+import { Admin, OWNER_EMAIL, auth, SiteSettings, AuditLog } from "../firebase.js";
 import { authState } from "../state.js";
 import { btnClass, showMessage } from "../ui.js";
 
@@ -232,6 +232,15 @@ function render() {
       return;
     }
     await Admin.grantAdmin(target.uid, email, code, allowedSections);
+    AuditLog.record({
+      adminUid: authState.user.uid,
+      adminName: authState.profile?.fullName || "",
+      action: "admin_granted",
+      targetType: "admin",
+      targetId: target.uid,
+      targetLabel: email,
+      meta: { allowedSections },
+    });
     await reload();
   });
 
@@ -270,7 +279,16 @@ function render() {
   contentEl.querySelectorAll("[data-revoke]").forEach((btn) => {
     btn.addEventListener("click", async () => {
       if (!confirm(t("admin.confirmRevokeAdmin"))) return;
+      const target = admins.find((a) => a.uid === btn.dataset.revoke);
       await Admin.revokeAdmin(btn.dataset.revoke);
+      AuditLog.record({
+        adminUid: authState.user.uid,
+        adminName: authState.profile?.fullName || "",
+        action: "admin_revoked",
+        targetType: "admin",
+        targetId: btn.dataset.revoke,
+        targetLabel: target?.email || "",
+      });
       await reload();
     });
   });
@@ -291,7 +309,17 @@ function render() {
     btn.addEventListener("click", async () => {
       const uid = btn.dataset.savePerms;
       const allowedSections = [...contentEl.querySelectorAll(".edit-perms-section:checked")].map((cb) => cb.value);
+      const target = admins.find((a) => a.uid === uid);
       await Admin.updateAllowedSections(uid, allowedSections);
+      AuditLog.record({
+        adminUid: authState.user.uid,
+        adminName: authState.profile?.fullName || "",
+        action: "admin_permissions_changed",
+        targetType: "admin",
+        targetId: uid,
+        targetLabel: target?.email || "",
+        meta: { allowedSections },
+      });
       editingPermsUid = null;
       await reload();
     });

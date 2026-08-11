@@ -643,7 +643,8 @@
     "addProductForFarmer": "Add product for a farmer",
     "searchFarmerPlaceholder": "Search farmer by name, phone, or email",
     "selectFarmer": "Select",
-    "addedByAdminBadge": "Added by admin"
+    "addedByAdminBadge": "Added by admin",
+    "superAdmin": "Admin Audit Log"
   },
   "phoneAttempts": {
     "hint": "Every attempt to share a phone number anywhere on the site is logged here automatically — 3 attempts from the same user auto-suspends their account for 24h.",
@@ -659,6 +660,34 @@
     "target": "With",
     "violationCount": "Violations",
     "accountStatus": "Account status"
+  },
+  "auditLog": {
+    "title": "Admin Audit Log",
+    "hint": "Everything any admin account does is logged here -- who did what, to what, and when.",
+    "empty": "No entries logged yet",
+    "allAdmins": "All admins",
+    "allActions": "All action types",
+    "by": "Done by",
+    "on": "On",
+    "action": {
+      "productAddedForFarmer": "Added a product for a farmer",
+      "productEdited": "Edited a product",
+      "adminGranted": "Granted admin access",
+      "adminPermissionsChanged": "Changed an admin's permissions",
+      "adminRevoked": "Revoked admin access",
+      "userSuspended": "Suspended a user account",
+      "userBanned": "Banned a user account",
+      "userReactivated": "Reactivated a user account",
+      "userDeleted": "Deleted a user account",
+      "identityEdited": "Edited a user's identity data",
+      "pickupPointEdited": "Edited a farmer's pickup point",
+      "paymentMethodAdded": "Added a payment method",
+      "paymentMethodChanged": "Changed a payment method",
+      "paymentMethodRemoved": "Removed a payment method",
+      "dataWiped": "Bulk-deleted data",
+      "viewAsStarted": "Started viewing as another user (View As)",
+      "viewAsStopped": "Ended a View As session"
+    }
   },
   "chats": {
     "title": "All Conversations",

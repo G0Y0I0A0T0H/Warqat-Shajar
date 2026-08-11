@@ -2,10 +2,11 @@
 // (ProductForm). renderProductForm() is called by both dashboard-product-new.js
 // (existingProduct = null) and dashboard-product-edit.js (existingProduct set).
 import { t, getLocale, onLocaleChange, refreshTranslations } from "../i18n.js";
-import { Products, PhoneAttempts, Notifications } from "../firebase.js";
+import { Products, PhoneAttempts, Notifications, AuditLog } from "../firebase.js";
 import { mergeCategories, categoryLabelById, onCategoriesChange, UNITS, unitLabelKey } from "../constants.js";
 import { populateGovernorateSelect } from "./auth-shared.js";
 import { renderStarButtons, showMessage, renderImageInput, containsPhoneNumber, safeUrl, escapeHtml } from "../ui.js";
+import { authState } from "../state.js";
 
 function toDateInputValue(value) {
   if (!value) return "";
@@ -236,6 +237,22 @@ export function renderProductForm(mountEl, profile, existingProduct, options = {
       };
       if (existingProduct) {
         await Products.updateProduct(existingProduct.id, input);
+        // addedByAdminUid doubles here as "an admin is driving this edit"
+        // (admin-listings.js always passes its own uid, even on edit, where
+        // it's otherwise unused for the doc itself) -- a farmer editing
+        // their own listing never sets it, so this only fires for real
+        // admin-on-behalf-of edits.
+        if (addedByAdminUid) {
+          AuditLog.record({
+            adminUid: authState.user.uid,
+            adminName: authState.profile?.fullName || "",
+            action: "product_edited",
+            targetType: "product",
+            targetId: existingProduct.id,
+            targetLabel: title,
+            meta: { ownerUid: profile.uid, ownerName: profile.fullName },
+          });
+        }
       } else {
         const id = Products.newProductId();
         await Products.createProduct(id, {
@@ -250,6 +267,17 @@ export function renderProductForm(mountEl, profile, existingProduct, options = {
           key: "productAdded",
           params: { product: title },
         }).catch(() => {});
+        if (addedByAdminUid) {
+          AuditLog.record({
+            adminUid: authState.user.uid,
+            adminName: authState.profile?.fullName || "",
+            action: "product_added_for_farmer",
+            targetType: "product",
+            targetId: id,
+            targetLabel: title,
+            meta: { farmerUid: profile.uid, farmerName: profile.fullName },
+          });
+        }
       }
       location.href = redirectTo;
     } catch (err) {

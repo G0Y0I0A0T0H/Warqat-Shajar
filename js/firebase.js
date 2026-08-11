@@ -2004,6 +2004,38 @@ export const AdminChat = {
 };
 
 // ===========================================================================
+// Admin action audit trail — every consequential thing any admin account
+// does gets one entry here (who, what, on what, when), so a "superAdmin"-
+// granted admin (or the owner) can review full cross-admin activity. Any
+// admin may write their own entries (adminUid is pinned to the real caller
+// server-side, same anti-spoofing shape as AdminChat.sendMessage's senderId
+// above), but reading the trail back requires the superAdmin grant.
+// record() never blocks the real admin action it's documenting -- a failed
+// audit write is logged to the console and swallowed, not thrown.
+// ===========================================================================
+const adminAuditLogCol = collection(db, "adminAuditLog");
+
+export const AuditLog = {
+  async record({ adminUid, adminName, action, targetType = null, targetId = null, targetLabel = null, meta = {} }) {
+    await addDoc(adminAuditLogCol, {
+      adminUid,
+      adminName,
+      action,
+      targetType,
+      targetId,
+      targetLabel,
+      meta,
+      createdAt: serverTimestamp(),
+    }).catch((err) => console.error("AuditLog.record failed:", err));
+  },
+
+  async listRecent(limitCount = 200) {
+    const snap = await getDocs(query(adminAuditLogCol, orderBy("createdAt", "desc"), limit(limitCount)));
+    return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  },
+};
+
+// ===========================================================================
 // Notifications — any user's client may write into another user's inbox
 // (e.g. a buyer's offer notifying the farmer); see firestore.rules for the
 // narrow, informational-only field allowlist that makes this safe.

@@ -16,10 +16,26 @@
 // action below still goes through firestore.rules' isOwner() check on the
 // server side, so discovering the trigger alone lets nobody actually do
 // anything unless they're also authenticated as the real owner account.
-import { Admin, Auth, OWNER_EMAIL, Notifications } from "./firebase.js";
+import { Admin, Auth, OWNER_EMAIL, Notifications, AuditLog } from "./firebase.js";
 import { NAV_ITEMS, SENSITIVE_KEYS } from "./admin-shell.js";
 import { t } from "./i18n.js";
 import { escapeHtml, btnClass, badgeClass, icon } from "./ui.js";
+import { authState } from "./state.js";
+
+// Every handler below runs as the real owner (Supreme Mode is only ever
+// reachable with authState.isOwner true -- see the module doc comment
+// above), so adminUid/adminName here are always the owner's own identity.
+function auditRecord(action, targetUid, targetLabel, meta, targetType = "user") {
+  AuditLog.record({
+    adminUid: authState.user.uid,
+    adminName: authState.profile?.fullName || "",
+    action,
+    targetType,
+    targetId: targetUid,
+    targetLabel: targetLabel || "",
+    meta,
+  });
+}
 
 const SECTION_CHECKBOXES = [
   ...NAV_ITEMS.filter((item) => item.key !== "admins").map((item) => ({ key: item.key, labelKey: `admin.${item.key}` })),
@@ -101,7 +117,17 @@ async function wipeCategory(key) {
   wipingKey = key;
   render();
   try {
+    const count = freshCounts[key];
     await Admin[category.wipe]();
+    AuditLog.record({
+      adminUid: authState.user.uid,
+      adminName: authState.profile?.fullName || "",
+      action: "data_wiped",
+      targetType: "data",
+      targetId: key,
+      targetLabel: expected,
+      meta: { count },
+    });
     await reloadFakeDataCounts();
   } finally {
     wipingKey = null;
@@ -413,6 +439,8 @@ function render() {
         if (!days) return;
         await Admin.setUserStatus(btn.dataset.smSuspend, "suspended", Number(days));
         Notifications.create({ uid: btn.dataset.smSuspend, key: "accountSuspended" }).catch(() => {});
+        const target = users.find((u) => u.uid === btn.dataset.smSuspend);
+        auditRecord("user_suspended", btn.dataset.smSuspend, target?.fullName || target?.email, { days: Number(days) });
         await reload();
       });
     });
@@ -420,6 +448,8 @@ function render() {
       btn.addEventListener("click", async () => {
         if (!confirm(t("admin.confirmBan"))) return;
         await Admin.setUserStatus(btn.dataset.smBan, "banned");
+        const target = users.find((u) => u.uid === btn.dataset.smBan);
+        auditRecord("user_banned", btn.dataset.smBan, target?.fullName || target?.email);
         await reload();
       });
     });
@@ -427,6 +457,8 @@ function render() {
       btn.addEventListener("click", async () => {
         await Admin.setUserStatus(btn.dataset.smReactivate, "active");
         Notifications.create({ uid: btn.dataset.smReactivate, key: "accountReactivated" }).catch(() => {});
+        const target = users.find((u) => u.uid === btn.dataset.smReactivate);
+        auditRecord("user_reactivated", btn.dataset.smReactivate, target?.fullName || target?.email);
         await reload();
       });
     });
@@ -446,6 +478,8 @@ function render() {
     overlay.querySelectorAll("[data-sm-delete]").forEach((btn) => {
       btn.addEventListener("click", async () => {
         if (!confirm(t("admin.confirmDeleteUser"))) return;
+        const target = users.find((u) => u.uid === btn.dataset.smDelete);
+        auditRecord("user_deleted", btn.dataset.smDelete, target?.fullName || target?.email);
         await Admin.deleteUserAccount(btn.dataset.smDelete);
         await reload();
       });
@@ -471,7 +505,9 @@ function render() {
       btn.addEventListener("click", async () => {
         const uid = btn.dataset.smSavePerms;
         const allowedSections = [...overlay.querySelectorAll(".sm-perm-checkbox:checked")].map((cb) => cb.value);
+        const target = admins.find((a) => a.uid === uid);
         await Admin.updateAllowedSections(uid, allowedSections);
+        auditRecord("admin_permissions_changed", uid, target?.email, { allowedSections }, "admin");
         editingPermsUid = null;
         await reload();
       });
@@ -489,7 +525,9 @@ function render() {
     overlay.querySelectorAll("[data-sm-revoke]").forEach((btn) => {
       btn.addEventListener("click", async () => {
         if (!confirm(t("admin.confirmRevokeAdmin"))) return;
+        const target = admins.find((a) => a.uid === btn.dataset.smRevoke);
         await Admin.revokeAdmin(btn.dataset.smRevoke);
+        auditRecord("admin_revoked", btn.dataset.smRevoke, target?.email, undefined, "admin");
         await reload();
       });
     });

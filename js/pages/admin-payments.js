@@ -1,8 +1,21 @@
 import { initLayout } from "../layout.js";
 import { guardAdmin } from "../admin-shell.js";
 import { t, onLocaleChange } from "../i18n.js";
-import { SiteSettings, Escrow, Wallets, WithdrawalRequests } from "../firebase.js";
+import { SiteSettings, Escrow, Wallets, WithdrawalRequests, AuditLog } from "../firebase.js";
 import { btnClass, badgeClass, icon, showMessage, escapeHtml, safeUrl, deliveryMethodLineHTML } from "../ui.js";
+import { authState } from "../state.js";
+
+function auditPaymentMethod(action, targetId, targetLabel, meta) {
+  AuditLog.record({
+    adminUid: authState.user.uid,
+    adminName: authState.profile?.fullName || "",
+    action,
+    targetType: "paymentMethod",
+    targetId,
+    targetLabel: targetLabel || "",
+    meta,
+  });
+}
 
 // Small, deliberately limited preset -- enough to represent every method
 // type asked for (mobile wallet, card, delivery) without turning this into
@@ -355,22 +368,28 @@ function render() {
   contentEl.querySelectorAll("[data-toggle-method]").forEach((btn) => {
     btn.addEventListener("click", async () => {
       const id = btn.dataset.toggleMethod;
+      const target = paymentInfo.methods.find((m) => m.id === id);
       const updated = paymentInfo.methods.map((m) => (m.id === id ? { ...m, enabled: !m.enabled } : m));
       await SiteSettings.setPaymentMethods(updated);
+      auditPaymentMethod("payment_method_changed", id, target?.label, { enabled: !target?.enabled });
     });
   });
   contentEl.querySelectorAll("[data-toggle-no-proof]").forEach((btn) => {
     btn.addEventListener("click", async () => {
       const id = btn.dataset.toggleNoProof;
+      const target = paymentInfo.methods.find((m) => m.id === id);
       const updated = paymentInfo.methods.map((m) => (m.id === id ? { ...m, noProofRequired: !m.noProofRequired } : m));
       await SiteSettings.setPaymentMethods(updated);
+      auditPaymentMethod("payment_method_changed", id, target?.label, { noProofRequired: !target?.noProofRequired });
     });
   });
   contentEl.querySelectorAll("[data-remove-method]").forEach((btn) => {
     btn.addEventListener("click", async () => {
       if (!confirm(t("payments.confirmRemoveMethod", "Remove this payment method?"))) return;
       const id = btn.dataset.removeMethod;
+      const target = paymentInfo.methods.find((m) => m.id === id);
       await SiteSettings.setPaymentMethods(paymentInfo.methods.filter((m) => m.id !== id));
+      auditPaymentMethod("payment_method_removed", id, target?.label);
     });
   });
   // Both forms live only in the "methods" tab panel now -- absent (null)
@@ -395,6 +414,7 @@ function render() {
       noProofRequired: contentEl.querySelector("#new-method-no-proof").checked,
     };
     await SiteSettings.setPaymentMethods([...paymentInfo.methods, newMethod]);
+    auditPaymentMethod("payment_method_added", newMethod.id, newMethod.label, { noProofRequired: newMethod.noProofRequired });
   });
 
   contentEl.querySelector("#payment-notes-form")?.addEventListener("submit", async (e) => {

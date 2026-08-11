@@ -643,7 +643,8 @@
     "addProductForFarmer": "ضيف منتج لمزارع",
     "searchFarmerPlaceholder": "دوّر على مزارع بالاسم أو رقم التلفون أو الإيميل",
     "selectFarmer": "اختيار",
-    "addedByAdminBadge": "أضافه الأدمن"
+    "addedByAdminBadge": "أضافه الأدمن",
+    "superAdmin": "سجل مراقبة الأدمنز"
   },
   "phoneAttempts": {
     "hint": "كل محاولة لمشاركة رقم تليفون في أي حقل على الموقع بتتسجل هنا تلقائياً — بعد 3 محاولات من نفس المستخدم بيتحظر حسابه تلقائياً 24 ساعة.",
@@ -659,6 +660,34 @@
     "target": "مع",
     "violationCount": "عدد المخالفات",
     "accountStatus": "حالة الحساب"
+  },
+  "auditLog": {
+    "title": "سجل مراقبة الأدمنز",
+    "hint": "كل حاجة أي حساب أدمن بيعملها بتتسجل هنا — مين عمل إيه، على مين، وإمتى.",
+    "empty": "مفيش حركات متسجلة لسه",
+    "allAdmins": "كل الأدمنز",
+    "allActions": "كل أنواع الحركات",
+    "by": "مين عمل الحركة",
+    "on": "على",
+    "action": {
+      "productAddedForFarmer": "ضاف منتج نيابة عن مزارع",
+      "productEdited": "عدّل منتج",
+      "adminGranted": "رفّع أدمن جديد",
+      "adminPermissionsChanged": "غيّر صلاحيات أدمن",
+      "adminRevoked": "ألغى صلاحية أدمن",
+      "userSuspended": "أوقف حساب مستخدم مؤقتاً",
+      "userBanned": "حظر حساب مستخدم نهائياً",
+      "userReactivated": "رجّع تفعيل حساب مستخدم",
+      "userDeleted": "مسح حساب مستخدم",
+      "identityEdited": "عدّل بيانات هوية مستخدم",
+      "pickupPointEdited": "عدّل نقطة استلام مزارع",
+      "paymentMethodAdded": "ضاف وسيلة دفع جديدة",
+      "paymentMethodChanged": "عدّل وسيلة دفع",
+      "paymentMethodRemoved": "شال وسيلة دفع",
+      "dataWiped": "مسح بيانات بشكل جماعي",
+      "viewAsStarted": "بدأ تصفح كمستخدم تاني (View As)",
+      "viewAsStopped": "قفل وضع التصفح كمستخدم تاني"
+    }
   },
   "chats": {
     "title": "كل المحادثات",
