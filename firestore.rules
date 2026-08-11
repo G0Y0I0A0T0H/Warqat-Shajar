@@ -84,7 +84,7 @@ service cloud.firestore {
         (
           isOwnerOrGranted('admins') && !isOwner() &&
           !isUntouchableByDelegatedAdmins(request.resource.data.email) &&
-          !request.resource.data.get('allowedSections', []).hasAny(['payments', 'systemControls', 'admins'])
+          !request.resource.data.get('allowedSections', []).hasAny(['payments', 'systemControls', 'admins', 'superAdmin'])
         );
       allow update: if isOwner() || (
         isAdmin() && request.auth.uid == uid &&
@@ -93,8 +93,8 @@ service cloud.firestore {
         isOwnerOrGranted('admins') && !isOwner() &&
         !isUntouchableByDelegatedAdmins(resource.data.email) &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['allowedSections']) &&
-        !resource.data.get('allowedSections', []).hasAny(['payments', 'systemControls', 'admins']) &&
-        !request.resource.data.allowedSections.hasAny(['payments', 'systemControls', 'admins'])
+        !resource.data.get('allowedSections', []).hasAny(['payments', 'systemControls', 'admins', 'superAdmin']) &&
+        !request.resource.data.allowedSections.hasAny(['payments', 'systemControls', 'admins', 'superAdmin'])
       );
       allow delete: if (isOwner() && resource.data.email != 'sgyiath@gmail.com') ||
         (isOwnerOrGranted('admins') && !isOwner() && !isUntouchableByDelegatedAdmins(resource.data.email));
@@ -716,6 +716,31 @@ service cloud.firestore {
     match /phoneAttempts/{attemptId} {
       allow read, update, delete: if isAdmin();
       allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
+    }
+
+    // Near-real-time "who's doing what" feed (page views + a few key
+    // actions) -- self-attested by every signed-in user's own client, same
+    // shape/trust model as phoneAttempts above. Read/delete (for the 24h
+    // retention sweep -- see js/firebase.js's Activity.purgeOld, no Cloud
+    // Functions/cron exist in this project) is gated behind the delegable
+    // "superAdmin" section, not blanket isAdmin(), since this is real-time
+    // visibility into every user's browsing behavior across the whole site.
+    match /userActivity/{eventId} {
+      allow read, delete: if isOwnerOrGranted('superAdmin');
+      allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
+    }
+
+    // Full admin-action audit trail (who did what, to what, when). Any admin
+    // can write their own entries -- adminUid must be the real caller, same
+    // anti-spoofing pattern as adminChats' senderId below, so the trail
+    // stays complete even for admins who don't hold "superAdmin" -- but only
+    // a "superAdmin" grant (or the owner) can read it, and only the owner
+    // can edit/delete an entry, so the trail stays tamper-resistant even
+    // from other Super Admins.
+    match /adminAuditLog/{entryId} {
+      allow read: if isOwnerOrGranted('superAdmin');
+      allow create: if isAdmin() && request.resource.data.adminUid == request.auth.uid;
+      allow update, delete: if isOwner();
     }
 
     // A single shared room for every admin — never exposed to regular users.
