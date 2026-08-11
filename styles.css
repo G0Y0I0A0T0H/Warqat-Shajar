@@ -3190,6 +3190,59 @@ main {
   display: block;
 }
 
+/* Same hover-magnifier mechanism as the product gallery zoom (see
+   js/ui.js's wireZoomableImages), sized for a small admin thumbnail
+   instead of the 16:9 gallery box -- used for payment-proof screenshots,
+   which are otherwise too small to read comfortably. */
+.zoomable-image {
+  position: relative;
+  display: inline-block;
+  width: 5rem;
+  height: 5rem;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+  cursor: zoom-in;
+}
+
+.zoomable-image-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.zoomable-image-lens {
+  display: none;
+  position: absolute;
+  border: 2px solid var(--primary);
+  background: rgba(255, 255, 255, 0.25);
+  pointer-events: none;
+}
+
+.zoomable-image-result {
+  display: none;
+  position: absolute;
+  inset-inline-start: 0;
+  top: calc(100% + 0.5rem);
+  width: 280px;
+  height: 210px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background-repeat: no-repeat;
+  background-color: var(--card);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+  z-index: 30;
+}
+
+@media (max-width: 1023px) {
+  .zoomable-image-lens,
+  .zoomable-image-result {
+    display: none !important;
+  }
+}
+
 .payment-method-icon-preview {
   width: 2.5rem;
   height: 2.5rem;

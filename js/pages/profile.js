@@ -12,6 +12,7 @@ let sellerBio = "";
 let sellerPickupPoint = null;
 let bioLoadedFor = null;
 let pickupPicker = null;
+let deliveryAddressPicker = null;
 
 async function render() {
   if (authState.loading) {
@@ -85,6 +86,15 @@ async function render() {
           : ""
       }
     </div>
+    <div style="margin-top:1.5rem;padding-top:1.25rem;border-top:1px solid var(--border);max-width:28rem">
+      <div class="label">${t("map.deliveryAddressLabel", "Delivery address")}</div>
+      <p class="text-muted" style="font-size:0.8rem;margin-bottom:0.4rem">${t("map.deliveryAddressHint", "Saved once, used as your default delivery location at order time -- still editable per order.")}</p>
+      <div id="delivery-address-mount"></div>
+      <div style="display:flex;align-items:center;gap:0.5rem;margin-top:0.5rem">
+        <button type="button" class="btn btn-default btn-sm" id="delivery-address-save">${t("payments.save", "Save")}</button>
+        <span id="delivery-address-saved" class="success-text" style="display:none">${t("payments.saved", "Saved")}</span>
+      </div>
+    </div>
     ${
       profile.accountType === "farmer"
         ? `<form id="bio-form" class="form-stack" style="margin-top:1.5rem;padding-top:1.25rem;border-top:1px solid var(--border)">
@@ -152,6 +162,21 @@ async function render() {
       setTimeout(() => (savedEl.style.display = "none"), 2500);
     });
   }
+
+  deliveryAddressPicker = renderLocationPicker(viewEl.querySelector("#delivery-address-mount"), {
+    lat: profile.deliveryAddress?.lat,
+    lng: profile.deliveryAddress?.lng,
+  });
+  viewEl.querySelector("#delivery-address-save").addEventListener("click", async (e) => {
+    const value = deliveryAddressPicker?.getValue();
+    if (!value) return;
+    e.target.disabled = true;
+    await Profile.updateDeliveryAddress(profile.uid, value);
+    e.target.disabled = false;
+    const savedEl = viewEl.querySelector("#delivery-address-saved");
+    savedEl.style.display = "inline";
+    setTimeout(() => (savedEl.style.display = "none"), 2500);
+  });
 
   if (authState.isOwner) {
     renderImageInput(viewEl.querySelector("#owner-photo-input-mount"), {

@@ -383,7 +383,11 @@ function renderOfferForm() {
   }
   const initial = counterSource?.offer || {};
   offerDeliveryMethod = initial.deliveryMethod || "pickup";
-  offerDeliveryLocation = initial.deliveryLocation || null;
+  // A fresh (non-counter) offer defaults to the buyer's own saved delivery
+  // address (js/pages/profile.js) instead of an always-blank pin -- still
+  // fully editable via the picker below. Countering an existing offer keeps
+  // using that offer's own location, unchanged.
+  offerDeliveryLocation = initial.deliveryLocation || (counterSource ? null : authState.profile?.deliveryAddress) || null;
   offerFormMount.innerHTML = `
     <form id="offer-form" class="offer-form">
       <div class="offer-form-grid">

@@ -62,7 +62,8 @@
     "updateFailed": "Couldn't update the cart, please try again",
     "orderFailed": "Couldn't send the order, please try again",
     "awaitingFarmerResponse": "Waiting for the farmer's response",
-    "loadingStatus": "Checking order status..."
+    "loadingStatus": "Checking order status...",
+    "orderedOnLabel": "Ordered on"
   },
   "roles": {
     "farmer": "Farmer",
@@ -191,7 +192,10 @@
     "loadingPickupPoint": "Loading pickup point...",
     "pickupPointSet": "The farmer's pickup point is set -- location shown in the order details once accepted.",
     "pickupPointNotSet": "The farmer hasn't set a pickup point yet.",
-    "locationRequired": "Drop a pin for the delivery address"
+    "locationRequired": "Drop a pin for the delivery address",
+    "deliveryAddressLabel": "Delivery address",
+    "deliveryAddressHint": "Saved once, used as your default address at order time -- still editable per order.",
+    "setAddressLink": "Set your delivery address"
   },
   "deliveryMethod": {
     "title": "Delivery method",
@@ -747,6 +751,7 @@
     "newProductComment": { "title": "New comment", "body": "{name} commented on your product" },
     "paymentClaimed": { "title": "Buyer sent the payment", "body": "{amount} EGP was sent for {product} via {method} from phone number {phone}, reference number: {reference}. Check your payments dashboard to confirm you received it." },
     "codOrderConfirmed": { "title": "New order — cash on delivery", "body": "The buyer confirmed an order for {product} worth {amount} EGP, to be paid in cash on delivery." },
+    "deliveryConfirmedNeedsRelease": { "title": "An order needs its funds released", "body": "{buyer} confirmed receiving {product} -- release the payment to the farmer from the payments admin panel." },
     "newFollower": { "title": "New follower", "body": "{name} started following you" }
   },
   "ads": {
@@ -828,6 +833,7 @@
     "sellerLabel": "Seller",
     "methodUsedLabel": "Method the buyer chose",
     "proofScreenshotAlt": "Payment screenshot",
+    "receivingAccountLabel": "Receiving account",
     "confirmPaymentBtn": "Confirm payment received",
     "releaseBtn": "Release funds to seller",
     "resolveReleaseBtn": "Resolve dispute: release to seller",
@@ -862,6 +868,9 @@
     "heldHint": "The amount from deals that haven't finished yet (awaiting confirmation or delivery) -- moves to your available balance once the admin confirms the deal.",
     "requestWithdrawalTitle": "Request a withdrawal",
     "amountLabel": "Amount",
+    "receivingAccountLabel": "Receiving wallet/account number",
+    "receivingAccountHint": "You're responsible for making sure this is correct -- see the withdrawal section of the Terms of Use.",
+    "receivingAccountRequired": "Enter the account/wallet number to receive on",
     "requestWithdrawalBtn": "Send request",
     "enterValidAmount": "Enter a valid amount",
     "amountExceedsBalance": "That's more than your available balance",
@@ -925,6 +934,9 @@
     "statusRefunded": "Refunded to the buyer",
     "statusCodCompleted": "Order completed — paid in cash on delivery",
     "totalLabel": "Total",
+    "productPriceLabel": "Product price",
+    "deliveryFeeLabel": "Delivery fee",
+    "grandTotalLabel": "Total to transfer",
     "markPaidBtn": "I sent the payment",
     "confirmCodBtn": "Confirm order",
     "confirmDeliveryBtn": "I received the goods",

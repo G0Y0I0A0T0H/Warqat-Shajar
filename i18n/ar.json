@@ -62,7 +62,8 @@
     "updateFailed": "معرفناش نحدّث السلة، جرب تاني",
     "orderFailed": "معرفناش نبعت الطلب، جرب تاني",
     "awaitingFarmerResponse": "مستني رد المزارع",
-    "loadingStatus": "جاري التحقق من حالة الطلب..."
+    "loadingStatus": "جاري التحقق من حالة الطلب...",
+    "orderedOnLabel": "اتطلب يوم"
   },
   "roles": {
     "farmer": "مزارع",
@@ -191,7 +192,10 @@
     "loadingPickupPoint": "جاري تحميل نقطة الاستلام...",
     "pickupPointSet": "نقطة استلام المزارع محددة -- الموقع بيظهر بتفاصيل الطلب بعد ما يتقبل.",
     "pickupPointNotSet": "المزارع لسا ما حدد نقطة استلام.",
-    "locationRequired": "حط دبوس على الخريطة لعنوان التوصيل"
+    "locationRequired": "حط دبوس على الخريطة لعنوان التوصيل",
+    "deliveryAddressLabel": "عنوان التوصيل",
+    "deliveryAddressHint": "بيتحفظ مرة واحدة، وبيبقى العنوان الافتراضي وقت الطلب -- تقدر تعدّله في كل طلب برضو.",
+    "setAddressLink": "حدد عنوان التوصيل بتاعك"
   },
   "deliveryMethod": {
     "title": "طريقة الاستلام",
@@ -747,7 +751,8 @@
     "newProductComment": { "title": "تعليق جديد", "body": "{name} علّق على منتجك" },
     "paymentClaimed": { "title": "المشتري حوّل الدفعة", "body": "اتحول {amount} جنيه مقابل {product} عن طريق {method} من رقم {phone}، رقم العملية: {reference}. اتأكد إنك استلمت المبلغ من لوحة إدارة الدفع." },
     "codOrderConfirmed": { "title": "طلب جديد — دفع عند الاستلام", "body": "المشتري أكد طلب {product} بمبلغ {amount} جنيه، الدفع نقدي عند التسليم." },
-    "newFollower": { "title": "متابع جديد", "body": "{name} بدأ يتابعك" }
+    "newFollower": { "title": "متابع جديد", "body": "{name} بدأ يتابعك" },
+    "deliveryConfirmedNeedsRelease": { "title": "طلب محتاج تحويل المبلغ", "body": "{buyer} أكد استلام {product} — محتاج تحوّل المبلغ للمزارع من لوحة إدارة الدفع." }
   },
   "ads": {
     "title": "إدارة الإعلانات",
@@ -828,6 +833,7 @@
     "sellerLabel": "البائع",
     "methodUsedLabel": "الوسيلة اللي اختارها المشتري",
     "proofScreenshotAlt": "صورة إيصال التحويل",
+    "receivingAccountLabel": "رقم الاستلام",
     "confirmPaymentBtn": "أكّد استلام الدفعة",
     "releaseBtn": "حوّل المبلغ للبائع",
     "resolveReleaseBtn": "حل الخلاف: حوّل للبائع",
@@ -862,6 +868,9 @@
     "heldHint": "مبلغ صفقات لسه ما خلصتش (مستنية تأكيد أو تسليم) — بيتحول للرصيد المتاح أول ما الإدارة تأكد الصفقة.",
     "requestWithdrawalTitle": "اطلب سحب",
     "amountLabel": "المبلغ",
+    "receivingAccountLabel": "رقم المحفظة/الحساب اللي عايز تستلم عليه",
+    "receivingAccountHint": "إنت المسؤول عن صحة الرقم ده -- شوف بند السحب في شروط الاستخدام.",
+    "receivingAccountRequired": "اكتب رقم الحساب/المحفظة اللي عايز تستلم عليه",
     "requestWithdrawalBtn": "ابعت الطلب",
     "enterValidAmount": "اكتب مبلغ صحيح",
     "amountExceedsBalance": "المبلغ ده أكبر من رصيدك المتاح",
@@ -925,6 +934,9 @@
     "statusRefunded": "اترجع المبلغ للمشتري",
     "statusCodCompleted": "الصفقة خلصت — دفع نقدي عند الاستلام",
     "totalLabel": "الإجمالي",
+    "productPriceLabel": "سعر المنتج",
+    "deliveryFeeLabel": "رسوم توصيل",
+    "grandTotalLabel": "الإجمالي المطلوب تحويله",
     "markPaidBtn": "أنا حوّلت الدفعة",
     "confirmCodBtn": "تأكيد الطلب",
     "confirmDeliveryBtn": "أكّدت استلام البضاعة",

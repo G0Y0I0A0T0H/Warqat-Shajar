@@ -34,6 +34,26 @@ let orderStateRequestedForUid = null;
 // renderEscrowActions in ui.js. Fetched once; it rarely changes.
 let paymentInfo = null;
 
+// Delivery is only offered once the buyer has a saved address (js/pages/
+// profile.js) -- reused as-is, no per-order map pin needed in this compact
+// row. handleOrderNow below reads whichever radio ends up checked.
+function deliveryMethodRadioHTML(productId) {
+  const hasAddress = Boolean(authState.profile?.deliveryAddress);
+  return `
+    <div style="display:flex;align-items:center;gap:0.75rem;margin-top:0.4rem;font-size:0.8rem;flex-wrap:wrap">
+      <label style="display:flex;align-items:center;gap:0.3rem;cursor:pointer">
+        <input type="radio" name="delivery-method-${productId}" value="pickup" checked>
+        ${t("deliveryMethod.pickup")}
+      </label>
+      <label style="display:flex;align-items:center;gap:0.3rem;cursor:${hasAddress ? "pointer" : "not-allowed"}">
+        <input type="radio" name="delivery-method-${productId}" value="delivery" ${hasAddress ? "" : "disabled"}>
+        ${t("deliveryMethod.delivery")}
+      </label>
+      ${!hasAddress ? `<a href="profile.html" class="text-muted" style="font-size:0.75rem;text-decoration:underline">${t("map.setAddressLink", "Set your delivery address")}</a>` : ""}
+    </div>
+  `;
+}
+
 function newerByCreatedAt(current, candidate) {
   if (!current) return candidate;
   return (candidate.createdAt?.toMillis?.() ?? 0) > (current.createdAt?.toMillis?.() ?? 0) ? candidate : current;
@@ -121,6 +141,7 @@ async function render() {
                 ? `<div class="text-muted" style="margin-top:0.5rem;font-size:0.85rem">${t("cart.loadingStatus", "Checking order status...")}</div>`
                 : escrowOrder
                   ? `<div style="margin-top:0.6rem;max-width:26rem">
+                       ${escrowOrder.createdAt?.toDate ? `<div class="text-muted" style="font-size:0.78rem;margin-bottom:0.35rem">${t("cart.orderedOnLabel", "Ordered on")}: ${escrowOrder.createdAt.toDate().toLocaleDateString(getLocale() === "ar" ? "ar-EG" : "en-US")}</div>` : ""}
                        <div data-escrow-actions="${productId}"></div>
                        <div style="margin-top:0.75rem">${escrowStepperHTML(escrowOrder)}</div>
                      </div>`
@@ -130,7 +151,8 @@ async function render() {
                         <input class="input" type="number" min="${product.minOrderQuantity}" max="${product.quantity}" value="${quantity}" data-qty-input="${productId}" style="max-width:6rem">
                         <span class="text-muted" style="font-size:0.8rem">${unitLabel}</span>
                         <span class="cart-row-subtotal" data-subtotal="${productId}">${subtotal.toLocaleString(getLocale())} ${t("products.currency")}</span>
-                      </div>`
+                      </div>
+                      ${deliveryMethodRadioHTML(productId)}`
             }
           </div>
           <div class="list-row-actions">
@@ -199,6 +221,8 @@ async function handleOrderNow(productId) {
     const product = productCache.get(productId);
     const quantity = cartState.items.get(productId) || product.minOrderQuantity;
     const productLabel = product.title || categoryLabelById(product.category, getLocale());
+    const deliveryMethod = contentEl.querySelector(`input[name="delivery-method-${productId}"]:checked`)?.value || "pickup";
+    const deliveryLocation = deliveryMethod === "delivery" ? authState.profile.deliveryAddress : null;
 
     if (chatDisabled) {
       // Chat is down sitewide -- don't touch chats/messages at all (it
@@ -220,10 +244,8 @@ async function handleOrderNow(productId) {
         quantity,
         unit: product.unit,
         pricePerUnit: product.price,
-        // Quick single-click order, no delivery-method form here (that
-        // lives on the full chat offer form) -- defaults to the free
-        // option; buyer/seller can still sort out delivery via chat.
-        deliveryMethod: "pickup",
+        deliveryMethod,
+        deliveryLocation,
       });
       Notifications.create({ uid: authState.user.uid, key: "orderConfirmed", params: { product: productLabel } }).catch(() => {});
       Notifications.create({
@@ -251,7 +273,8 @@ async function handleOrderNow(productId) {
       unit: product.unit,
       pricePerUnit: product.price,
       totalPrice: quantity * product.price,
-      deliveryMethod: "pickup",
+      deliveryMethod,
+      deliveryLocation,
       buyerAccountType: authState.profile.accountType,
     });
     await Products.incrementProductOffers(product.id).catch(() => {});
