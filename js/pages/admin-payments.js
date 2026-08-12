@@ -354,8 +354,16 @@ function render() {
   contentEl.querySelectorAll("[data-mark-paid]").forEach((btn) => {
     btn.addEventListener("click", async () => {
       btn.disabled = true;
-      await WithdrawalRequests.markPaid(btn.dataset.markPaid);
-      await reloadOrders();
+      try {
+        await WithdrawalRequests.markPaid(btn.dataset.markPaid);
+        await reloadOrders();
+      } catch {
+        // Wallets.debit now refuses to take a balance negative -- most
+        // likely cause: the farmer had multiple pending requests stacked up
+        // and another one already got paid out first.
+        alert(t("payments.markPaidFailed", "Couldn't mark this paid -- the farmer's balance may no longer cover it (check for other pending requests)."));
+        btn.disabled = false;
+      }
     });
   });
   contentEl.querySelectorAll("[data-reject-withdrawal]").forEach((btn) => {
