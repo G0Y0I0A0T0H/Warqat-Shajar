@@ -1,7 +1,7 @@
 import { initLayout } from "../layout.js";
 import { guardDashboard } from "../dashboard-shell.js";
 import { t, onLocaleChange } from "../i18n.js";
-import { Chat, Products, Escrow } from "../firebase.js";
+import { Chat, Products, Escrow, Notifications, SiteSettings } from "../firebase.js";
 import { badgeClass, btnClass, icon, escapeHtml, deliveryMethodLineHTML } from "../ui.js";
 import { initHelpTour } from "../help-tour.js";
 
@@ -85,10 +85,13 @@ function render() {
       const offer = orders.find((o) => o.chatId === chatId && o.messageId === messageId);
       await Chat.respondToOffer(chatId, messageId, "accepted");
       await Products.incrementProductDeals(productId).catch(() => {});
-      // Same escrow-order creation as accepting from inside the chat itself
-      // (dashboard-chat.js) -- this list has its own accept button so it
-      // needs to do this too, not just the chat page.
+      SiteSettings.incrementCompletedDeals().catch(() => {});
+      // Same escrow-order creation AND buyer notification as accepting from
+      // inside the chat itself (dashboard-chat.js's acceptOffer) -- this
+      // list has its own accept button so it needs to do both too, not just
+      // the chat page.
       if (offer) {
+        Notifications.create({ uid: offer.buyerId, key: "offerAccepted", params: { name: profileRef.fullName } }).catch(() => {});
         try {
           await Escrow.createOrder({
             orderId: messageId,
@@ -118,7 +121,11 @@ function render() {
   listEl.querySelectorAll("[data-decline]").forEach((btn) => {
     btn.addEventListener("click", async () => {
       const [chatId, messageId] = btn.dataset.decline.split(":");
+      const offer = orders.find((o) => o.chatId === chatId && o.messageId === messageId);
       await Chat.respondToOffer(chatId, messageId, "declined");
+      if (offer) {
+        Notifications.create({ uid: offer.buyerId, key: "offerDeclined", params: { name: profileRef.fullName } }).catch(() => {});
+      }
       await reload();
     });
   });

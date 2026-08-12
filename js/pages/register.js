@@ -1,6 +1,6 @@
 import { initLayout } from "../layout.js";
 import { t } from "../i18n.js";
-import { Auth, Profile, IdentityVerification } from "../firebase.js";
+import { Auth, Profile, IdentityVerification, Notifications } from "../firebase.js";
 import { showMessage, openDialog, closeDialog, interpolate } from "../ui.js";
 import { ACCOUNT_TYPES } from "../constants.js";
 import { renderRoleSelector, populateGovernorateSelect, renderCategoryCheckboxGrid, updateCategoriesVisibility, wireIdCardPhotoPreview, isValidNationalId } from "./auth-shared.js";
@@ -123,7 +123,13 @@ async function main() {
     try {
       await IdentityVerification.submit(user.uid, { nationalId: data.nationalId, file: data.idCardPhoto });
     } catch {
-      showMessage(formError, t("auth.errors.identitySubmitFailed"));
+      // showMessage alone is invisible here -- the very next line navigates
+      // away before the user could ever read it, leaving them permanently
+      // unverified with no idea anything went wrong. A persistent
+      // notification survives the redirect; contact.html is the only
+      // self-service path today (an admin can also re-enter it manually
+      // from admin-users.js's identity panel).
+      Notifications.create({ uid: user.uid, key: "identityVerificationFailed", link: "contact.html" }).catch(() => {});
     }
     location.href = "index.html";
   }

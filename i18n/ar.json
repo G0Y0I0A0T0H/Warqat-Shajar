@@ -435,6 +435,7 @@
     "pause": "وقّف مؤقتاً",
     "activate": "شغّل",
     "confirmDelete": "متأكد إنك عايز تمسح المنتج ده؟",
+    "productNotFound": "المنتج ده مش موجود دلوقتي.",
     "noProducts": "معندكش أي منتجات لسه",
     "viewsLabel": "مشاهدة",
     "offersLabel": "عرض",
@@ -756,7 +757,9 @@
     "paymentClaimed": { "title": "المشتري حوّل الدفعة", "body": "اتحول {amount} جنيه مقابل {product} عن طريق {method} من رقم {phone}، رقم العملية: {reference}. اتأكد إنك استلمت المبلغ من لوحة إدارة الدفع." },
     "codOrderConfirmed": { "title": "طلب جديد — دفع عند الاستلام", "body": "المشتري أكد طلب {product} بمبلغ {amount} جنيه، الدفع نقدي عند التسليم." },
     "newFollower": { "title": "متابع جديد", "body": "{name} بدأ يتابعك" },
-    "deliveryConfirmedNeedsRelease": { "title": "طلب محتاج تحويل المبلغ", "body": "{buyer} أكد استلام {product} — محتاج تحوّل المبلغ للمزارع من لوحة إدارة الدفع." }
+    "deliveryConfirmedNeedsRelease": { "title": "طلب محتاج تحويل المبلغ", "body": "{buyer} أكد استلام {product} — محتاج تحوّل المبلغ للمزارع من لوحة إدارة الدفع." },
+    "identityVerificationFailed": { "title": "معرفناش نستلم بيانات التحقق من الهوية", "body": "حصلت مشكلة وإحنا بنرفع صورة بطاقتك -- حسابك اتعمل بس بيانات الهوية لسه ناقصة. تواصل معانا عشان نظبطها." },
+    "disputeRaised": { "title": "في خلاف على صفقة", "body": "فيه خلاف اتفتح على صفقة {product} -- محتاج مراجعة." }
   },
   "ads": {
     "title": "إدارة الإعلانات",

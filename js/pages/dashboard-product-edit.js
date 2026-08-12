@@ -6,6 +6,10 @@ import { renderProductForm } from "./dashboard-product-form.js";
 async function main() {
   await initLayout();
   const profile = await guardDashboard("dashboard-products.html");
+  if (profile.accountType !== "farmer") {
+    location.replace("dashboard.html");
+    return;
+  }
 
   const params = new URLSearchParams(location.search);
   const id = params.get("id");

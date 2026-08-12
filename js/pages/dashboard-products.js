@@ -69,6 +69,10 @@ function render(products) {
 async function main() {
   await initLayout();
   const profile = await guardDashboard("dashboard-products.html");
+  if (profile.accountType !== "farmer") {
+    location.replace("dashboard.html");
+    return;
+  }
   Products.subscribeMyProducts(profile.uid, render);
   onLocaleChange(() => render(lastProducts));
   onCategoriesChange(() => render(lastProducts));

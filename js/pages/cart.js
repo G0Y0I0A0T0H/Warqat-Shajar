@@ -178,7 +178,15 @@ async function render() {
   contentEl.querySelectorAll("[data-qty-input]").forEach((input) => {
     input.addEventListener("change", async () => {
       const productId = input.dataset.qtyInput;
-      const qty = Number(input.value) || 1;
+      const cachedProduct = productCache.get(productId);
+      const minQty = cachedProduct?.minOrderQuantity || 1;
+      const maxQty = cachedProduct?.quantity ?? Infinity;
+      // Number(input.value) || 1 only caught 0/NaN -- a typed negative or
+      // over-stock value passed straight through (the <input min/max>
+      // attributes aren't enforced outside a <form> submit), producing a
+      // negative subtotal and, if ordered, a bad-total offer to the farmer.
+      const qty = Math.min(maxQty, Math.max(minQty, Number(input.value) || minQty));
+      input.value = qty;
       try {
         await updateCartQuantity(productId, qty);
       } catch {
@@ -247,10 +255,15 @@ async function handleOrderNow(productId) {
         deliveryMethod,
         deliveryLocation,
       });
-      Notifications.create({ uid: authState.user.uid, key: "orderConfirmed", params: { product: productLabel } }).catch(() => {});
+      Notifications.create({ uid: authState.user.uid, key: "orderConfirmed", params: { product: productLabel }, link: "cart.html" }).catch(() => {});
       Notifications.create({
         uid: product.ownerId,
         key: "newOrderRequest",
+        // No chat exists for a direct (chat-disabled) order, and there's no
+        // dedicated order-management page for this path yet -- dashboard-
+        // balance.html's "recent deals" row is the only place it's visible
+        // to the farmer today.
+        link: "dashboard-balance.html",
         params: { name: authState.profile.fullName, product: productLabel },
       }).catch(() => {});
       await loadOrderState();
@@ -277,6 +290,16 @@ async function handleOrderNow(productId) {
       deliveryLocation,
       buyerAccountType: authState.profile.accountType,
     });
+    // dashboard-chat.js's own offer-send path already notifies the seller
+    // (see its renderOfferForm submit handler) -- this quick "Order Now"
+    // path sends an offer the exact same way but was missing the matching
+    // notification, so the farmer only ever found out by chance if they
+    // happened to open the chat.
+    Notifications.create({
+      uid: product.ownerId,
+      key: "newOffer",
+      params: { name: authState.profile.fullName, product: productLabel },
+    }).catch(() => {});
     await Products.incrementProductOffers(product.id).catch(() => {});
     // Stays in the cart on purpose (see loadOrderState) so its progress can
     // be tracked here instead of disappearing the moment it's ordered.

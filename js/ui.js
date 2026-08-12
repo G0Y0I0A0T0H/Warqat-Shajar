@@ -194,12 +194,15 @@ export function safeUrl(value) {
 // whichever method the buyer picked when they sent the offer.
 export function deliveryMethodLineHTML(order) {
   if (!order.deliveryMethod) return "";
-  if (order.deliveryMethod === "delivery" && order.deliveryLocation) {
-    const { lat, lng } = order.deliveryLocation;
-    const mapUrl = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=16/${lat}/${lng}`;
-    return `<div>${t("deliveryMethod.deliveryLabel", "Delivery to")}: <a href="${mapUrl}" target="_blank" rel="noopener noreferrer" class="force-ltr" style="display:inline-block">${lat.toFixed(4)}, ${lng.toFixed(4)}</a></div>`;
+  if (order.deliveryMethod !== "delivery") return `<div>${t("deliveryMethod.pickupLabel", "Pickup")}</div>`;
+  const { lat, lng } = order.deliveryLocation || {};
+  // Defensive: firestore.rules validates lat/lng are numbers on new writes,
+  // but this guards against any order written before that check existed.
+  if (typeof lat !== "number" || typeof lng !== "number") {
+    return `<div>${t("deliveryMethod.deliveryLabel", "Delivery to")}: ${t("map.noLocationSet", "No location set yet -- click the map to drop a pin")}</div>`;
   }
-  return `<div>${t("deliveryMethod.pickupLabel", "Pickup")}</div>`;
+  const mapUrl = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=16/${lat}/${lng}`;
+  return `<div>${t("deliveryMethod.deliveryLabel", "Delivery to")}: <a href="${mapUrl}" target="_blank" rel="noopener noreferrer" class="force-ltr" style="display:inline-block">${lat.toFixed(4)}, ${lng.toFixed(4)}</a></div>`;
 }
 
 export function interpolate(str, params) {
@@ -587,7 +590,11 @@ export function renderLocationPicker(mountEl, { lat, lng, onChange } = {}) {
   const coordsEl = mountEl.querySelector(".location-picker-coords");
   let map = null;
   let marker = null;
-  let current = lat != null && lng != null ? { lat, lng } : null;
+  // Defensive: only accept real numeric coordinates -- a malformed saved
+  // value (see firestore.rules' lat/lng validation, added after some
+  // orders/addresses may already have been written) would otherwise crash
+  // updateCoordsLabel()'s .toFixed() call below.
+  let current = typeof lat === "number" && typeof lng === "number" ? { lat, lng } : null;
 
   function updateCoordsLabel() {
     coordsEl.textContent = current
@@ -1174,6 +1181,7 @@ export function initProductComments(containerEl, productId, ownerId) {
             uid: ownerId,
             key: "newProductComment",
             params: { name: authState.profile.fullName },
+            link: `product.html?id=${productId}`,
           }).catch(() => {});
         }
         textEl.value = "";
