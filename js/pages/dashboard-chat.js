@@ -1,7 +1,7 @@
 import { initLayout } from "../layout.js";
 import { guardDashboard } from "../dashboard-shell.js";
 import { t, onLocaleChange } from "../i18n.js";
-import { Chat, Products, Reviews, PhoneAttempts, Notifications, SiteSettings, Escrow, SellerProfiles } from "../firebase.js";
+import { Chat, Products, Reviews, PhoneAttempts, Notifications, SiteSettings, Escrow, SellerProfiles, Sourcing } from "../firebase.js";
 import { UNITS, unitLabelKey } from "../constants.js";
 import { authState } from "../state.js";
 import { btnClass, badgeClass, icon, initReportDialog, renderStarButtons, showMessage, containsPhoneNumber, escapeHtml, renderEscrowActions, renderLocationPicker } from "../ui.js";
@@ -21,9 +21,9 @@ let offerFormOpen = false;
 let counterSource = null; // { messageId, offer } when countering
 let reviewed = false;
 
-// Who's buyer/seller in this specific product chat (derived once from the
-// product's ownerId vs the other chat participant) -- null for non-product
-// chats (support/sourcing), where the escrow tracker never applies.
+// Who's buyer/seller in this specific chat (derived once from the product's
+// or sourcing request's ownerId vs the other chat participant) -- still null
+// for support chats, where the escrow tracker never applies.
 let dealParties = null;
 let escrowOrderId = null;
 let escrowOrder = null;
@@ -300,19 +300,24 @@ async function acceptOffer(messageId) {
   if (chat.contextType === "product") {
     // Best-effort: a denied counter bump shouldn't block the accept action itself.
     await Products.incrementProductDeals(chat.contextId).catch(() => {});
+  }
+  // A sourcing-fulfillment deal is a real completed deal too, just like a
+  // product deal -- this sitewide stat isn't product-specific.
+  if (chat.contextType === "product" || chat.contextType === "sourcing") {
     SiteSettings.incrementCompletedDeals().catch(() => {});
   }
   const offerMsg = messages.find((m) => m.id === messageId);
   if (offerMsg) Notifications.create({ uid: offerMsg.senderId, key: "offerAccepted", params: { name: profile.fullName } }).catch(() => {});
 
-  if (chat.contextType === "product" && offerMsg) {
+  if ((chat.contextType === "product" || chat.contextType === "sourcing") && offerMsg) {
     if (!dealParties) {
-      // The product was deleted after this offer/chat existed -- there's no
-      // seller/product info left to build an escrow order from. The offer
-      // itself is already accepted at this point (firestore.rules only
-      // allows one one-way transition out of "pending"), so this can't be
-      // retried -- surfacing the error is the best available signal instead
-      // of silently leaving no order, no tracker, and no explanation.
+      // The product or sourcing request was deleted after this offer/chat
+      // existed -- there's no seller/buyer info left to build an escrow
+      // order from. The offer itself is already accepted at this point
+      // (firestore.rules only allows one one-way transition out of
+      // "pending"), so this can't be retried -- surfacing the error is the
+      // best available signal instead of silently leaving no order, no
+      // tracker, and no explanation.
       alert(t("escrow.createOrderFailed"));
       return;
     }
@@ -338,9 +343,9 @@ async function acceptOffer(messageId) {
   }
 }
 
-// Only shown for real product deals (dealParties is only ever set when
-// chat.contextType === "product") -- a sourcing/support chat has no
-// physical good to pick up or deliver in this sense.
+// Shown for any real deal (dealParties is set for both product and
+// sourcing-fulfillment chats -- a sourcing deal still has a real physical
+// good to pick up or deliver) -- only a support chat has neither.
 function deliveryMethodSectionHTML() {
   if (!dealParties) return "";
   return `
@@ -520,6 +525,23 @@ async function main() {
           sellerName: chat.participantNames[sellerId] || product.ownerName,
           buyerId,
           buyerName: chat.participantNames[buyerId],
+        };
+      }
+    }
+  } else if (chat.contextType === "sourcing") {
+    // Mirror of the product branch above, just reversed -- the sourcing
+    // request's ownerId is always the buyer (they posted the request), and
+    // the farmer fulfilling it is whichever chat participant that isn't.
+    const request = await Sourcing.getSourcingRequest(chat.contextId).catch(() => null);
+    if (request) {
+      const buyerId = request.ownerId;
+      const sellerId = chat.participantIds.find((id) => id !== buyerId);
+      if (sellerId) {
+        dealParties = {
+          sellerId,
+          sellerName: chat.participantNames[sellerId],
+          buyerId,
+          buyerName: chat.participantNames[buyerId] || request.ownerName,
         };
       }
     }

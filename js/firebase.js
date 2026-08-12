@@ -609,6 +609,11 @@ export const Products = {
 const sourcingCol = collection(db, "sourcingRequests");
 
 export const Sourcing = {
+  async getSourcingRequest(id) {
+    const snap = await getDoc(doc(db, "sourcingRequests", id));
+    return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+  },
+
   async createSourcingRequest(input) {
     await addDoc(sourcingCol, { ...input, status: "open", createdAt: serverTimestamp() });
   },
@@ -757,7 +762,12 @@ export const Chat = {
     const chatsSnap = await getDocs(query(chatsCol, where("participantIds", "array-contains", farmerUid)));
     const productChats = chatsSnap.docs
       .map((d) => ({ id: d.id, ...d.data() }))
-      .filter((c) => c.contextType === "product");
+      // Sourcing-request fulfillment deals get real escrow tracking too,
+      // same as product deals -- both carry an identical offer shape
+      // (quantity/unit/pricePerUnit/deliveryMethod), just initiated in the
+      // opposite direction (a buyer posts the request, a farmer proposes to
+      // fulfill it, instead of a farmer listing and a buyer offering).
+      .filter((c) => c.contextType === "product" || c.contextType === "sourcing");
 
     const perChat = await Promise.all(
       productChats.map(async (chat) => {
@@ -780,6 +790,7 @@ export const Chat = {
           ...data.offer,
           chatId: chat.id,
           messageId: offerDoc.id,
+          contextType: chat.contextType,
           productId: chat.contextId,
           productLabel: chat.contextLabel,
           buyerId: buyerUid,
@@ -799,7 +810,12 @@ export const Chat = {
     const chatsSnap = await getDocs(query(chatsCol, where("participantIds", "array-contains", buyerUid)));
     const productChats = chatsSnap.docs
       .map((d) => ({ id: d.id, ...d.data() }))
-      .filter((c) => c.contextType === "product");
+      // Sourcing-request fulfillment deals get real escrow tracking too,
+      // same as product deals -- both carry an identical offer shape
+      // (quantity/unit/pricePerUnit/deliveryMethod), just initiated in the
+      // opposite direction (a buyer posts the request, a farmer proposes to
+      // fulfill it, instead of a farmer listing and a buyer offering).
+      .filter((c) => c.contextType === "product" || c.contextType === "sourcing");
 
     const perChat = await Promise.all(
       productChats.map(async (chat) => {
@@ -817,6 +833,7 @@ export const Chat = {
           ...data.offer,
           chatId: chat.id,
           messageId: offerDoc.id,
+          contextType: chat.contextType,
           productId: chat.contextId,
           productLabel: chat.contextLabel,
           farmerUid,
@@ -1167,6 +1184,14 @@ export const Wallets = {
 
   async debit(uid, amount, withdrawalId) {
     const current = await Wallets.getWalletOnce(uid);
+    // A farmer can submit multiple withdrawal requests before an admin
+    // processes any of them (each individually valid against the balance
+    // at request time) -- this is the one authoritative point where money
+    // actually moves, so it's also the one place that must refuse to ever
+    // take the balance negative, regardless of how many requests stacked up.
+    if ((current.availableBalance || 0) < amount) {
+      throw new Error("insufficient balance");
+    }
     await setDoc(walletRef(uid), { availableBalance: (current.availableBalance || 0) - amount, updatedAt: serverTimestamp() }, { merge: true });
     await addDoc(walletTransactionsCol, { uid, type: "debit", amount, orderId: null, withdrawalId, note: null, createdAt: serverTimestamp() });
   },
@@ -1219,8 +1244,12 @@ export const WithdrawalRequests = {
   async markPaid(id) {
     const snap = await getDoc(doc(db, "withdrawalRequests", id));
     const req = snap.data();
-    await updateDoc(doc(db, "withdrawalRequests", id), { status: "paid", resolvedAt: serverTimestamp() });
+    // Debit BEFORE flipping status -- if the wallet doesn't actually have
+    // this much anymore (e.g. another stacked request already got paid),
+    // Wallets.debit throws and this request stays "requested" instead of
+    // being marked paid while no money was ever actually moved.
     await Wallets.debit(req.uid, req.amount, id);
+    await updateDoc(doc(db, "withdrawalRequests", id), { status: "paid", resolvedAt: serverTimestamp() });
   },
 
   async reject(id, note) {

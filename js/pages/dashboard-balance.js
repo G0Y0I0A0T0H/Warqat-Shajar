@@ -19,6 +19,14 @@ function heldAmount() {
   return sales.filter((o) => !o.noProofPayment && HELD_STATUSES.includes(o.status)).reduce((sum, o) => sum + o.totalAmount, 0);
 }
 
+// availableBalance only actually drops once an admin marks a request paid --
+// nothing stopped a farmer from submitting several requests that each,
+// individually, looked valid against the same still-full balance. This is
+// what a NEW request must be checked against instead of the raw balance.
+function pendingWithdrawalTotal() {
+  return withdrawals.filter((w) => w.status === "requested").reduce((sum, w) => sum + w.amount, 0);
+}
+
 const ESCROW_STATUS_KEY = {
   awaiting_payment: "escrow.statusAwaitingPayment",
   payment_claimed: "escrow.statusPaymentClaimed",
@@ -78,6 +86,7 @@ function renderWithdrawalRow(req) {
 
 function render() {
   const held = heldAmount();
+  const requestable = Math.max(0, wallet.availableBalance - pendingWithdrawalTotal());
   const sortedSales = [...sales].sort((a, b) => (b.createdAt?.toMillis() ?? 0) - (a.createdAt?.toMillis() ?? 0));
   const sortedWithdrawals = [...withdrawals].sort((a, b) => (b.createdAt?.toMillis() ?? 0) - (a.createdAt?.toMillis() ?? 0));
 
@@ -98,7 +107,12 @@ function render() {
       <h2 class="card-title" style="font-size:1rem">${t("balance.requestWithdrawalTitle")}</h2>
       <div class="field">
         <label class="label" for="withdraw-amount-input">${t("balance.amountLabel")}</label>
-        <input class="input force-ltr" dir="ltr" type="number" min="1" max="${wallet.availableBalance}" id="withdraw-amount-input">
+        <input class="input force-ltr" dir="ltr" type="number" min="1" max="${requestable}" id="withdraw-amount-input">
+        ${
+          pendingWithdrawalTotal() > 0
+            ? `<p class="text-muted" style="font-size:0.78rem;margin-top:0.3rem">${t("balance.pendingWithdrawalHint", "You already have {amount} {currency} in pending requests -- that's already subtracted above.").replace("{amount}", pendingWithdrawalTotal()).replace("{currency}", t("products.currency"))}</p>`
+            : ""
+        }
       </div>
       <div class="field">
         <label class="label" for="withdraw-account-input">${t("balance.receivingAccountLabel", "Receiving wallet/account number")}</label>
@@ -106,7 +120,7 @@ function render() {
         <input class="input force-ltr" dir="ltr" id="withdraw-account-input">
       </div>
       <p id="withdraw-error" class="error-text" style="display:none"></p>
-      <button type="submit" class="${btnClass("default", "sm")}" style="align-self:flex-start" ${wallet.availableBalance <= 0 ? "disabled" : ""}>${t("balance.requestWithdrawalBtn")}</button>
+      <button type="submit" class="${btnClass("default", "sm")}" style="align-self:flex-start" ${requestable <= 0 ? "disabled" : ""}>${t("balance.requestWithdrawalBtn")}</button>
     </form>
 
     <h2 class="heading" style="font-size:1.1rem;margin-top:2rem">${t("balance.withdrawalHistoryTitle")}</h2>
@@ -130,7 +144,7 @@ function render() {
       showMessage(errorEl, t("balance.enterValidAmount"));
       return;
     }
-    if (amount > wallet.availableBalance) {
+    if (amount > wallet.availableBalance - pendingWithdrawalTotal()) {
       showMessage(errorEl, t("balance.amountExceedsBalance"));
       return;
     }

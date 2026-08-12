@@ -40,7 +40,11 @@ function render() {
         <div class="list-row" style="padding:0">
           <div class="list-row-main">
             <div style="display:flex;align-items:center;gap:0.5rem">
-              <a href="product.html?id=${o.productId}" style="font-weight:600;color:var(--foreground)">${escapeHtml(o.productLabel)}</a>
+              ${
+                o.contextType === "sourcing"
+                  ? `<span style="font-weight:600">${escapeHtml(o.productLabel)}</span>`
+                  : `<a href="product.html?id=${o.productId}" style="font-weight:600;color:var(--foreground)">${escapeHtml(o.productLabel)}</a>`
+              }
               <span class="${badgeClass(o.status === "accepted" ? "default" : "outline")}">${t(STATUS_KEY[o.status] || STATUS_KEY.pending)}</span>
             </div>
             <div class="grid-2 text-muted" style="gap:0.5rem;margin-top:0.5rem;font-size:0.875rem">

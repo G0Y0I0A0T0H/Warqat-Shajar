@@ -2,7 +2,7 @@ import { initLayout } from "../layout.js";
 import { guardDashboard } from "../dashboard-shell.js";
 import { t, onLocaleChange } from "../i18n.js";
 import { Chat, Products, Escrow, Notifications, SiteSettings } from "../firebase.js";
-import { badgeClass, btnClass, icon, escapeHtml, deliveryMethodLineHTML } from "../ui.js";
+import { badgeClass, btnClass, icon, escapeHtml, deliveryMethodLineHTML, renderEscrowActions } from "../ui.js";
 import { initHelpTour } from "../help-tour.js";
 
 const listEl = document.getElementById("orders-list");
@@ -13,6 +13,15 @@ let tourStarted = false;
 // loadEscrowStatuses) so this list shows payment progress without opening
 // the chat.
 let escrowStatuses = {};
+// The real escrowOrders doc for every chatless "direct_" order (placed
+// while chat was sitewide-disabled) -- these never show up in
+// Chat.listIncomingOffers (no chat/offer message exists for them), so
+// without this they were invisible here entirely and the farmer had no
+// page to act on them at all (not even to raise a dispute). Keyed by
+// order id (== messageId in the synthesized row below) so renderEscrowActions
+// can be mounted with the real doc, not just the display-only summary.
+let directOrdersById = new Map();
+let paymentInfo = null;
 
 const STATUS_KEY = {
   pending: "chat.offerStatusPending",
@@ -47,7 +56,11 @@ function render() {
       <div class="list-row">
         <div class="list-row-main">
           <div style="display:flex;align-items:center;gap:0.5rem">
-            <a href="product.html?id=${o.productId}" style="font-weight:600;color:var(--foreground)">${escapeHtml(o.productLabel)}</a>
+            ${
+              o.contextType === "sourcing"
+                ? `<span style="font-weight:600">${escapeHtml(o.productLabel)}</span>`
+                : `<a href="product.html?id=${o.productId}" style="font-weight:600;color:var(--foreground)">${escapeHtml(o.productLabel)}</a>`
+            }
             <span class="${badgeClass(o.status === "accepted" ? "default" : "outline")}">${t(STATUS_KEY[o.status] || STATUS_KEY.pending)}</span>
             ${
               o.status === "accepted" && escrowStatuses[o.messageId]
@@ -62,6 +75,11 @@ function render() {
             ${o.deliveryNotes ? `<div>${t("orders.delivery")}: ${escapeHtml(o.deliveryNotes)}</div>` : ""}
             ${deliveryMethodLineHTML(o)}
           </div>
+          ${
+            !o.chatId && o.status === "accepted"
+              ? `<div style="margin-top:0.5rem" data-escrow-actions="${o.messageId}"></div>`
+              : ""
+          }
         </div>
         <div class="list-row-actions" ${isFirstPending ? 'data-order-actions="first-pending"' : ""}>
           ${
@@ -72,12 +90,18 @@ function render() {
             `
               : ""
           }
-          <a href="dashboard-chat.html?id=${o.chatId}" class="${btnClass("outline", "sm")}">${t("orders.openChat")}</a>
+          ${o.chatId ? `<a href="dashboard-chat.html?id=${o.chatId}" class="${btnClass("outline", "sm")}">${t("orders.openChat")}</a>` : ""}
         </div>
       </div>
     `;
     })
     .join("")}</div>`;
+
+  listEl.querySelectorAll("[data-escrow-actions]").forEach((mountEl) => {
+    const order = directOrdersById.get(mountEl.dataset.escrowActions);
+    if (!order) return;
+    renderEscrowActions(mountEl, { order, viewerUid: profileRef.uid, paymentInfo, onChange: reload });
+  });
 
   listEl.querySelectorAll("[data-accept]").forEach((btn) => {
     btn.addEventListener("click", async () => {
@@ -152,7 +176,28 @@ async function loadEscrowStatuses() {
 }
 
 async function reload() {
-  orders = await Chat.listIncomingOffers(profileRef.uid).catch(() => []);
+  const [offerOrders, sales] = await Promise.all([
+    Chat.listIncomingOffers(profileRef.uid).catch(() => []),
+    Escrow.listMySalesOnce(profileRef.uid).catch(() => []),
+  ]);
+  const directOrders = sales.filter((o) => !o.chatId);
+  directOrdersById = new Map(directOrders.map((o) => [o.id, o]));
+  const directRows = directOrders.map((o) => ({
+    status: "accepted",
+    messageId: o.id,
+    chatId: null,
+    contextType: "product",
+    productId: o.productId,
+    productLabel: o.productLabel,
+    buyerId: o.buyerId,
+    buyerName: o.buyerName,
+    quantity: o.quantity,
+    unit: o.unit,
+    deliveryMethod: o.deliveryMethod,
+    deliveryLocation: o.deliveryLocation,
+    createdAt: o.createdAt,
+  }));
+  orders = [...offerOrders, ...directRows].sort((a, b) => (b.createdAt?.toMillis() ?? 0) - (a.createdAt?.toMillis() ?? 0));
   render();
   loadEscrowStatuses();
 }
@@ -160,6 +205,7 @@ async function reload() {
 async function main() {
   await initLayout();
   profileRef = await guardDashboard("dashboard-orders.html");
+  paymentInfo = await SiteSettings.getPaymentInfoOnce().catch(() => null);
   await reload();
   onLocaleChange(render);
 }
