@@ -305,7 +305,17 @@ async function acceptOffer(messageId) {
   const offerMsg = messages.find((m) => m.id === messageId);
   if (offerMsg) Notifications.create({ uid: offerMsg.senderId, key: "offerAccepted", params: { name: profile.fullName } }).catch(() => {});
 
-  if (dealParties && offerMsg) {
+  if (chat.contextType === "product" && offerMsg) {
+    if (!dealParties) {
+      // The product was deleted after this offer/chat existed -- there's no
+      // seller/product info left to build an escrow order from. The offer
+      // itself is already accepted at this point (firestore.rules only
+      // allows one one-way transition out of "pending"), so this can't be
+      // retried -- surfacing the error is the best available signal instead
+      // of silently leaving no order, no tracker, and no explanation.
+      alert(t("escrow.createOrderFailed"));
+      return;
+    }
     try {
       await Escrow.createOrder({
         orderId: messageId,
@@ -320,9 +330,9 @@ async function acceptOffer(messageId) {
         deliveryLocation: offerMsg.offer.deliveryLocation,
       });
     } catch {
-      // The offer itself is already accepted at this point -- this only
-      // means the payment tracker failed to set up, which would otherwise
-      // fail completely silently (no order row, no error, nothing).
+      // Same reasoning -- the offer itself is already accepted at this
+      // point, this only means the payment tracker failed to set up, which
+      // would otherwise fail completely silently (no order row, no error).
       alert(t("escrow.createOrderFailed"));
     }
   }

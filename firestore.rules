@@ -308,6 +308,12 @@ service cloud.firestore {
       allow read: if true;
       allow create: if (
         isActiveUser() && request.resource.data.ownerId == request.auth.uid &&
+        // Only a farmer account may list a product -- the rest of the app
+        // assumes this everywhere (sellerProfiles is only ever auto-created
+        // for farmers, seller-profile.html renders "no public profile" for
+        // anyone else), but this was never actually enforced here, only
+        // implied by the dashboard nav hiding the link for other roles.
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.accountType == 'farmer' &&
         request.resource.data.viewsCount == 0 &&
         request.resource.data.offersCount == 0 &&
         request.resource.data.dealsCount == 0
@@ -315,8 +321,10 @@ service cloud.firestore {
         // Admin creating a listing on behalf of a farmer who's having
         // trouble doing it themselves (js/pages/admin-listings.js) -- same
         // zero-initialized-counters requirement as the self-service branch,
-        // just without the ownerId==caller restriction.
+        // just without the ownerId==caller restriction. Still requires the
+        // target owner to actually be a farmer, same as above.
         isAdmin() &&
+        get(/databases/$(database)/documents/users/$(request.resource.data.ownerId)).data.accountType == 'farmer' &&
         request.resource.data.viewsCount == 0 &&
         request.resource.data.offersCount == 0 &&
         request.resource.data.dealsCount == 0
@@ -509,6 +517,13 @@ service cloud.firestore {
         // and the delivery fee isn't the farmer's money.
         request.resource.data.get('deliveryFee', 0) ==
           (request.resource.data.get('deliveryMethod', 'pickup') == 'delivery' ? 100 : 0) &&
+        request.resource.data.get('deliveryMethod', 'pickup') in ['pickup', 'delivery'] &&
+        // Same shape check as sellerProfiles.pickupPoint / users.deliveryAddress --
+        // an unvalidated non-number lat/lng here crashes every order-list render
+        // (dashboard-orders.js, dashboard-my-orders.js, admin-payments.js all
+        // call deliveryMethodLineHTML/toFixed on these values unconditionally).
+        (!('deliveryLocation' in request.resource.data) || request.resource.data.deliveryLocation == null ||
+         (request.resource.data.deliveryLocation.lat is number && request.resource.data.deliveryLocation.lng is number)) &&
         (
           (
             request.resource.data.chatId != null &&
@@ -650,7 +665,10 @@ service cloud.firestore {
         request.resource.data.uid == request.auth.uid &&
         request.resource.data.status == 'requested' &&
         request.resource.data.amount is number && request.resource.data.amount > 0 &&
-        request.resource.data.amount <= get(/databases/$(database)/documents/wallets/$(request.auth.uid)).data.get('availableBalance', 0);
+        request.resource.data.amount <= get(/databases/$(database)/documents/wallets/$(request.auth.uid)).data.get('availableBalance', 0) &&
+        request.resource.data.get('receivingAccount', '') is string &&
+        request.resource.data.get('receivingAccount', '').size() > 0 &&
+        request.resource.data.get('receivingAccount', '').size() <= 100;
       allow update: if
         (request.auth.uid == resource.data.uid && resource.data.status == 'requested' &&
          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) &&
@@ -705,7 +723,8 @@ service cloud.firestore {
         (resource == null || resource.data.uid == request.auth.uid || isAdmin());
       allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
       allow update: if isSignedIn() && resource.data.uid == request.auth.uid &&
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['quantity']);
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['quantity']) &&
+        request.resource.data.quantity is number && request.resource.data.quantity > 0;
       allow delete: if isSignedIn() && resource.data.uid == request.auth.uid;
     }
 

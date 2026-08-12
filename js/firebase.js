@@ -762,34 +762,39 @@ export const Chat = {
     const perChat = await Promise.all(
       productChats.map(async (chat) => {
         const buyerUid = chat.participantIds.find((id) => id !== farmerUid);
-        if (!buyerUid) return [];
+        if (!buyerUid) return null;
         const messagesSnap = await getDocs(
           query(collection(db, "chats", chat.id, "messages"), orderBy("createdAt", "desc")),
         );
-        return messagesSnap.docs
-          .filter((m) => m.data().type === "offer" && m.data().senderId === buyerUid)
-          .map((m) => {
-            const data = m.data();
-            return {
-              ...data.offer,
-              chatId: chat.id,
-              messageId: m.id,
-              productId: chat.contextId,
-              productLabel: chat.contextLabel,
-              buyerId: buyerUid,
-              buyerName: chat.participantNames[buyerUid],
-              buyerPhone: chat.participantPhones[buyerUid],
-              createdAt: data.createdAt ?? null,
-            };
-          });
+        // The latest offer message in the thread, regardless of which side
+        // sent it -- filtering to "sent by the buyer" used to silently drop
+        // a farmer's own counter-offer from this list, so once the buyer
+        // accepted it, the resulting deal vanished from Incoming Orders
+        // entirely (the buyer/seller identity below comes from the chat's
+        // own participant map, never from the message's senderId, so this
+        // is correct either way).
+        const offerDoc = messagesSnap.docs.find((m) => m.data().type === "offer");
+        if (!offerDoc) return null;
+        const data = offerDoc.data();
+        return {
+          ...data.offer,
+          chatId: chat.id,
+          messageId: offerDoc.id,
+          productId: chat.contextId,
+          productLabel: chat.contextLabel,
+          buyerId: buyerUid,
+          buyerName: chat.participantNames[buyerUid],
+          buyerPhone: chat.participantPhones[buyerUid],
+          createdAt: data.createdAt ?? null,
+        };
       }),
     );
 
-    return perChat.flat().sort((a, b) => (b.createdAt?.toMillis() ?? 0) - (a.createdAt?.toMillis() ?? 0));
+    return perChat.filter(Boolean).sort((a, b) => (b.createdAt?.toMillis() ?? 0) - (a.createdAt?.toMillis() ?? 0));
   },
 
-  // The buyer-side mirror of listIncomingOffers — every offer a buyer has
-  // sent across all their product chats, regardless of which farmer it went to.
+  // The buyer-side mirror of listIncomingOffers — the latest offer in every
+  // product chat a buyer is part of, regardless of which farmer it went to.
   async listMyOffers(buyerUid) {
     const chatsSnap = await getDocs(query(chatsCol, where("participantIds", "array-contains", buyerUid)));
     const productChats = chatsSnap.docs
@@ -799,29 +804,29 @@ export const Chat = {
     const perChat = await Promise.all(
       productChats.map(async (chat) => {
         const farmerUid = chat.participantIds.find((id) => id !== buyerUid);
-        if (!farmerUid) return [];
+        if (!farmerUid) return null;
         const messagesSnap = await getDocs(
           query(collection(db, "chats", chat.id, "messages"), orderBy("createdAt", "desc")),
         );
-        return messagesSnap.docs
-          .filter((m) => m.data().type === "offer" && m.data().senderId === buyerUid)
-          .map((m) => {
-            const data = m.data();
-            return {
-              ...data.offer,
-              chatId: chat.id,
-              messageId: m.id,
-              productId: chat.contextId,
-              productLabel: chat.contextLabel,
-              farmerUid,
-              farmerName: chat.participantNames[farmerUid],
-              createdAt: data.createdAt ?? null,
-            };
-          });
+        // Same reasoning as listIncomingOffers above -- the latest offer,
+        // regardless of sender, so an accepted farmer counter still shows.
+        const offerDoc = messagesSnap.docs.find((m) => m.data().type === "offer");
+        if (!offerDoc) return null;
+        const data = offerDoc.data();
+        return {
+          ...data.offer,
+          chatId: chat.id,
+          messageId: offerDoc.id,
+          productId: chat.contextId,
+          productLabel: chat.contextLabel,
+          farmerUid,
+          farmerName: chat.participantNames[farmerUid],
+          createdAt: data.createdAt ?? null,
+        };
       }),
     );
 
-    return perChat.flat().sort((a, b) => (b.createdAt?.toMillis() ?? 0) - (a.createdAt?.toMillis() ?? 0));
+    return perChat.filter(Boolean).sort((a, b) => (b.createdAt?.toMillis() ?? 0) - (a.createdAt?.toMillis() ?? 0));
   },
 
   // Admin-only: every chat, for the moderation/oversight view. Just browsing
@@ -1022,12 +1027,38 @@ export const Escrow = {
   },
 
   async raiseDispute(orderId, uid, note) {
+    const snap = await getDoc(doc(db, "escrowOrders", orderId));
+    const order = snap.data();
     await updateDoc(doc(db, "escrowOrders", orderId), {
       status: "disputed",
       disputedAt: serverTimestamp(),
       disputedBy: uid,
       disputeNote: note,
     });
+    // Previously nobody was told a dispute even existed -- neither the
+    // counterparty nor any admin -- so it sat invisible until someone
+    // happened to browse admin-payments.html. Mirrors the admin-broadcast
+    // shape already used in confirmDelivery above. Best-effort: never block
+    // the dispute write itself, which has already succeeded.
+    if (order) {
+      const counterpartyUid = uid === order.buyerId ? order.sellerId : order.buyerId;
+      if (counterpartyUid) {
+        Notifications.create({
+          uid: counterpartyUid,
+          key: "disputeRaised",
+          params: { product: order.productLabel || "" },
+          link: order.chatId ? `dashboard-chat.html?id=${order.chatId}` : "admin-payments.html",
+        }).catch(() => {});
+      }
+      Admin.listAllAdmins()
+        .then((admins) =>
+          Notifications.broadcastToAll(
+            admins.map((a) => a.uid),
+            { key: "disputeRaised", params: { product: order.productLabel || "" }, link: "admin-payments.html" },
+          ),
+        )
+        .catch(() => {});
+    }
   },
 
   // Both owner-only in firestore.rules -- the owner physically pays the

@@ -435,6 +435,7 @@
     "pause": "Pause",
     "activate": "Activate",
     "confirmDelete": "Are you sure you want to delete this product?",
+    "productNotFound": "This product isn't available anymore.",
     "noProducts": "You don't have any products yet",
     "viewsLabel": "views",
     "offersLabel": "offers",
@@ -756,6 +757,8 @@
     "paymentClaimed": { "title": "Buyer sent the payment", "body": "{amount} EGP was sent for {product} via {method} from phone number {phone}, reference number: {reference}. Check your payments dashboard to confirm you received it." },
     "codOrderConfirmed": { "title": "New order — cash on delivery", "body": "The buyer confirmed an order for {product} worth {amount} EGP, to be paid in cash on delivery." },
     "deliveryConfirmedNeedsRelease": { "title": "An order needs its funds released", "body": "{buyer} confirmed receiving {product} -- release the payment to the farmer from the payments admin panel." },
+    "identityVerificationFailed": { "title": "We couldn't process your identity verification", "body": "Something went wrong uploading your ID photo -- your account was created, but your identity details are still missing. Please contact us to fix it." },
+    "disputeRaised": { "title": "A deal is under dispute", "body": "A dispute was raised on the deal for {product} -- it needs review." },
     "newFollower": { "title": "New follower", "body": "{name} started following you" }
   },
   "ads": {

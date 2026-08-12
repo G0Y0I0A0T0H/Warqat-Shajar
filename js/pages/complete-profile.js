@@ -1,6 +1,6 @@
 import { initLayout } from "../layout.js";
 import { t } from "../i18n.js";
-import { Auth, Profile, IdentityVerification } from "../firebase.js";
+import { Auth, Profile, IdentityVerification, Notifications } from "../firebase.js";
 import { showMessage } from "../ui.js";
 import { authState, subscribe } from "../state.js";
 import { renderRoleSelector, populateGovernorateSelect, renderCategoryCheckboxGrid, updateCategoriesVisibility, wireIdCardPhotoPreview, isValidNationalId } from "./auth-shared.js";
@@ -101,7 +101,9 @@ async function main() {
       try {
         await IdentityVerification.submit(authState.user.uid, { nationalId, file: idCardPhoto });
       } catch {
-        showMessage(formError, t("auth.errors.identitySubmitFailed"));
+        // Same reasoning as register.js: showMessage alone is invisible
+        // since the redirect right below fires immediately after.
+        Notifications.create({ uid: authState.user.uid, key: "identityVerificationFailed", link: "contact.html" }).catch(() => {});
       }
       location.href = "index.html";
     } catch (error) {

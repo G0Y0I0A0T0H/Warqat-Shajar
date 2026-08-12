@@ -117,7 +117,12 @@ function buildShareData(p) {
 }
 
 function render() {
-  if (!product) return;
+  if (!product) {
+    // Previously left whatever was already in detailEl (a loading
+    // skeleton) untouched forever -- no indication the product is gone.
+    detailEl.innerHTML = `<p class="empty-state">${t("products.productNotFound", "This product isn't available anymore.")}</p>`;
+    return;
+  }
   const isOwner = authState.user?.uid === product.ownerId;
   const unitLabel = t(unitLabelKey(product.unit));
 
@@ -337,8 +342,14 @@ async function main() {
 
   product = await Products.getProduct(productId);
   activePhotoIndex = 0;
-  Products.incrementProductViews(productId);
   render();
+  // A stale link (favorites, cart, an old share, a cached search result) to
+  // a since-deleted product used to crash here -- render() already shows
+  // the right empty state, but everything below unconditionally dereferenced
+  // product.ownerId, throwing and skipping every subscribe()/onLocaleChange()
+  // registration below it.
+  if (!product) return;
+  Products.incrementProductViews(productId);
 
   renderAdSlot(document.getElementById("ad-product-detail"), "product-detail", Ads);
   renderAdSlot(document.getElementById("ad-product-detail-sidebar"), "product-detail-sidebar", Ads, 160, 600);
