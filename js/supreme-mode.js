@@ -158,7 +158,7 @@ function auditLogHTML() {
       </select>
       <select class="input" id="sm-audit-filter-action" style="max-width:220px">
         <option value="">${t("auditLog.allActions")}</option>
-        ${actionsUsed.map((a) => `<option value="${a}" ${auditFilterAction === a ? "selected" : ""}>${escapeHtml(auditActionLabel(a))}</option>`).join("")}
+        ${actionsUsed.map((a) => `<option value="${escapeHtml(a)}" ${auditFilterAction === a ? "selected" : ""}>${escapeHtml(auditActionLabel(a))}</option>`).join("")}
       </select>
     </div>
     ${
