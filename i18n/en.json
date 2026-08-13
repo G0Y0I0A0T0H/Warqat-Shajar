@@ -910,6 +910,12 @@
     "allSections": "All sections (ungated)",
     "quickAccess": "All Sections",
     "auditTabTitle": "Audit Log",
+    "activityTabTitle": "Live Activity",
+    "activityHint": "Updates live as users browse the site -- the last 50 page loads, newest first.",
+    "activityEmpty": "No activity yet.",
+    "activityEvent": {
+      "pageView": "Viewed a page"
+    },
     "danger": {
       "tabTitle": "Danger Zone",
       "hint": "Owner-only. Permanently deletes real data -- meant for clearing test/dummy data before real users arrive, not routine use.",

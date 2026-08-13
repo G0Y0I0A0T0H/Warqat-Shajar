@@ -16,7 +16,7 @@
 // action below still goes through firestore.rules' isOwner() check on the
 // server side, so discovering the trigger alone lets nobody actually do
 // anything unless they're also authenticated as the real owner account.
-import { Admin, Auth, OWNER_EMAIL, Notifications, AuditLog } from "./firebase.js";
+import { Admin, Auth, OWNER_EMAIL, Notifications, AuditLog, Activity } from "./firebase.js";
 import { NAV_ITEMS, SENSITIVE_KEYS } from "./admin-shell.js";
 import { t, getLocale } from "./i18n.js";
 import { escapeHtml, btnClass, badgeClass, icon } from "./ui.js";
@@ -55,6 +55,8 @@ let wipingKey = null;
 let auditEntries = [];
 let auditFilterAdmin = "";
 let auditFilterAction = "";
+let activityEntries = [];
+let activityUnsub = null;
 
 export async function openSupremeMode() {
   if (overlay) return;
@@ -90,6 +92,25 @@ function closeSupremeMode() {
   userSearch = "";
   auditFilterAdmin = "";
   auditFilterAction = "";
+  stopActivityFeed();
+}
+
+// The live feed is only ever subscribed while the "activity" tab is
+// actually open -- switching tabs or closing Supreme Mode tears it down,
+// same discipline as every other realtime listener in this codebase
+// (js/state.js's unsubX pattern), so it never keeps running invisibly.
+function startActivityFeed() {
+  if (activityUnsub) return;
+  activityUnsub = Activity.subscribeRecent((entries) => {
+    activityEntries = entries;
+    if (activeTab === "activity") render();
+  });
+  Activity.purgeOld().catch(() => {});
+}
+
+function stopActivityFeed() {
+  activityUnsub?.();
+  activityUnsub = null;
 }
 
 async function reload() {
@@ -177,6 +198,48 @@ function auditLogHTML() {
               ${e.targetLabel ? ` &rarr; <strong>${t("auditLog.on")}:</strong> ${escapeHtml(e.targetLabel)}` : ""}
             </div>
             ${auditMetaSummary(e.meta)}
+          </div>
+        `,
+            )
+            .join("")
+    }
+  `;
+}
+
+const ACTIVITY_EVENT_KEYS = {
+  page_view: "supreme.activityEvent.pageView",
+};
+
+function activityEventLabel(event) {
+  const key = ACTIVITY_EVENT_KEYS[event];
+  return key ? t(key) : event;
+}
+
+function activityFormatTime(ts) {
+  if (!ts?.toDate) return "";
+  return ts.toDate().toLocaleTimeString(getLocale() === "ar" ? "ar-EG" : "en-US");
+}
+
+// Realtime (see startActivityFeed) -- rows just appear/reorder on their own
+// as new activity comes in, no manual refresh.
+function activityFeedHTML() {
+  return `
+    <p class="sm-row-sub" style="margin-bottom:1rem">${t("supreme.activityHint", "Updates live as users browse the site -- the last 50 page loads, newest first.")}</p>
+    ${
+      activityEntries.length === 0
+        ? `<p class="sm-empty">${t("supreme.activityEmpty", "No activity yet.")}</p>`
+        : activityEntries
+            .map(
+              (e) => `
+          <div class="sm-row">
+            <div class="sm-row-main">
+              <div class="sm-row-title">
+                <span>${escapeHtml(e.name || e.uid)}</span>
+                <span class="${badgeClass("outline")}">${escapeHtml(activityEventLabel(e.event))}</span>
+              </div>
+              <div class="sm-row-sub force-ltr" dir="ltr">${escapeHtml(e.page || "")}</div>
+            </div>
+            <span class="sm-row-sub" style="margin:0">${activityFormatTime(e.createdAt)}</span>
           </div>
         `,
             )
@@ -491,6 +554,7 @@ function render() {
     <button type="button" class="sm-tab ${activeTab === "admins" ? "is-active" : ""}" data-sm-tab="admins">${t("admin.admins")} (${admins.length})</button>
     <button type="button" class="sm-tab ${activeTab === "quick" ? "is-active" : ""}" data-sm-tab="quick">${t("supreme.quickAccess", "Quick Access")}</button>
     <button type="button" class="sm-tab ${activeTab === "audit" ? "is-active" : ""}" data-sm-tab="audit">${icon("clipboard-list")} ${t("supreme.auditTabTitle", "Audit Log")}</button>
+    <button type="button" class="sm-tab ${activeTab === "activity" ? "is-active" : ""}" data-sm-tab="activity">${icon("eye")} ${t("supreme.activityTabTitle", "Live Activity")}</button>
     <button type="button" class="sm-tab ${activeTab === "danger" ? "is-active" : ""}" data-sm-tab="danger">${icon("alert-triangle")} ${t("supreme.danger.tabTitle", "Danger Zone")}</button>
   `;
   bodyEl.innerHTML =
@@ -503,18 +567,23 @@ function render() {
         ? admins.map(adminRowHTML).join("") || `<p class="sm-empty">${t("admin.noAdmins")}</p>`
         : activeTab === "audit"
           ? auditLogHTML()
-          : activeTab === "danger"
-            ? dangerZoneHTML()
-            : quickAccessHTML();
+          : activeTab === "activity"
+            ? activityFeedHTML()
+            : activeTab === "danger"
+              ? dangerZoneHTML()
+              : quickAccessHTML();
 
   tabsEl.querySelectorAll("[data-sm-tab]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const wasDanger = activeTab === "danger";
+      const wasActivity = activeTab === "activity";
       activeTab = btn.dataset.smTab;
       editingPermsUid = null;
       viewingPinUid = null;
+      if (wasActivity && activeTab !== "activity") stopActivityFeed();
       render();
       if (activeTab === "danger" && !wasDanger) reloadFakeDataCounts();
+      if (activeTab === "activity" && !wasActivity) startActivityFeed();
     });
   });
 
