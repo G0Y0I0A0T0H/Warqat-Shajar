@@ -3,7 +3,7 @@
 // partials below used when authoring pages); this module only wires
 // behavior against fixed IDs present identically on every page.
 import { authState, favoritesState, cartState, notifState, subscribe, isUserThemeDark, setUserThemeDark, applySiteDefaultDarkMode } from "./state.js";
-import { Auth, SiteSettings, Notifications, OWNER_EMAIL } from "./firebase.js";
+import { Auth, SiteSettings, Notifications, OWNER_EMAIL, Activity } from "./firebase.js";
 import { t, getLocale, setLocale, initI18n, onLocaleChange } from "./i18n.js";
 import { icon, renderAvatar, wireDropdown, renderIcons, interpolate, showToast, btnClass, escapeHtml, safeUrl } from "./ui.js";
 
@@ -750,6 +750,23 @@ function wireSupremeModeShortcut() {
   });
 }
 
+// Fires once per real page load (not once per authState change -- auth
+// resolves asynchronously, sometime after initLayout() returns, so this is
+// re-tried from the subscribe() callback below too, same "call it eagerly,
+// then again once auth actually resolves" shape used throughout this file).
+// Feeds the owner's Live Activity tab (js/supreme-mode.js).
+let activityLogged = false;
+function maybeLogPageView() {
+  if (activityLogged || !authState.user) return;
+  activityLogged = true;
+  Activity.log({
+    uid: authState.user.uid,
+    name: authState.profile?.fullName || authState.user.email || "",
+    event: "page_view",
+    page: location.pathname,
+  });
+}
+
 export async function initLayout() {
   await initI18n();
   renderIcons(document);
@@ -773,12 +790,14 @@ export async function initLayout() {
   wireSupremeModeShortcut();
   guardMaintenanceMode();
   wireHeaderSearch();
+  maybeLogPageView();
   subscribe(() => {
     renderHeaderAuthArea();
     renderWishlistBadge();
     renderCartBadge();
     renderNotifBell();
     guardProfileCompletion();
+    maybeLogPageView();
   });
   onLocaleChange(() => {
     renderHeaderAuthArea();

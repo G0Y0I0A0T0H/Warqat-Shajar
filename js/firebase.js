@@ -2110,6 +2110,50 @@ export const AdminChat = {
 };
 
 // ===========================================================================
+// Near-real-time "who's doing what" feed for the owner's Live Activity tab
+// (js/supreme-mode.js) -- self-attested by every signed-in user's own
+// client once per page load (see js/layout.js's initLayout), same trust
+// shape as phoneAttempts/adminChats above (write your own uid, nothing
+// else). Reading it back is owner-only in practice (firestore.rules gates
+// it behind isOwnerOrGranted('superAdmin'), and nothing in this codebase
+// ever grants that section to a delegated admin). No Cloud Functions/cron
+// exist in this project, so retention is the same best-effort client-
+// triggered sweep already used by AdminChat.purgeOldMessages() above --
+// run opportunistically whenever the Live Activity tab is opened, not on
+// a schedule. log() never blocks the page it's called from -- a failed
+// write is swallowed, not thrown.
+// ===========================================================================
+const userActivityCol = collection(db, "userActivity");
+
+export const Activity = {
+  async log({ uid, name, event, page, meta }) {
+    await addDoc(userActivityCol, {
+      uid,
+      name: name || "",
+      event,
+      page: page || null,
+      meta: meta || {},
+      createdAt: serverTimestamp(),
+    }).catch(() => {});
+  },
+
+  subscribeRecent(callback) {
+    const q = query(userActivityCol, orderBy("createdAt", "desc"), limit(50));
+    return onSnapshot(
+      q,
+      (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+      () => callback([]),
+    );
+  },
+
+  async purgeOld() {
+    const cutoff = Timestamp.fromDate(new Date(Date.now() - 24 * 60 * 60 * 1000));
+    const snap = await getDocs(query(userActivityCol, where("createdAt", "<", cutoff)));
+    await Promise.all(snap.docs.map((d) => deleteDoc(d.ref).catch(() => {})));
+  },
+};
+
+// ===========================================================================
 // Admin action audit trail — every consequential thing any admin account
 // does gets one entry here (who, what, on what, when), reviewable only from
 // js/supreme-mode.js's audit tab (owner-only, never a delegable section --
