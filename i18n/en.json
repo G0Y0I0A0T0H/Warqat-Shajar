@@ -901,6 +901,7 @@
     "confirmResetEmail": "Send a password-reset email to this account?",
     "resetEmailSent": "Sent",
     "resetEmailFailed": "Couldn't send the email",
+    "viewAsButton": "View As this user",
     "protected": "Protected",
     "pinBtn": "Admin-mode PIN",
     "currentPin": "Current PIN",
@@ -1048,5 +1049,9 @@
     "suspendedBody": "You can't create new products, requests, or messages right now. Contact us if you think this is a mistake.",
     "bannedTitle": "Your account is banned",
     "bannedBody": "Your account has been permanently banned for violating the Terms & Conditions. Contact us if you'd like to appeal."
+  },
+  "viewAs": {
+    "bannerText": "You're currently viewing as {name} -- read-only, nothing will be saved.",
+    "exitButton": "Back to your account"
   }
 }

@@ -4,6 +4,7 @@ import { authState, subscribe } from "./state.js";
 import { t, onLocaleChange } from "./i18n.js";
 import { icon } from "./ui.js";
 import { SellerProfiles } from "./firebase.js";
+import { getEffectiveProfile, isViewingAs } from "./view-as.js";
 
 const NAV_ITEMS = [
   { href: "dashboard.html", key: "overview", roles: null },
@@ -50,10 +51,10 @@ function renderNav(activeHref, accountType) {
     .join("");
 }
 
-function renderStatusBanner() {
+function renderStatusBanner(profile) {
   const mount = document.getElementById("status-banner-mount");
   if (!mount) return;
-  const status = authState.profile?.status || "active";
+  const status = profile?.status || "active";
   if (status === "active") {
     mount.innerHTML = "";
     return;
@@ -88,12 +89,17 @@ export function guardDashboard(activeHref) {
       }
       if (!authState.profile) return;
       if (shell) shell.removeAttribute("data-auth-pending");
-      renderNav(activeHref, authState.profile.accountType);
-      renderStatusBanner();
-      ensureSellerProfileExists(authState.profile);
+      const effective = getEffectiveProfile();
+      renderNav(activeHref, effective.accountType);
+      renderStatusBanner(effective);
+      // Skipped while viewing-as: this is the one write dashboard pages make
+      // automatically on load rather than from a click, so it's the one
+      // path the read-only `inert` lock (see js/layout.js) can't catch --
+      // it must never run for the impersonated target's uid.
+      if (!isViewingAs()) ensureSellerProfileExists(authState.profile);
       if (!resolved) {
         resolved = true;
-        resolve(authState.profile);
+        resolve(effective);
       }
     }
 

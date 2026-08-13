@@ -21,6 +21,7 @@ import { NAV_ITEMS, SENSITIVE_KEYS } from "./admin-shell.js";
 import { t, getLocale } from "./i18n.js";
 import { escapeHtml, btnClass, badgeClass, icon } from "./ui.js";
 import { authState } from "./state.js";
+import { startViewAs } from "./view-as.js";
 
 // Every handler below runs as the real owner (Supreme Mode is only ever
 // reachable with authState.isOwner true -- see the module doc comment
@@ -330,6 +331,7 @@ function userRowHTML(u) {
             : `<button type="button" class="${btnClass("outline", "sm")}" data-sm-reactivate="${u.uid}">${t("admin.reactivate")}</button>`
         }
         <button type="button" class="${btnClass("outline", "sm")}" data-sm-reset-pw="${u.uid}" data-sm-email="${escapeHtml(u.email || "")}">${t("supreme.sendResetEmail", "Send password reset")}</button>
+        <button type="button" class="${btnClass("outline", "sm")}" data-sm-view-as="${u.uid}">${t("supreme.viewAsButton", "View As this user")}</button>
         <button type="button" class="${btnClass("destructive", "icon-sm")}" data-sm-delete="${u.uid}" aria-label="${t("admin.deleteUser")}">${icon("trash")}</button>
       </div>
     </div>
@@ -658,6 +660,14 @@ function render() {
         auditRecord("user_deleted", btn.dataset.smDelete, target?.fullName || target?.email);
         await Admin.deleteUserAccount(btn.dataset.smDelete);
         await reload();
+      });
+    });
+    overlay.querySelectorAll("[data-sm-view-as]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const target = users.find((u) => u.uid === btn.dataset.smViewAs);
+        if (!target) return;
+        await startViewAs(target);
+        location.href = "dashboard.html";
       });
     });
   } else if (activeTab === "admins") {
