@@ -4,6 +4,7 @@ import { Reviews, Profile, SellerProfiles, PhoneAttempts } from "../firebase.js"
 import { governorateLabel, categoryLabelById, onCategoriesChange } from "../constants.js";
 import { renderAvatar, renderStars, badgeClass, icon, escapeHtml, renderImageInput, containsPhoneNumber, showMessage, renderLocationPicker } from "../ui.js";
 import { authState, subscribe } from "../state.js";
+import { getEffectiveProfile, isViewingAs } from "../view-as.js";
 
 const viewEl = document.getElementById("profile-view");
 let rating = { average: 0, count: 0 };
@@ -25,7 +26,13 @@ async function render() {
   }
   if (!authState.profile) return;
 
-  const profile = authState.profile;
+  // The target's data while a Supreme Mode "View As" session is active (see
+  // js/view-as.js), the real signed-in user's own otherwise.
+  const profile = getEffectiveProfile();
+  // Owner-only privileges (verified badge, self photo-upload) stay tied to
+  // the REAL owner looking at their OWN profile -- never granted onto
+  // whichever target is currently being viewed-as.
+  const showOwnerPrivileges = authState.isOwner && !isViewingAs();
   if (ratingLoadedFor !== profile.uid) {
     ratingLoadedFor = profile.uid;
     rating = await Reviews.getUserRatingSummary(profile.uid).catch(() => ({ average: 0, count: 0 }));
@@ -49,12 +56,12 @@ async function render() {
       <div>
         <h1 class="heading" style="font-size:1.25rem;display:flex;align-items:center;gap:0.35rem">
           ${escapeHtml(profile.fullName)}
-          ${authState.isOwner ? `<span title="${t("profile.verifiedBadge", "Verified")}" style="color:var(--primary)">${icon("verified")}</span>` : ""}
+          ${showOwnerPrivileges ? `<span title="${t("profile.verifiedBadge", "Verified")}" style="color:var(--primary)">${icon("verified")}</span>` : ""}
         </h1>
         <span class="${badgeClass("secondary")}">${t(`roles.${profile.accountType}`)}</span>
       </div>
     </div>
-    ${authState.isOwner ? `<div id="owner-photo-input-mount" style="margin-top:0.75rem;max-width:22rem"></div>` : ""}
+    ${showOwnerPrivileges ? `<div id="owner-photo-input-mount" style="margin-top:0.75rem;max-width:22rem"></div>` : ""}
     ${
       rating.count > 0
         ? `<div style="margin-top:1rem">
@@ -178,7 +185,7 @@ async function render() {
     setTimeout(() => (savedEl.style.display = "none"), 2500);
   });
 
-  if (authState.isOwner) {
+  if (showOwnerPrivileges) {
     renderImageInput(viewEl.querySelector("#owner-photo-input-mount"), {
       value: profile.photoURL || "",
       uploadPathPrefix: "avatars/",

@@ -6,6 +6,7 @@ import { authState, favoritesState, cartState, notifState, subscribe, isUserThem
 import { Auth, SiteSettings, Notifications, OWNER_EMAIL, Activity } from "./firebase.js";
 import { t, getLocale, setLocale, initI18n, onLocaleChange } from "./i18n.js";
 import { icon, renderAvatar, wireDropdown, renderIcons, interpolate, showToast, btnClass, escapeHtml, safeUrl } from "./ui.js";
+import { isViewingAs, getEffectiveProfile, stopViewAs } from "./view-as.js";
 
 const SOCIAL_ICON_KEY = {
   facebook: "facebook",
@@ -767,6 +768,58 @@ function maybeLogPageView() {
   });
 }
 
+// ---------------------------------------------------------------------------
+// View As read-only lock -- see js/view-as.js for the full security
+// rationale. Two parts: a persistent exit banner (always interactive, lives
+// outside <main> so the inert lock below never reaches it) and `inert` on
+// the page's <main>, which structurally blocks every click/keyboard/focus
+// target inside it -- including anything added to the DOM later, since
+// `inert` is live rather than a one-time snapshot -- so no write path
+// anywhere on the page can fire using the impersonated target's uid.
+// ---------------------------------------------------------------------------
+let viewAsBanner = null;
+
+function renderViewAsBanner() {
+  const active = isViewingAs();
+  const main = document.querySelector("main");
+  if (main) main.toggleAttribute("inert", active);
+
+  if (!active) {
+    if (viewAsBanner) {
+      viewAsBanner.remove();
+      viewAsBanner = null;
+    }
+    return;
+  }
+  if (viewAsBanner) return; // already showing -- state can't change mid-session without a reload
+
+  const target = getEffectiveProfile();
+  viewAsBanner = document.createElement("div");
+  viewAsBanner.id = "view-as-banner";
+  viewAsBanner.innerHTML = `
+    <style>
+      #view-as-banner {
+        position: fixed; inset-inline: 0; top: 0; z-index: 2147483645;
+        display: flex; align-items: center; justify-content: center; gap: 0.75rem;
+        flex-wrap: wrap; padding: 0.5rem 1rem; text-align: center;
+        background: #b45309; color: #fff; font-size: 0.85rem; font-weight: 600;
+      }
+      #view-as-banner button {
+        padding: 0.3rem 0.8rem; border-radius: 999px; border: 1px solid rgba(255,255,255,0.6);
+        background: transparent; color: #fff; font-weight: 600; font-size: 0.8rem; cursor: pointer;
+      }
+      #view-as-banner button:hover { background: rgba(255,255,255,0.15); }
+    </style>
+    <span>${interpolate(escapeHtml(t("viewAs.bannerText", "You're viewing as {name} -- read-only, nothing will be saved.")), { name: target?.fullName || target?.email || "" })}</span>
+    <button type="button" id="view-as-exit">${t("viewAs.exitButton", "Back to your account")}</button>
+  `;
+  document.body.prepend(viewAsBanner);
+  viewAsBanner.querySelector("#view-as-exit").addEventListener("click", async () => {
+    await stopViewAs();
+    location.href = "dashboard.html";
+  });
+}
+
 export async function initLayout() {
   await initI18n();
   renderIcons(document);
@@ -791,6 +844,7 @@ export async function initLayout() {
   guardMaintenanceMode();
   wireHeaderSearch();
   maybeLogPageView();
+  renderViewAsBanner();
   subscribe(() => {
     renderHeaderAuthArea();
     renderWishlistBadge();
@@ -798,6 +852,7 @@ export async function initLayout() {
     renderNotifBell();
     guardProfileCompletion();
     maybeLogPageView();
+    renderViewAsBanner();
   });
   onLocaleChange(() => {
     renderHeaderAuthArea();
