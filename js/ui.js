@@ -966,6 +966,18 @@ export function renderEscrowActions(containerEl, { order, viewerUid, paymentInfo
           if (!chosen.dataset.methodId) {
             throw new Error("payment method missing id");
           }
+          // Temporary diagnostic -- pinpointing a live permission-denied on
+          // this exact write. Prints every value the rules check depends on
+          // right before sending, so a mismatch shows up directly instead
+          // of being guessed at from source alone.
+          console.log("confirmCodOrder about to send:", {
+            orderId: order.id,
+            orderBuyerId: order.buyerId,
+            orderStatus: order.status,
+            viewerUid,
+            methodId: chosen.dataset.methodId,
+            methodLabel: chosen.dataset.methodLabel,
+          });
           await Escrow.confirmCodOrder(order.id, {
             methodId: chosen.dataset.methodId,
             methodLabel: chosen.dataset.methodLabel,
