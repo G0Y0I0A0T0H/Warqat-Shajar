@@ -100,8 +100,8 @@ function render() {
           <div class="field">
             <label class="label">${t(f.labelKey, f.fallback)}</label>
             <div class="grid-2" style="gap:0.5rem">
-              <input class="input" data-content-ar="${f.key}" placeholder="${t("branding.arabicPlaceholder", "Arabic")}" value="${siteContent.ar?.[f.key] ?? ""}">
-              <input class="input force-ltr" dir="ltr" data-content-en="${f.key}" placeholder="${t("branding.englishPlaceholder", "English")}" value="${siteContent.en?.[f.key] ?? ""}">
+              <input class="input" data-content-ar="${f.key}" maxlength="300" placeholder="${t("branding.arabicPlaceholder", "Arabic")}" value="${escapeHtml(siteContent.ar?.[f.key] ?? "")}">
+              <input class="input force-ltr" dir="ltr" data-content-en="${f.key}" maxlength="300" placeholder="${t("branding.englishPlaceholder", "English")}" value="${escapeHtml(siteContent.en?.[f.key] ?? "")}">
             </div>
           </div>
         `,
