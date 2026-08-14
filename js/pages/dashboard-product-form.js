@@ -103,7 +103,7 @@ export function renderProductForm(mountEl, profile, existingProduct, options = {
     // hidden from browsing — hiding must never silently change saved data.
     if (current && !ids.includes(current)) ids.push(current);
     categorySelect.innerHTML = ids
-      .map((id) => `<option value="${id}">${categoryLabelById(id, getLocale())}</option>`)
+      .map((id) => `<option value="${escapeHtml(id)}">${categoryLabelById(id, getLocale())}</option>`)
       .join("");
     if (current) categorySelect.value = current;
   }

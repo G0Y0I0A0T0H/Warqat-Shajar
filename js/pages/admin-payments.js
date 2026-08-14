@@ -466,20 +466,31 @@ function render() {
       enabled: true,
       noProofRequired: contentEl.querySelector("#new-method-no-proof").checked,
     };
+    const addSubmitBtn = e.target.querySelector('button[type="submit"]');
+    addSubmitBtn.disabled = true;
     try {
       await SiteSettings.setPaymentMethods([...paymentInfo.methods, newMethod]);
       auditPaymentMethod("payment_method_added", newMethod.id, newMethod.label, { noProofRequired: newMethod.noProofRequired });
     } catch {
       showMessage(errorEl, t("payments.actionFailed"));
+      addSubmitBtn.disabled = false;
     }
   });
 
   contentEl.querySelector("#payment-notes-form")?.addEventListener("submit", async (e) => {
     e.preventDefault();
-    await SiteSettings.updatePaymentNotes(contentEl.querySelector("#payment-notes-input").value.trim());
-    const saved = contentEl.querySelector("#payment-notes-saved");
-    saved.style.display = "inline";
-    setTimeout(() => (saved.style.display = "none"), 2500);
+    const notesSubmitBtn = e.target.querySelector('button[type="submit"]');
+    notesSubmitBtn.disabled = true;
+    try {
+      await SiteSettings.updatePaymentNotes(contentEl.querySelector("#payment-notes-input").value.trim());
+      const saved = contentEl.querySelector("#payment-notes-saved");
+      saved.style.display = "inline";
+      setTimeout(() => (saved.style.display = "none"), 2500);
+    } catch {
+      alert(t("payments.actionFailed"));
+    } finally {
+      notesSubmitBtn.disabled = false;
+    }
   });
 }
 

@@ -1525,7 +1525,13 @@ export const Admin = {
   // display -- a real "excessive data exposure" bug, not just theoretical.
   async grantAdmin(uid, email, adminModeCode, allowedSections = null) {
     await setDoc(doc(db, "admins", uid), { email, grantedAt: serverTimestamp(), allowedSections });
-    await setDoc(doc(db, "adminSecrets", uid), { adminModeCode });
+    // Must match verifyAdminModeCode's own hashing (see setAdminModeCode
+    // above) -- this was left storing the raw code after that fix landed,
+    // which meant a brand-new admin's very first PIN could never actually
+    // verify (hash(input) never equals the plaintext stored here), not
+    // just a plaintext-storage gap but a real "new admin can't unlock
+    // admin mode at all" break.
+    await setDoc(doc(db, "adminSecrets", uid), { adminModeCode: await sha256Hex(adminModeCode) });
   },
 
   // Owner-only in firestore.rules (isOwner() already covers any field on

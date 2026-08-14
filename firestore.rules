@@ -352,7 +352,14 @@ service cloud.firestore {
           request.resource.data.quantity is number && request.resource.data.quantity >= 0 &&
           request.resource.data.minOrderQuantity is number && request.resource.data.minOrderQuantity > 0 &&
           request.resource.data.qualityRating is number &&
-          request.resource.data.qualityRating >= 1 && request.resource.data.qualityRating <= 10;
+          request.resource.data.qualityRating >= 1 && request.resource.data.qualityRating <= 10 &&
+          // category/governorate were never constrained at all -- category
+          // can't cleanly be a strict enum here since admins can add custom
+          // ones at any time (admin-branding.html), so a sane string+length
+          // bound is the real fix (the client already escapes whatever
+          // ends up here when rendering it, this is the second layer).
+          request.resource.data.category is string && request.resource.data.category.size() < 100 &&
+          request.resource.data.governorate is string && request.resource.data.governorate.size() < 100;
       }
       allow create: if priceQuantityValid() && ((
         isActiveUser() && request.resource.data.ownerId == request.auth.uid &&
