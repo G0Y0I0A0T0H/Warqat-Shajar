@@ -50,7 +50,7 @@ let activeTab = "users";
 let userSearch = "";
 let editingPermsUid = null;
 let viewingPinUid = null;
-let viewedPin = null;
+let pinIsSet = false;
 let fakeDataCounts = { products: 0, deals: 0, chats: 0, notifications: 0 };
 let wipingKey = null;
 let auditEntries = [];
@@ -89,7 +89,7 @@ function closeSupremeMode() {
   overlay = null;
   editingPermsUid = null;
   viewingPinUid = null;
-  viewedPin = null;
+  pinIsSet = false;
   userSearch = "";
   auditFilterAdmin = "";
   auditFilterAction = "";
@@ -439,7 +439,7 @@ function adminRowHTML(a) {
       ${
         viewingPinUid === a.uid
           ? `<div class="sm-panel">
-              <div class="sm-row-sub">${t("supreme.currentPin", "Current PIN")}: <span class="force-ltr" dir="ltr" style="font-weight:700">${escapeHtml(viewedPin || t("supreme.noPinSet", "not set"))}</span></div>
+              <div class="sm-row-sub">${t("supreme.pinStatus", "PIN status")}: <span style="font-weight:700">${pinIsSet ? t("supreme.pinIsSet", "A PIN is set") : t("supreme.noPinSet", "not set")}</span></div>
               <div class="field" style="margin-top:0.5rem;max-width:16rem">
                 <input class="input force-ltr" dir="ltr" id="sm-new-pin-${a.uid}" placeholder="${t("supreme.newPinPlaceholder", "New PIN")}">
               </div>
@@ -615,10 +615,15 @@ function render() {
       btn.addEventListener("click", async () => {
         const days = prompt(t("admin.suspendDays"), "30");
         if (!days) return;
-        await Admin.setUserStatus(btn.dataset.smSuspend, "suspended", Number(days));
+        const daysNum = Number(days);
+        if (!Number.isFinite(daysNum) || daysNum <= 0) {
+          alert(t("admin.suspendDaysInvalid", "Enter a valid number of days."));
+          return;
+        }
+        await Admin.setUserStatus(btn.dataset.smSuspend, "suspended", daysNum);
         Notifications.create({ uid: btn.dataset.smSuspend, key: "accountSuspended" }).catch(() => {});
         const target = users.find((u) => u.uid === btn.dataset.smSuspend);
-        auditRecord("user_suspended", btn.dataset.smSuspend, target?.fullName || target?.email, { days: Number(days) });
+        auditRecord("user_suspended", btn.dataset.smSuspend, target?.fullName || target?.email, { days: daysNum });
         await reload();
       });
     });
@@ -682,7 +687,7 @@ function render() {
       btn.addEventListener("click", async () => {
         editingPermsUid = null;
         const uid = btn.dataset.smViewPin;
-        viewedPin = await Admin.getAdminModeCode(uid).catch(() => null);
+        pinIsSet = await Admin.hasAdminModeCode(uid).catch(() => false);
         viewingPinUid = uid;
         render();
       });

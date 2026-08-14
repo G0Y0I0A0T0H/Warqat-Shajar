@@ -135,7 +135,7 @@ function render() {
       <div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem">
         <h1 class="heading" style="font-size:1.5rem">${product.title ? escapeHtml(product.title) : categoryLabelById(product.category, getLocale())}</h1>
         <div style="display:flex;align-items:center;gap:0.5rem">
-          <span style="display:flex;align-items:center;gap:0.25rem;font-weight:600">${icon("star", "is-filled")} ${product.qualityRating}</span>
+          <span style="display:flex;align-items:center;gap:0.25rem;font-weight:600">${icon("star", "is-filled")} ${escapeHtml(product.qualityRating)}</span>
           <span id="fav-btn-mount"></span>
         </div>
       </div>
@@ -145,22 +145,22 @@ function render() {
         ${shareButtonsHTML(buildShareData(product))}
         ${product.sharesCount ? `<span class="text-muted" style="font-size:0.8rem">${interpolate(t("share.timesShared"), { count: product.sharesCount })}</span>` : ""}
       </div>
-      <p class="product-detail-price" style="margin-top:1rem">${product.price} ${t("products.currency")}/${unitLabel}</p>
+      <p class="product-detail-price" style="margin-top:1rem">${escapeHtml(product.price)} ${t("products.currency")}/${unitLabel}</p>
       <div class="product-detail-stats" style="margin-top:1rem">
         <div>
           <div class="product-detail-stat-label">${t("products.quantityLabel")}</div>
-          <div class="product-detail-stat-value">${product.quantity} ${unitLabel}</div>
+          <div class="product-detail-stat-value">${escapeHtml(product.quantity)} ${unitLabel}</div>
         </div>
         <div>
           <div class="product-detail-stat-label">${t("products.minOrderLabel")}</div>
-          <div class="product-detail-stat-value">${product.minOrderQuantity} ${unitLabel}</div>
+          <div class="product-detail-stat-value">${escapeHtml(product.minOrderQuantity)} ${unitLabel}</div>
         </div>
       </div>
       ${renderFreshnessBadge(product)}
       <div class="card product-qty-calc" style="margin-top:1rem;padding:1rem">
         <label class="label" for="qty-calc-input">${t("products.calcQuantityLabel")}</label>
         <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-top:0.5rem">
-          <input class="input" id="qty-calc-input" type="number" min="${product.minOrderQuantity}" max="${product.quantity}" step="1" value="${product.minOrderQuantity}" style="max-width:8rem">
+          <input class="input" id="qty-calc-input" type="number" min="${escapeHtml(product.minOrderQuantity)}" max="${escapeHtml(product.quantity)}" step="1" value="${escapeHtml(product.minOrderQuantity)}" style="max-width:8rem">
           <span class="text-muted">${unitLabel}</span>
           <span class="product-qty-calc-total" id="qty-calc-total"></span>
         </div>
@@ -340,7 +340,12 @@ async function main() {
   await initLayout();
   if (!productId) return;
 
-  product = await Products.getProduct(productId);
+  // An unhandled rejection here (a real connection error, not just a
+  // missing product) used to leave the page stuck on its loading skeleton
+  // forever, with no error and no way forward -- falls into the same
+  // "not available" empty state render() already shows for a missing
+  // product, close enough for a rare network hiccup.
+  product = await Products.getProduct(productId).catch(() => null);
   activePhotoIndex = 0;
   render();
   // A stale link (favorites, cart, an old share, a cached search result) to
@@ -349,7 +354,12 @@ async function main() {
   // product.ownerId, throwing and skipping every subscribe()/onLocaleChange()
   // registration below it.
   if (!product) return;
-  Products.incrementProductViews(productId);
+  // firestore.rules now requires isSignedIn() for this counter (an
+  // unauthenticated script could otherwise inflate/reset it with unlimited,
+  // untraceable requests) -- a signed-out visitor's view genuinely won't be
+  // counted anymore, an accepted trade-off, but the rejected write must not
+  // surface as an unhandled promise rejection for them either.
+  Products.incrementProductViews(productId).catch(() => {});
 
   renderAdSlot(document.getElementById("ad-product-detail"), "product-detail", Ads);
   renderAdSlot(document.getElementById("ad-product-detail-sidebar"), "product-detail-sidebar", Ads, 160, 600);

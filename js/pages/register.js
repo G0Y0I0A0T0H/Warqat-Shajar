@@ -3,7 +3,7 @@ import { t } from "../i18n.js";
 import { Auth, Profile, IdentityVerification, Notifications } from "../firebase.js";
 import { showMessage, openDialog, closeDialog, interpolate } from "../ui.js";
 import { ACCOUNT_TYPES } from "../constants.js";
-import { renderRoleSelector, populateGovernorateSelect, renderCategoryCheckboxGrid, updateCategoriesVisibility, wireIdCardPhotoPreview, isValidNationalId } from "./auth-shared.js";
+import { renderRoleSelector, populateGovernorateSelect, renderCategoryCheckboxGrid, updateCategoriesVisibility, wireIdCardPhotoPreview, isValidNationalId, isValidPhone } from "./auth-shared.js";
 import { generateVerificationCode, sendVerificationCode, CODE_VALID_MINUTES } from "../email-verification.js";
 
 const RESEND_COOLDOWN_SECONDS = 60;
@@ -108,6 +108,7 @@ async function main() {
 
   async function finishRegistration(data) {
     const user = await Auth.registerWithEmail(data.fullName, data.email, data.password);
+    Auth.sendVerificationEmail(user).catch(() => {});
     await Profile.createUserProfile({
       uid: user.uid,
       fullName: data.fullName,
@@ -218,8 +219,12 @@ async function main() {
     const governorate = governorateSelect.value;
     const termsAccepted = document.getElementById("terms-accepted").checked;
 
-    if (fullName.length < 2 || phone.length < 8 || !email || password.length < 6) {
+    if (fullName.length < 2 || !email || password.length < 6) {
       showMessage(formError, t("auth.errors.generic"));
+      return;
+    }
+    if (!isValidPhone(phone)) {
+      showMessage(formError, t("auth.errors.phoneInvalid", "Enter a valid Egyptian mobile number (e.g. 01xxxxxxxxx)."));
       return;
     }
     if (password !== confirmPassword) {

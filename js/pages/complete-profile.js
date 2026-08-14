@@ -3,7 +3,7 @@ import { t } from "../i18n.js";
 import { Auth, Profile, IdentityVerification, Notifications } from "../firebase.js";
 import { showMessage } from "../ui.js";
 import { authState, subscribe } from "../state.js";
-import { renderRoleSelector, populateGovernorateSelect, renderCategoryCheckboxGrid, updateCategoriesVisibility, wireIdCardPhotoPreview, isValidNationalId } from "./auth-shared.js";
+import { renderRoleSelector, populateGovernorateSelect, renderCategoryCheckboxGrid, updateCategoriesVisibility, wireIdCardPhotoPreview, isValidNationalId, isValidPhone } from "./auth-shared.js";
 
 async function main() {
   await initLayout();
@@ -67,8 +67,12 @@ async function main() {
     const governorate = governorateSelect.value;
     const termsAccepted = document.getElementById("terms-accepted").checked;
 
-    if (!phone || !governorate) {
+    if (!governorate) {
       showMessage(formError, t("auth.register.governoratePlaceholder"));
+      return;
+    }
+    if (!isValidPhone(phone)) {
+      showMessage(formError, t("auth.errors.phoneInvalid", "Enter a valid Egyptian mobile number (e.g. 01xxxxxxxxx)."));
       return;
     }
     if (!isValidNationalId(nationalId)) {

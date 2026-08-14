@@ -81,7 +81,7 @@ function render() {
                     <span style="font-weight:600">${p.title ? escapeHtml(p.title) : categoryLabelById(p.category, getLocale())}</span>
                     ${p.addedByAdminUid ? `<span class="${btnClass("outline", "sm")}" style="pointer-events:none;padding:0.1rem 0.5rem;font-size:0.7rem">${t("admin.addedByAdminBadge", "Added by admin")}</span>` : ""}
                   </div>
-                  <div class="text-muted" style="font-size:0.8rem">${p.title ? categoryLabelById(p.category, getLocale()) + " · " : ""}${escapeHtml(p.ownerName)} — ${p.price} ${t("products.currency")}/${t(unitLabelKey(p.unit))}</div>
+                  <div class="text-muted" style="font-size:0.8rem">${p.title ? categoryLabelById(p.category, getLocale()) + " · " : ""}${escapeHtml(p.ownerName)} — ${escapeHtml(p.price)} ${t("products.currency")}/${t(unitLabelKey(p.unit))}</div>
                 </div>
                 <a href="product.html?id=${p.id}" class="${btnClass("outline", "sm")}">${t("admin.viewProduct")}</a>
                 <button type="button" class="${btnClass("outline", "icon-sm")}" data-edit="${p.id}" aria-label="${t("products.edit", "Edit")}">${icon("pencil")}</button>

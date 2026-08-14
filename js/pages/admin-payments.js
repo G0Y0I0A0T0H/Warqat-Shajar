@@ -245,7 +245,7 @@ function tabPanelHTML() {
           <div class="grid-2" style="gap:0.75rem">
             <div class="field">
               <label class="label">${t("payments.methodNameLabel", "Method name")}</label>
-              <input class="input" id="new-method-label" placeholder="${t("payments.methodNamePlaceholder", "e.g. Vodafone Cash")}">
+              <input class="input" id="new-method-label" maxlength="60" placeholder="${t("payments.methodNamePlaceholder", "e.g. Vodafone Cash")}">
             </div>
             <div class="field">
               <label class="label">${t("payments.methodIconLabel", "Icon")}</label>
@@ -256,7 +256,7 @@ function tabPanelHTML() {
           </div>
           <div class="field">
             <label class="label">${t("payments.methodValueLabel", "Receiving details (phone number, ID, card info -- optional)")}</label>
-            <input class="input force-ltr" dir="ltr" id="new-method-value">
+            <input class="input force-ltr" dir="ltr" id="new-method-value" maxlength="100">
           </div>
           <label class="checkbox-row">
             <input type="checkbox" id="new-method-no-proof">
@@ -270,7 +270,7 @@ function tabPanelHTML() {
       <form id="payment-notes-form" class="form-stack card" style="padding:1.5rem;margin-top:1rem">
         <div class="field">
           <label class="label" for="payment-notes-input">${t("payments.notesLabel")}</label>
-          <textarea class="textarea" rows="3" id="payment-notes-input">${paymentInfo.notes || ""}</textarea>
+          <textarea class="textarea" rows="3" id="payment-notes-input" maxlength="500">${escapeHtml(paymentInfo.notes || "")}</textarea>
         </div>
         <span id="payment-notes-saved" class="success-text" style="display:none">${t("payments.saved")}</span>
         <button type="submit" class="${btnClass("default")}" style="align-self:flex-start">${t("payments.save")}</button>
@@ -334,21 +334,41 @@ function render() {
 
   contentEl.querySelectorAll("[data-confirm-payment]").forEach((btn) => {
     btn.addEventListener("click", async () => {
-      await Escrow.confirmPaymentReceived(btn.dataset.confirmPayment);
-      await reloadOrders();
+      if (!confirm(t("payments.confirmPaymentReceived"))) return;
+      btn.disabled = true;
+      try {
+        await Escrow.confirmPaymentReceived(btn.dataset.confirmPayment);
+        await reloadOrders();
+      } catch {
+        alert(t("payments.actionFailed"));
+        btn.disabled = false;
+      }
     });
   });
   contentEl.querySelectorAll("[data-release]").forEach((btn) => {
     btn.addEventListener("click", async () => {
-      await Escrow.release(btn.dataset.release);
-      await reloadOrders();
+      if (!confirm(t("payments.confirmReleaseFunds"))) return;
+      btn.disabled = true;
+      try {
+        await Escrow.release(btn.dataset.release);
+        await reloadOrders();
+      } catch {
+        alert(t("payments.actionFailed"));
+        btn.disabled = false;
+      }
     });
   });
   contentEl.querySelectorAll("[data-refund]").forEach((btn) => {
     btn.addEventListener("click", async () => {
       if (!confirm(t("payments.confirmRefund"))) return;
-      await Escrow.refund(btn.dataset.refund);
-      await reloadOrders();
+      btn.disabled = true;
+      try {
+        await Escrow.refund(btn.dataset.refund);
+        await reloadOrders();
+      } catch {
+        alert(t("payments.actionFailed"));
+        btn.disabled = false;
+      }
     });
   });
   contentEl.querySelectorAll("[data-mark-paid]").forEach((btn) => {
@@ -369,36 +389,60 @@ function render() {
   contentEl.querySelectorAll("[data-reject-withdrawal]").forEach((btn) => {
     btn.addEventListener("click", async () => {
       const note = prompt(t("payments.rejectReasonPrompt")) || "";
-      await WithdrawalRequests.reject(btn.dataset.rejectWithdrawal, note);
-      await reloadOrders();
+      btn.disabled = true;
+      try {
+        await WithdrawalRequests.reject(btn.dataset.rejectWithdrawal, note);
+        await reloadOrders();
+      } catch {
+        alert(t("payments.actionFailed"));
+        btn.disabled = false;
+      }
     });
   });
 
   contentEl.querySelectorAll("[data-toggle-method]").forEach((btn) => {
     btn.addEventListener("click", async () => {
-      const id = btn.dataset.toggleMethod;
-      const target = paymentInfo.methods.find((m) => m.id === id);
-      const updated = paymentInfo.methods.map((m) => (m.id === id ? { ...m, enabled: !m.enabled } : m));
-      await SiteSettings.setPaymentMethods(updated);
-      auditPaymentMethod("payment_method_changed", id, target?.label, { enabled: !target?.enabled });
+      btn.disabled = true;
+      try {
+        const id = btn.dataset.toggleMethod;
+        const target = paymentInfo.methods.find((m) => m.id === id);
+        const updated = paymentInfo.methods.map((m) => (m.id === id ? { ...m, enabled: !m.enabled } : m));
+        await SiteSettings.setPaymentMethods(updated);
+        auditPaymentMethod("payment_method_changed", id, target?.label, { enabled: !target?.enabled });
+      } catch {
+        alert(t("payments.actionFailed"));
+        btn.disabled = false;
+      }
     });
   });
   contentEl.querySelectorAll("[data-toggle-no-proof]").forEach((btn) => {
     btn.addEventListener("click", async () => {
-      const id = btn.dataset.toggleNoProof;
-      const target = paymentInfo.methods.find((m) => m.id === id);
-      const updated = paymentInfo.methods.map((m) => (m.id === id ? { ...m, noProofRequired: !m.noProofRequired } : m));
-      await SiteSettings.setPaymentMethods(updated);
-      auditPaymentMethod("payment_method_changed", id, target?.label, { noProofRequired: !target?.noProofRequired });
+      btn.disabled = true;
+      try {
+        const id = btn.dataset.toggleNoProof;
+        const target = paymentInfo.methods.find((m) => m.id === id);
+        const updated = paymentInfo.methods.map((m) => (m.id === id ? { ...m, noProofRequired: !m.noProofRequired } : m));
+        await SiteSettings.setPaymentMethods(updated);
+        auditPaymentMethod("payment_method_changed", id, target?.label, { noProofRequired: !target?.noProofRequired });
+      } catch {
+        alert(t("payments.actionFailed"));
+        btn.disabled = false;
+      }
     });
   });
   contentEl.querySelectorAll("[data-remove-method]").forEach((btn) => {
     btn.addEventListener("click", async () => {
       if (!confirm(t("payments.confirmRemoveMethod", "Remove this payment method?"))) return;
-      const id = btn.dataset.removeMethod;
-      const target = paymentInfo.methods.find((m) => m.id === id);
-      await SiteSettings.setPaymentMethods(paymentInfo.methods.filter((m) => m.id !== id));
-      auditPaymentMethod("payment_method_removed", id, target?.label);
+      btn.disabled = true;
+      try {
+        const id = btn.dataset.removeMethod;
+        const target = paymentInfo.methods.find((m) => m.id === id);
+        await SiteSettings.setPaymentMethods(paymentInfo.methods.filter((m) => m.id !== id));
+        auditPaymentMethod("payment_method_removed", id, target?.label);
+      } catch {
+        alert(t("payments.actionFailed"));
+        btn.disabled = false;
+      }
     });
   });
   // Both forms live only in the "methods" tab panel now -- absent (null)
@@ -422,8 +466,12 @@ function render() {
       enabled: true,
       noProofRequired: contentEl.querySelector("#new-method-no-proof").checked,
     };
-    await SiteSettings.setPaymentMethods([...paymentInfo.methods, newMethod]);
-    auditPaymentMethod("payment_method_added", newMethod.id, newMethod.label, { noProofRequired: newMethod.noProofRequired });
+    try {
+      await SiteSettings.setPaymentMethods([...paymentInfo.methods, newMethod]);
+      auditPaymentMethod("payment_method_added", newMethod.id, newMethod.label, { noProofRequired: newMethod.noProofRequired });
+    } catch {
+      showMessage(errorEl, t("payments.actionFailed"));
+    }
   });
 
   contentEl.querySelector("#payment-notes-form")?.addEventListener("submit", async (e) => {

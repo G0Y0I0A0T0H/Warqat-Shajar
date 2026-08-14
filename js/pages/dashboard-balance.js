@@ -152,11 +152,14 @@ function render() {
       showMessage(errorEl, t("balance.receivingAccountRequired", "Enter the account/wallet number to receive on"));
       return;
     }
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
     try {
       await WithdrawalRequests.create({ uid: profileRef.uid, uidName: profileRef.fullName, amount, receivingAccount });
       await reload();
     } catch {
       showMessage(errorEl, t("balance.withdrawalRequestFailed"));
+      submitBtn.disabled = false;
     }
   });
 

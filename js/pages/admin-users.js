@@ -190,9 +190,14 @@ function render() {
     btn.addEventListener("click", async () => {
       const days = prompt(t("admin.suspendDays"), "30");
       if (!days) return;
-      await Admin.setUserStatus(btn.dataset.suspend, "suspended", Number(days));
+      const daysNum = Number(days);
+      if (!Number.isFinite(daysNum) || daysNum <= 0) {
+        alert(t("admin.suspendDaysInvalid", "Enter a valid number of days."));
+        return;
+      }
+      await Admin.setUserStatus(btn.dataset.suspend, "suspended", daysNum);
       Notifications.create({ uid: btn.dataset.suspend, key: "accountSuspended" }).catch(() => {});
-      auditRecord("user_suspended", btn.dataset.suspend, { days: Number(days) });
+      auditRecord("user_suspended", btn.dataset.suspend, { days: daysNum });
       await reload();
     });
   });

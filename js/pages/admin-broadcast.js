@@ -11,7 +11,7 @@ function render() {
     <h1 class="heading" style="font-size:1.5rem">${t("admin.broadcast")}</h1>
     <p class="text-muted" style="font-size:0.85rem;margin-top:0.25rem">${t("broadcast.hint")}</p>
     <div class="card" style="max-width:32rem;margin-top:1rem;display:flex;flex-direction:column;gap:0.75rem">
-      <textarea class="input" id="broadcast-text" rows="4" placeholder="${t("broadcast.placeholder")}"></textarea>
+      <textarea class="input" id="broadcast-text" rows="4" maxlength="1000" placeholder="${t("broadcast.placeholder")}"></textarea>
       <p id="broadcast-error" class="error-text" style="display:none"></p>
       <p id="broadcast-success" class="success-text" style="display:none"></p>
       <button type="button" class="btn btn-default" id="broadcast-send" style="align-self:flex-start">${t("broadcast.sendAll")}</button>

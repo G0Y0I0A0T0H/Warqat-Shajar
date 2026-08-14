@@ -15,6 +15,7 @@ import {
   GoogleAuthProvider,
   signOut,
   sendPasswordResetEmail,
+  sendEmailVerification,
   updateProfile,
   onAuthStateChanged,
 } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
@@ -39,6 +40,7 @@ import {
   Timestamp,
   writeBatch,
   deleteField,
+  runTransaction,
 } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
 const firebaseConfig = {
   apiKey: "AIzaSyDxum9DYcroSdHuXWoeCZvfJ1N5tH9WN0g",
@@ -243,6 +245,18 @@ export const Auth = {
 
   async resetPassword(email) {
     await sendPasswordResetEmail(auth, email);
+  },
+
+  // Real, Firebase-issued email-ownership proof, sent alongside (not
+  // instead of) the existing EmailJS one-time-code dialog in register.js --
+  // that code is checked entirely client-side (nothing stops a scripted
+  // request from creating an account without ever knowing it), while this
+  // is the one channel where email ownership is actually verifiable
+  // server-side later, via the ID token's email_verified claim. Never
+  // reached for Google sign-up -- Google has already verified that address,
+  // and Firebase marks emailVerified true for it automatically.
+  async sendVerificationEmail(user) {
+    await sendEmailVerification(user).catch(() => {});
   },
 
   getAuthErrorKey(error) {
@@ -1177,22 +1191,33 @@ export const Wallets = {
   // Internal -- called by Escrow.release() and WithdrawalRequests.markPaid()
   // only, never exposed directly to a plain UI button.
   async credit(uid, amount, orderId) {
-    const current = await Wallets.getWalletOnce(uid);
-    await setDoc(walletRef(uid), { availableBalance: (current.availableBalance || 0) + amount, updatedAt: serverTimestamp() }, { merge: true });
+    // Atomic increment instead of read-then-write -- two credits landing at
+    // the same moment (two orders releasing for the same farmer close
+    // together) used to be able to read the same starting balance and have
+    // the second write silently clobber the first's addition, losing the
+    // farmer real money. increment() is resolved server-side, so concurrent
+    // writes to the same field always compose correctly regardless of order.
+    await setDoc(walletRef(uid), { availableBalance: increment(amount), updatedAt: serverTimestamp() }, { merge: true });
     await addDoc(walletTransactionsCol, { uid, type: "credit", amount, orderId, withdrawalId: null, note: null, createdAt: serverTimestamp() });
   },
 
   async debit(uid, amount, withdrawalId) {
-    const current = await Wallets.getWalletOnce(uid);
-    // A farmer can submit multiple withdrawal requests before an admin
-    // processes any of them (each individually valid against the balance
-    // at request time) -- this is the one authoritative point where money
-    // actually moves, so it's also the one place that must refuse to ever
-    // take the balance negative, regardless of how many requests stacked up.
-    if ((current.availableBalance || 0) < amount) {
-      throw new Error("insufficient balance");
-    }
-    await setDoc(walletRef(uid), { availableBalance: (current.availableBalance || 0) - amount, updatedAt: serverTimestamp() }, { merge: true });
+    // Needs an actual transaction, not a plain increment() -- unlike
+    // credit(), this has to make a real decision (refuse to go negative)
+    // based on the balance it reads, and a transaction is what makes "read
+    // the real current value, decide, then write" atomic against a second
+    // debit racing in at the same moment (e.g. two of a farmer's stacked
+    // withdrawal requests both being marked paid together). Firestore
+    // retries the whole callback automatically if the document changes
+    // between the read and the commit.
+    await runTransaction(db, async (tx) => {
+      const snap = await tx.get(walletRef(uid));
+      const current = snap.exists() ? snap.data().availableBalance || 0 : 0;
+      if (current < amount) {
+        throw new Error("insufficient balance");
+      }
+      tx.set(walletRef(uid), { availableBalance: current - amount, updatedAt: serverTimestamp() }, { merge: true });
+    });
     await addDoc(walletTransactionsCol, { uid, type: "debit", amount, orderId: null, withdrawalId, note: null, createdAt: serverTimestamp() });
   },
 };
@@ -1472,6 +1497,20 @@ async function deleteAllInPath(path) {
   return deleteDocsBatched(snap.docs);
 }
 
+// One-way SHA-256 hash (hex-encoded) for the admin-mode PIN below -- was
+// stored/compared in plaintext, meaning a leaked Firestore export/backup
+// would hand out a real, reusable PIN for anyone who happens to reuse it
+// elsewhere. Hashing means the stored value alone is useless without the
+// original PIN, at the cost of never being able to show the owner the
+// current PIN again (see Admin.hasAdminModeCode below) -- an acceptable
+// trade for a credential.
+async function sha256Hex(text) {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(buf))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
 export const Admin = {
   async grantSelfAdmin(uid, email) {
     await setDoc(doc(db, "admins", uid), { email, grantedAt: serverTimestamp() });
@@ -1507,21 +1546,21 @@ export const Admin = {
   },
 
   async setAdminModeCode(uid, code) {
-    await setDoc(doc(db, "adminSecrets", uid), { adminModeCode: code }, { merge: true });
+    await setDoc(doc(db, "adminSecrets", uid), { adminModeCode: await sha256Hex(code) }, { merge: true });
     // Clean up the old, insecurely-placed copy the first time this admin
     // rotates their code post-migration; harmless no-op once it's gone.
     await updateDoc(doc(db, "admins", uid), { adminModeCode: deleteField() }).catch(() => {});
   },
 
-  // Owner-only in firestore.rules (adminSecrets/{uid} read: request.auth.uid
-  // == uid || isOwner()) -- lets the owner see another admin's current
-  // admin-mode PIN directly, not just blindly overwrite it.
-  async getAdminModeCode(uid) {
+  // adminModeCode is hashed now (see setAdminModeCode/verifyAdminModeCode
+  // below), so there's nothing left worth showing the owner directly --
+  // just whether one is set, so Supreme Mode can offer "set a new PIN"
+  // instead of a now-impossible "view the current one".
+  async hasAdminModeCode(uid) {
     const snap = await getDoc(doc(db, "adminSecrets", uid));
-    if (snap.exists() && snap.data().adminModeCode) return snap.data().adminModeCode;
-    // Same old-location fallback as verifyAdminModeCode above.
+    if (snap.exists() && snap.data().adminModeCode) return true;
     const oldSnap = await getDoc(doc(db, "admins", uid));
-    return oldSnap.exists() ? oldSnap.data().adminModeCode || null : null;
+    return oldSnap.exists() && Boolean(oldSnap.data().adminModeCode);
   },
 
   // Support-chat opt-in: an admin who flips this on shows up as a pickable
@@ -1538,9 +1577,12 @@ export const Admin = {
   async verifyAdminModeCode(uid, code) {
     const snap = await getDoc(doc(db, "adminSecrets", uid));
     const stored = snap.exists() ? snap.data().adminModeCode : null;
-    if (stored) return stored === code;
+    if (stored) return stored === (await sha256Hex(code));
     // Fallback for any admin who hasn't rotated their code since the
-    // adminSecrets migration -- reads the old (still-supported) location.
+    // adminSecrets migration -- the old location predates hashing entirely,
+    // so this one comparison stays plaintext-vs-plaintext; the moment they
+    // save a new PIN it's written hashed into the new location instead and
+    // this branch stops being reached for them.
     const oldSnap = await getDoc(doc(db, "admins", uid));
     return oldSnap.exists() && Boolean(oldSnap.data().adminModeCode) && oldSnap.data().adminModeCode === code;
   },

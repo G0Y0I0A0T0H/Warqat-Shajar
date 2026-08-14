@@ -10,7 +10,11 @@ const EMAILJS_PUBLIC_KEY = "v-k2g4O-Z959eb_J5";
 // No 0/O/1/I/L -- keeps a hand-typed code unambiguous.
 const CODE_CHARS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 export const CODE_LENGTH = 6;
-export const CODE_VALID_MINUTES = 1;
+// Was 1 minute -- too tight for a real inbox with any delivery lag at all,
+// forcing a full resend for something as ordinary as a slow email. The
+// resend cooldown (see register.js's RESEND_COOLDOWN_SECONDS) is a
+// separate, still-short 60s, so this alone doesn't loosen abuse resistance.
+export const CODE_VALID_MINUTES = 5;
 
 let initialized = false;
 function ensureInit() {

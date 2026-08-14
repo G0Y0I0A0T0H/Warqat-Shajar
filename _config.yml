@@ -1,0 +1,6 @@
+exclude:
+  - firestore.rules
+  - firestore.indexes.json
+  - storage.rules
+  - devserver.py
+  - "*.md"
