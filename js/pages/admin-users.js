@@ -129,7 +129,7 @@ function render() {
   const list = visibleUsers();
   contentEl.innerHTML = `
     <h1 class="heading" style="font-size:1.5rem">${t("admin.users")}</h1>
-    <input class="input" id="user-search" placeholder="${t("header.searchPlaceholder")}" style="margin-top:1rem;max-width:20rem" value="${searchTerm}">
+    <input class="input" id="user-search" placeholder="${t("header.searchPlaceholder")}" style="margin-top:1rem;max-width:20rem" value="${escapeHtml(searchTerm)}">
     <div class="card" style="margin-top:1rem;padding:0 1rem">
       ${
         list.length === 0

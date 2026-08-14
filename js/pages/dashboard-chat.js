@@ -412,13 +412,13 @@ function renderOfferForm() {
   offerFormMount.innerHTML = `
     <form id="offer-form" class="offer-form">
       <div class="offer-form-grid">
-        <input class="input" id="of-quantity" type="number" min="0" placeholder="${t("chat.offerQuantity")}" value="${initial.quantity ?? ""}">
+        <input class="input" id="of-quantity" type="number" min="0" placeholder="${t("chat.offerQuantity")}" value="${escapeHtml(initial.quantity ?? "")}">
         <select class="select" id="of-unit">
           ${UNITS.map((u) => `<option value="${u}" ${(initial.unit || "kg") === u ? "selected" : ""}>${t(unitLabelKey(u))}</option>`).join("")}
         </select>
-        <input class="input" id="of-price" type="number" min="0" step="0.01" placeholder="${t("chat.offerPrice")}" value="${initial.pricePerUnit ?? ""}">
+        <input class="input" id="of-price" type="number" min="0" step="0.01" placeholder="${t("chat.offerPrice")}" value="${escapeHtml(initial.pricePerUnit ?? "")}">
       </div>
-      <input class="input" id="of-notes" placeholder="${t("sourcing.notesLabel")}" value="${initial.deliveryNotes ?? ""}">
+      <input class="input" id="of-notes" placeholder="${t("sourcing.notesLabel")}" value="${escapeHtml(initial.deliveryNotes ?? "")}">
       ${deliveryMethodSectionHTML()}
       <p id="of-error" class="error-text" style="display:none"></p>
       <div class="offer-form-total" id="of-total">${t("chat.offerTotal")}: 0</div>

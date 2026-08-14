@@ -44,7 +44,7 @@ export function renderProductForm(mountEl, profile, existingProduct, options = {
       <div class="grid-2">
         <div class="field">
           <label class="label" data-i18n="products.priceLabel">Price</label>
-          <input class="input" id="pf-price" type="number" min="0" step="0.01" value="${existingProduct?.price ?? ""}">
+          <input class="input" id="pf-price" type="number" min="0" step="0.01" value="${escapeHtml(existingProduct?.price ?? "")}">
         </div>
         <div class="field">
           <label class="label" data-i18n="products.unitLabel">Unit</label>
@@ -62,11 +62,11 @@ export function renderProductForm(mountEl, profile, existingProduct, options = {
       <div class="grid-2">
         <div class="field">
           <label class="label" data-i18n="products.quantityLabel">Available Quantity</label>
-          <input class="input" id="pf-quantity" type="number" min="0" value="${existingProduct?.quantity ?? ""}">
+          <input class="input" id="pf-quantity" type="number" min="0" value="${escapeHtml(existingProduct?.quantity ?? "")}">
         </div>
         <div class="field">
           <label class="label" data-i18n="products.minOrderLabel">Minimum Order Quantity</label>
-          <input class="input" id="pf-min-order" type="number" min="0" value="${existingProduct?.minOrderQuantity ?? ""}">
+          <input class="input" id="pf-min-order" type="number" min="0" value="${escapeHtml(existingProduct?.minOrderQuantity ?? "")}">
         </div>
       </div>
       <div class="field">
