@@ -512,7 +512,14 @@ service cloud.firestore {
             request.resource.data.offer.quantity is number && request.resource.data.offer.quantity > 0 &&
             request.resource.data.offer.pricePerUnit is number && request.resource.data.offer.pricePerUnit > 0 &&
             request.resource.data.offer.totalPrice is number && request.resource.data.offer.totalPrice > 0 &&
-            request.resource.data.offer.unit is string
+            request.resource.data.offer.unit is string &&
+            // Free-text delivery notes -- missed in the first pass of this
+            // check, and rendered straight into a counter-offer form's
+            // value="..." attribute in dashboard-chat.js, so an unbounded
+            // type here is a real stored-XSS vector, not just an untyped
+            // field.
+            (!('deliveryNotes' in request.resource.data.offer) ||
+             (request.resource.data.offer.deliveryNotes is string && request.resource.data.offer.deliveryNotes.size() < 500))
           ))
         );
         allow update: if isAdminWithSection('chats') || (
