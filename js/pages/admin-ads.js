@@ -57,7 +57,7 @@ function renderAdRow(ad, index, total) {
         </div>
         <div class="field">
           <label class="label">${t("ads.linkLabel")}</label>
-          <input class="input force-ltr" dir="ltr" id="edit-link-${ad.id}" value="${escapeHtml(ad.linkUrl)}">
+          <input class="input force-ltr" dir="ltr" id="edit-link-${ad.id}" maxlength="500" value="${escapeHtml(ad.linkUrl)}">
         </div>
         <p class="error-text" id="edit-error-${ad.id}" style="display:none"></p>
         <div style="display:flex;gap:0.5rem;margin-top:0.5rem">

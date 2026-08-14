@@ -148,7 +148,7 @@ async function render() {
                   : isPending
                     ? `<div style="margin-top:0.5rem"><span class="${btnClass("outline", "sm")}" style="pointer-events:none">${icon("headset")} ${t("cart.awaitingFarmerResponse", "Waiting for the farmer's response")}</span></div>`
                     : `<div style="display:flex;align-items:center;gap:0.5rem;margin-top:0.5rem;flex-wrap:wrap">
-                        <input class="input" type="number" min="${product.minOrderQuantity}" max="${product.quantity}" value="${quantity}" data-qty-input="${productId}" style="max-width:6rem">
+                        <input class="input" type="number" min="${escapeHtml(product.minOrderQuantity)}" max="${escapeHtml(product.quantity)}" value="${quantity}" data-qty-input="${productId}" style="max-width:6rem">
                         <span class="text-muted" style="font-size:0.8rem">${unitLabel}</span>
                         <span class="cart-row-subtotal" data-subtotal="${productId}">${subtotal.toLocaleString(getLocale())} ${t("products.currency")}</span>
                       </div>

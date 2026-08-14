@@ -62,6 +62,14 @@ export function isValidNationalId(value) {
   return /^[23]\d{13}$/.test(value);
 }
 
+// The only check used to be "at least 8 characters" -- accepted letters,
+// symbols, anything, as long as it was long enough. Egyptian mobile numbers
+// only (this app's entire userbase): 01 + one of the 5 real carrier
+// prefixes + 8 digits, 11 digits total.
+export function isValidPhone(value) {
+  return /^01[0125]\d{8}$/.test(value);
+}
+
 // Local object-URL preview only -- the actual encrypt+upload happens at
 // submit time in register.js/complete-profile.js, once we have a uid.
 export function wireIdCardPhotoPreview(fileInputEl, previewImgEl) {

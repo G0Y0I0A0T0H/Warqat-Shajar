@@ -3,6 +3,14 @@
 import { t } from "./i18n.js";
 import { SiteSettings } from "./firebase.js";
 
+// Local copy of ui.js's escapeHtml -- importing from ui.js here would create
+// a circular dependency (ui.js already imports computeFreshness/unitLabelKey
+// from this file). Only needed for the raw-id fallback paths below, when a
+// governorate/category id doesn't match any known entry.
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+}
+
 // The full, and only, category structure -- exactly these 16, everywhere
 // (admin's photo-management list, a farmer's product-listing dropdown, the
 // crops/sourcing checkboxes, the homepage grid, the products.html filter).
@@ -182,7 +190,11 @@ export function computeFreshness(harvestDate, categoryId) {
 
 export function governorateLabel(id, locale) {
   const gov = GOVERNORATES.find((g) => g.id === id);
-  return gov ? gov[locale] : id;
+  // The matched-branch labels are trusted (from GOVERNORATES itself), but an
+  // unmatched id is echoed back raw -- and since firestore.rules never
+  // constrains this field to a known governorate, that id can be arbitrary
+  // attacker-supplied text reaching innerHTML at every call site.
+  return gov ? gov[locale] : escapeHtml(id);
 }
 
 // ---------------------------------------------------------------------------
@@ -239,5 +251,7 @@ export function categoryLabelById(id, locale) {
   // bare id. t() echoes the key back unchanged when it truly doesn't exist.
   const key = `categories.${id}`;
   const legacyLabel = t(key);
-  return legacyLabel === key ? id : legacyLabel;
+  // Same reasoning as governorateLabel above -- the final fallback echoes
+  // the raw, unvalidated id straight back, so it needs escaping here too.
+  return legacyLabel === key ? escapeHtml(id) : legacyLabel;
 }

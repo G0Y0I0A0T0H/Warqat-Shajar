@@ -483,7 +483,7 @@ export async function renderAdSlot(containerEl, placement, AdsApi, width = 500, 
 export function renderImageInput(mountEl, { value = "", uploadPathPrefix, accept = "image/*", onChange, hideUrlField = true }) {
   mountEl.innerHTML = `
     <div class="image-input">
-      <input class="input force-ltr image-input-url" dir="ltr" placeholder="https://..." value="${value}" style="${hideUrlField ? "display:none" : ""}">
+      <input class="input force-ltr image-input-url" dir="ltr" placeholder="https://..." value="${escapeHtml(value)}" style="${hideUrlField ? "display:none" : ""}">
       <label class="btn btn-outline btn-sm image-input-upload-btn">
         ${icon("image")} <span>${t("branding.uploadFile", "Upload from device")}</span>
         <input type="file" accept="${accept}" class="image-input-file" style="display:none">
@@ -501,6 +501,27 @@ export function renderImageInput(mountEl, { value = "", uploadPathPrefix, accept
   fileInput.addEventListener("change", async () => {
     const file = fileInput.files[0];
     if (!file) return;
+    // Client-side only -- the real enforcement has to happen wherever the
+    // file actually lands (Cloudinary's own upload preset settings), since
+    // anything checked only here is trivially bypassed by a direct API
+    // call. This is just the first line of defense / a fast, friendly
+    // rejection for the normal upload-from-device path. accept is always
+    // "image/*" or "video/*" at every call site in this app.
+    const isVideo = accept.startsWith("video/");
+    const maxBytes = (isVideo ? 100 : 10) * 1024 * 1024;
+    const typePrefix = isVideo ? "video/" : "image/";
+    if (!file.type.startsWith(typePrefix)) {
+      statusEl.style.display = "inline";
+      statusEl.textContent = t("branding.uploadTypeError", "This file type isn't allowed here.");
+      fileInput.value = "";
+      return;
+    }
+    if (file.size > maxBytes) {
+      statusEl.style.display = "inline";
+      statusEl.textContent = t("branding.uploadSizeError", "File is too large.");
+      fileInput.value = "";
+      return;
+    }
     statusEl.style.display = "inline";
     statusEl.textContent = t("branding.uploading", "Uploading...");
     try {
@@ -1079,11 +1100,11 @@ export function productCardHTML(product, categoryLabel, governorateLabel) {
       <div class="product-card-body">
         <div class="product-card-top">
           <h3 class="product-card-title">${heading}</h3>
-          <span class="product-card-rating">${icon("star", "is-filled")} ${product.qualityRating}</span>
+          <span class="product-card-rating">${icon("star", "is-filled")} ${escapeHtml(product.qualityRating)}</span>
         </div>
         ${product.title ? `<span class="${badgeClass("outline")}" style="font-size:0.7rem">${categoryLabel}</span>` : ""}
         <p class="product-card-gov">${governorateLabel}</p>
-        <p class="product-card-price">${product.price} ${priceUnitLabel}</p>
+        <p class="product-card-price">${escapeHtml(product.price)} ${priceUnitLabel}</p>
         ${freshness ? `<span class="product-card-freshness" style="color:${freshness.color}">${t("freshness.label")}: ${freshness.score}/10</span>` : ""}
       </div>
     </a>

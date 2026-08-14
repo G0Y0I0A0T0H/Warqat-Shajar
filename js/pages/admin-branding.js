@@ -121,12 +121,12 @@ function render() {
               ${
                 f.key === "aboutMissionBody"
                   ? `
-                <textarea class="textarea" rows="3" data-content-ar="${f.key}" placeholder="${t("branding.arabicPlaceholder", "Arabic")}">${siteContent.ar?.[f.key] ?? ""}</textarea>
-                <textarea class="textarea force-ltr" dir="ltr" rows="3" data-content-en="${f.key}" placeholder="${t("branding.englishPlaceholder", "English")}">${siteContent.en?.[f.key] ?? ""}</textarea>
+                <textarea class="textarea" rows="3" maxlength="1000" data-content-ar="${f.key}" placeholder="${t("branding.arabicPlaceholder", "Arabic")}">${escapeHtml(siteContent.ar?.[f.key] ?? "")}</textarea>
+                <textarea class="textarea force-ltr" dir="ltr" rows="3" maxlength="1000" data-content-en="${f.key}" placeholder="${t("branding.englishPlaceholder", "English")}">${escapeHtml(siteContent.en?.[f.key] ?? "")}</textarea>
               `
                   : `
-                <input class="input" data-content-ar="${f.key}" placeholder="${t("branding.arabicPlaceholder", "Arabic")}" value="${siteContent.ar?.[f.key] ?? ""}">
-                <input class="input force-ltr" dir="ltr" data-content-en="${f.key}" placeholder="${t("branding.englishPlaceholder", "English")}" value="${siteContent.en?.[f.key] ?? ""}">
+                <input class="input" data-content-ar="${f.key}" maxlength="300" placeholder="${t("branding.arabicPlaceholder", "Arabic")}" value="${escapeHtml(siteContent.ar?.[f.key] ?? "")}">
+                <input class="input force-ltr" dir="ltr" data-content-en="${f.key}" maxlength="300" placeholder="${t("branding.englishPlaceholder", "English")}" value="${escapeHtml(siteContent.en?.[f.key] ?? "")}">
               `
               }
             </div>
@@ -145,19 +145,19 @@ function render() {
       <div class="form-stack" style="margin-top:0.5rem">
         <div class="field">
           <label class="label" for="contact-phone-input">${t("branding.contactPhoneLabel")}</label>
-          <input class="input force-ltr" dir="ltr" id="contact-phone-input" value="${socialLinks.phone || ""}">
+          <input class="input force-ltr" dir="ltr" id="contact-phone-input" maxlength="30" value="${escapeHtml(socialLinks.phone || "")}">
         </div>
         <div class="field">
           <label class="label" for="contact-whatsapp-input">${t("branding.contactWhatsappLabel")}</label>
-          <input class="input force-ltr" dir="ltr" id="contact-whatsapp-input" value="${socialLinks.whatsapp || ""}">
+          <input class="input force-ltr" dir="ltr" id="contact-whatsapp-input" maxlength="30" value="${escapeHtml(socialLinks.whatsapp || "")}">
         </div>
         <div class="field">
           <label class="label" for="contact-email-input">${t("branding.contactEmailLabel")}</label>
-          <input class="input force-ltr" dir="ltr" type="email" id="contact-email-input" value="${socialLinks.email || ""}">
+          <input class="input force-ltr" dir="ltr" type="email" id="contact-email-input" maxlength="150" value="${escapeHtml(socialLinks.email || "")}">
         </div>
         <div class="field">
           <label class="label" for="contact-policy-input">${t("branding.contactPolicyLabel")}</label>
-          <input class="input force-ltr" dir="ltr" id="contact-policy-input" placeholder="terms.html" value="${socialLinks.policyLink || ""}">
+          <input class="input force-ltr" dir="ltr" id="contact-policy-input" maxlength="200" placeholder="terms.html" value="${escapeHtml(socialLinks.policyLink || "")}">
         </div>
         <span id="contact-saved" class="success-text" style="display:none">${t("branding.saved")}</span>
         <button type="button" class="${btnClass("default", "sm")}" id="save-contact-btn" style="align-self:flex-start">${t("branding.saveChanges", "Save")}</button>
@@ -171,7 +171,7 @@ function render() {
           <select class="select" id="social-platform">
             ${SOCIAL_PLATFORMS.map((p) => `<option value="${p}">${t(`branding.platform${p[0].toUpperCase()}${p.slice(1)}`, p)}</option>`).join("")}
           </select>
-          <input class="input force-ltr" id="social-url" dir="ltr" placeholder="https://...">
+          <input class="input force-ltr" id="social-url" dir="ltr" maxlength="300" placeholder="https://...">
           <button type="button" class="${btnClass("outline", "sm")}" id="social-add-btn">${t("branding.socialAdd", "Add")}</button>
         </div>
       </div>
@@ -380,8 +380,8 @@ function render() {
         <div class="list-row">
           <span class="btn btn-ghost btn-icon" style="pointer-events:none">${icon(l.platform === "x" ? "x" : l.platform === "other" ? "link" : l.platform)}</span>
           <div class="list-row-main">
-            <div style="font-weight:600">${t(`branding.platform${l.platform[0].toUpperCase()}${l.platform.slice(1)}`, l.platform)}</div>
-            <div class="text-muted force-ltr" style="font-size:0.8rem;display:block">${l.url}</div>
+            <div style="font-weight:600">${escapeHtml(t(`branding.platform${l.platform[0].toUpperCase()}${l.platform.slice(1)}`, l.platform))}</div>
+            <div class="text-muted force-ltr" style="font-size:0.8rem;display:block">${escapeHtml(l.url)}</div>
           </div>
           <button type="button" class="${btnClass("destructive", "icon-sm")}" data-remove-social="${i}">${icon("trash")}</button>
         </div>

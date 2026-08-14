@@ -194,16 +194,44 @@ Auth.onChange((nextUser) => {
   notify();
 });
 
+// Purely a client-side speed bump against someone guessing PINs on an
+// already-unlocked device -- the real security boundary is still
+// firestore.rules' adminSecrets read restriction (only that admin or the
+// owner can ever read the stored hash at all), which anyone with real
+// SDK-level access already bypasses entirely. Still worth the few lines: it
+// meaningfully slows down the one realistic threat this can affect (a
+// borrowed/unlocked device, guessing through the actual UI).
+const ADMIN_MODE_MAX_ATTEMPTS = 5;
+const ADMIN_MODE_LOCKOUT_MS = 60 * 1000;
+
+function attemptsKey(uid) {
+  return `adminModeAttempts:${uid}`;
+}
+
 export async function unlockAdminMode(code) {
   if (!authState.user) return false;
-  const ok = await Admin.verifyAdminModeCode(authState.user.uid, code);
+  const uid = authState.user.uid;
+  const raw = sessionStorage.getItem(attemptsKey(uid));
+  const attempts = raw ? JSON.parse(raw) : { count: 0, lockedUntil: 0 };
+  if (Date.now() < attempts.lockedUntil) return false;
+
+  const ok = await Admin.verifyAdminModeCode(uid, code);
   if (ok) {
-    sessionStorage.setItem(sessionKey(authState.user.uid), "1");
+    sessionStorage.removeItem(attemptsKey(uid));
+    sessionStorage.setItem(sessionKey(uid), "1");
     adminModeUnlocked = true;
     recomputeAdminMode(true);
     notify();
+    return true;
   }
-  return ok;
+
+  attempts.count += 1;
+  if (attempts.count >= ADMIN_MODE_MAX_ATTEMPTS) {
+    attempts.lockedUntil = Date.now() + ADMIN_MODE_LOCKOUT_MS;
+    attempts.count = 0;
+  }
+  sessionStorage.setItem(attemptsKey(uid), JSON.stringify(attempts));
+  return false;
 }
 
 export async function toggleFavorite(productId) {

@@ -19,4 +19,8 @@ class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
 
 if __name__ == "__main__":
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 5500
-    http.server.test(HandlerClass=NoCacheHandler, port=port)
+    # http.server.test() binds every interface (0.0.0.0) by default -- fine
+    # on a genuinely isolated machine, but this is meant for local
+    # development only and was never supposed to be reachable from the
+    # network or the internet if run on a shared/cloud box by mistake.
+    http.server.test(HandlerClass=NoCacheHandler, port=port, bind="127.0.0.1")

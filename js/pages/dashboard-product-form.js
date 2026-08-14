@@ -57,7 +57,7 @@ export function renderProductForm(mountEl, profile, existingProduct, options = {
       </div>
       <div class="field">
         <label class="label" data-i18n="products.descriptionLabel">Description</label>
-        <textarea class="textarea" id="pf-description" rows="4">${existingProduct?.description ?? ""}</textarea>
+        <textarea class="textarea" id="pf-description" rows="4">${escapeHtml(existingProduct?.description ?? "")}</textarea>
       </div>
       <div class="grid-2">
         <div class="field">

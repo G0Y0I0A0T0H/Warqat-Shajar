@@ -227,6 +227,12 @@ function renderMessages() {
             if (m.type === "text") {
               return `<div class="chat-row ${isMine ? "is-mine" : ""}"><div class="chat-bubble">${escapeHtml(m.text)}</div></div>`;
             }
+            // Anything else used to be assumed to be a well-formed offer and
+            // read straight into o.status below -- a message with type
+            // "offer" but a missing/malformed offer object (or any other
+            // unrecognized type) threw here and blanked the whole message
+            // list for both participants, not just that one row.
+            if (m.type !== "offer" || !m.offer) return "";
             const o = m.offer;
             const canRespond = !isMine && o.status === "pending";
             const canCancel = isMine && o.status === "pending";
@@ -235,9 +241,9 @@ function renderMessages() {
               <div class="card offer-card">
                 <span class="${badgeClass(o.status === "accepted" ? "default" : "outline")}" style="align-self:flex-start">${t(STATUS_KEY[o.status] || STATUS_KEY.pending)}</span>
                 <dl class="offer-grid">
-                  <dt>${t("chat.offerQuantity")}</dt><dd>${o.quantity} ${t(unitLabelKey(o.unit))}</dd>
-                  <dt>${t("chat.offerPrice")}</dt><dd>${o.pricePerUnit}</dd>
-                  <dt class="offer-total">${t("chat.offerTotal")}</dt><dd class="offer-total">${o.totalPrice}</dd>
+                  <dt>${t("chat.offerQuantity")}</dt><dd>${escapeHtml(o.quantity)} ${t(unitLabelKey(o.unit))}</dd>
+                  <dt>${t("chat.offerPrice")}</dt><dd>${escapeHtml(o.pricePerUnit)}</dd>
+                  <dt class="offer-total">${t("chat.offerTotal")}</dt><dd class="offer-total">${escapeHtml(o.totalPrice)}</dd>
                 </dl>
                 ${
                   canRespond
@@ -511,8 +517,16 @@ async function main() {
   paymentInfo = await SiteSettings.getPaymentInfoOnce().catch(() => null);
 
   if (!chatId) return;
-  chat = await Chat.getChat(chatId);
-  if (!chat) return;
+  // A rejected read (not a participant, or a stale/tampered link) used to
+  // throw here uncaught and leave the whole page stuck on its loading
+  // state forever, with nothing telling the visitor why -- firestore.rules
+  // is already what actually stops the access; this only makes the denial
+  // visible instead of silent.
+  chat = await Chat.getChat(chatId).catch(() => null);
+  if (!chat) {
+    showMessage(document.getElementById("chat-error"), t("chat.notAccessible", "This conversation doesn't exist or you don't have access to it."));
+    return;
+  }
 
   if (chat.contextType === "product") {
     const product = await Products.getProduct(chat.contextId).catch(() => null);

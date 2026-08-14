@@ -39,6 +39,27 @@ service cloud.firestore {
       );
     }
 
+    // The non-sensitive delegable sections (ads, branding, comments,
+    // listings, chats, teamChat -- see js/admin-shell.js's hasSection) use
+    // the OPPOSITE default from isOwnerOrGranted above: an admin with no
+    // allowedSections field at all (granted before granular permissions
+    // existed) gets full access via the same "grandfather rule" the client
+    // already assumes -- only an admin with a real allowedSections LIST
+    // that excludes this section is denied. Before this function existed,
+    // every one of these collections' rules only checked isAdmin() here, so
+    // a section-restricted admin (e.g. granted only "reports") could still
+    // write to any of them via a direct SDK call, bypassing the exact
+    // restriction the owner set through the admin-admins.html UI.
+    function isAdminWithSection(section) {
+      return isOwner() || (
+        isAdmin() &&
+        (
+          !(get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.get('allowedSections', null) is list) ||
+          get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.get('allowedSections', []).hasAny([section])
+        )
+      );
+    }
+
     // The owner's own account, plus the two admins with a real emergency
     // relationship to the owner (see js/supreme-mode.js) -- a delegated
     // "admins"-granted admin-manager (see isOwnerOrGranted('admins') below)
@@ -121,7 +142,17 @@ service cloud.firestore {
       // already fits this. Anything else (product owner name, chat participant
       // name, etc.) is denormalized onto its own document, not live-read here.
       allow read: if isSignedIn() && (request.auth.uid == uid || isAdmin());
-      allow create: if isSignedIn() && request.auth.uid == uid;
+      // The update rule below carefully protects status/ratingAverage/
+      // ratingCount/accountType from being rewritten after creation, but
+      // create had no matching check at all -- a scripted registration
+      // request could set an inflated rating or a "verified" status from
+      // the very first write, before the update rule ever gets a chance to
+      // guard anything.
+      allow create: if isSignedIn() && request.auth.uid == uid &&
+        request.resource.data.accountType in ['farmer', 'trader', 'factory', 'consumer'] &&
+        request.resource.data.status == 'active' &&
+        request.resource.data.ratingAverage == 0 &&
+        request.resource.data.ratingCount == 0;
       allow update: if isOwner() ||
         (
           // The only thing the app's own admin UI ever does to another
@@ -219,7 +250,7 @@ service cloud.firestore {
 
     match /ads/{adId} {
       allow read: if true;
-      allow create, update, delete: if isAdmin();
+      allow create, update, delete: if isAdminWithSection('ads');
     }
 
     match /settings/{docId} {
@@ -232,8 +263,14 @@ service cloud.firestore {
       // Firestore ORs every matching block together, so without this
       // exclusion a regular admin would still be able to write through
       // this generic rule regardless of the narrower ones.
-      allow write: if isAdmin() &&
-        docId != 'killSwitch' && docId != 'maintenanceMode' && docId != 'chatDisabled' && docId != 'paymentInfo';
+      // adPlacements is managed from admin-ads.html ("ads" section); every
+      // other doc left in this generic rule (siteImages, siteContent,
+      // siteTheme, socialLinks, categories) is managed from
+      // admin-branding.html ("branding" section) -- each needs its own
+      // section grant, not just bare isAdmin(), so a section-restricted
+      // admin can't reach either one via a direct SDK call.
+      allow write: if docId != 'killSwitch' && docId != 'maintenanceMode' && docId != 'chatDisabled' && docId != 'paymentInfo' &&
+        (docId == 'adPlacements' ? isAdminWithSection('ads') : isAdminWithSection('branding'));
     }
 
     // Emergency kill switch: owner-only, on purpose -- this is a
@@ -306,7 +343,18 @@ service cloud.firestore {
 
     match /products/{productId} {
       allow read: if true;
-      allow create: if (
+      // priceQuantityValid is re-checked on every write below, not just
+      // create -- nothing previously stopped a negative price or a
+      // non-numeric quantity from being written, which every renderer
+      // (product cards, cart, the order-total math) trusted blindly.
+      function priceQuantityValid() {
+        return request.resource.data.price is number && request.resource.data.price > 0 &&
+          request.resource.data.quantity is number && request.resource.data.quantity >= 0 &&
+          request.resource.data.minOrderQuantity is number && request.resource.data.minOrderQuantity > 0 &&
+          request.resource.data.qualityRating is number &&
+          request.resource.data.qualityRating >= 1 && request.resource.data.qualityRating <= 10;
+      }
+      allow create: if priceQuantityValid() && ((
         isActiveUser() && request.resource.data.ownerId == request.auth.uid &&
         // Only a farmer account may list a product -- the rest of the app
         // assumes this everywhere (sellerProfiles is only ever auto-created
@@ -323,21 +371,26 @@ service cloud.firestore {
         // zero-initialized-counters requirement as the self-service branch,
         // just without the ownerId==caller restriction. Still requires the
         // target owner to actually be a farmer, same as above.
-        isAdmin() &&
+        isAdminWithSection('listings') &&
         get(/databases/$(database)/documents/users/$(request.resource.data.ownerId)).data.accountType == 'farmer' &&
         request.resource.data.viewsCount == 0 &&
         request.resource.data.offersCount == 0 &&
         request.resource.data.dealsCount == 0
-      );
+      ));
 
       // Owner/admin may edit listing content but not directly rewrite the
       // trust/ranking counters (viewsCount, offersCount, dealsCount).
-      allow update: if isAdmin() || (
+      allow update: if (isAdminWithSection('listings') && priceQuantityValid()) || (
         isSignedIn() && resource.data.ownerId == request.auth.uid &&
+        priceQuantityValid() &&
         !request.resource.data.diff(resource.data).affectedKeys()
           .hasAny(['viewsCount', 'offersCount', 'dealsCount', 'ownerId'])
       ) || (
-        // Public view counter: anyone may bump it by exactly 1, nothing else.
+        // View counter -- signed-in only now (an unauthenticated script could
+        // otherwise inflate/reset any product's view count with unlimited,
+        // untraceable requests). A real signed-in user can still only bump
+        // by exactly 1, same as every other counter here.
+        isSignedIn() &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewsCount']) &&
         request.resource.data.viewsCount == resource.data.viewsCount + 1
       ) || (
@@ -368,7 +421,7 @@ service cloud.firestore {
         // Decrement only alongside an actual comment delete, which is
         // already admin-only (see productComments' own delete rule) --
         // matched here rather than loosened to any signed-in user.
-        isAdmin() &&
+        isAdminWithSection('comments') &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['commentsCount']) &&
         request.resource.data.commentsCount == resource.data.get('commentsCount', 0) - 1
       ) || (
@@ -403,29 +456,32 @@ service cloud.firestore {
         request.resource.data.quantity == resource.data.quantity - get(/databases/$(database)/documents/escrowOrders/$(request.resource.data.lastOrderApplied)).data.quantity
       );
 
-      allow delete: if isSignedIn() && (resource.data.ownerId == request.auth.uid || isAdmin());
+      allow delete: if isSignedIn() && (resource.data.ownerId == request.auth.uid || isAdminWithSection('listings'));
     }
 
     match /sourcingRequests/{requestId} {
       allow read: if true;
-      allow create: if isActiveUser() && request.resource.data.ownerId == request.auth.uid;
+      allow create: if isActiveUser() && request.resource.data.ownerId == request.auth.uid &&
+        request.resource.data.quantity is number && request.resource.data.quantity > 0 &&
+        (request.resource.data.get('priceMin', null) == null || request.resource.data.priceMin is number) &&
+        (request.resource.data.get('priceMax', null) == null || request.resource.data.priceMax is number);
       allow update, delete: if isSignedIn() &&
         (resource.data.ownerId == request.auth.uid || isAdmin());
     }
 
     match /chats/{chatId} {
-      allow read: if isParticipant(resource.data) || isAdmin();
+      allow read: if isParticipant(resource.data) || isAdminWithSection('chats');
       // Participants may only bump the last-message preview when sending a
       // message, never rewrite participants, phones, or context.
-      allow update: if isAdmin() || (
+      allow update: if isAdminWithSection('chats') || (
         isParticipant(resource.data) &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastMessage', 'lastMessageAt'])
       );
       allow create: if isActiveUser() && request.auth.uid in request.resource.data.participantIds;
-      allow delete: if isAdmin();
+      allow delete: if isAdminWithSection('chats');
 
       match /messages/{messageId} {
-        allow read: if isParticipant(get(/databases/$(database)/documents/chats/$(chatId)).data) || isAdmin();
+        allow read: if isParticipant(get(/databases/$(database)/documents/chats/$(chatId)).data) || isAdminWithSection('chats');
         // Admins bypass participancy, per-chat lock, AND the sitewide
         // chat-disable switch entirely, so they can still post the
         // automated "conversation stopped" system warning or moderate
@@ -434,14 +490,25 @@ service cloud.firestore {
         // chat, or while the owner has disabled chat sitewide (see
         // settings/chatDisabled -- adminChats, the separate admin team-chat
         // room, is entirely unaffected by this).
-        allow create: if isAdmin() || (
+        allow create: if isAdminWithSection('chats') || (
           isActiveUser() &&
           request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participantIds &&
           request.resource.data.senderId == request.auth.uid &&
           get(/databases/$(database)/documents/chats/$(chatId)).data.get('locked', false) == false &&
-          get(/databases/$(database)/documents/settings/chatDisabled).data.get('active', false) == false
+          get(/databases/$(database)/documents/settings/chatDisabled).data.get('active', false) == false &&
+          // An offer message's numeric fields used to reach every renderer
+          // (dashboard-chat.js, dashboard-orders.js, dashboard-my-orders.js)
+          // completely untyped -- a scripted request could post arbitrary
+          // text/markup into what every UI assumed was always a number.
+          (request.resource.data.type != 'offer' || (
+            request.resource.data.offer.status == 'pending' &&
+            request.resource.data.offer.quantity is number && request.resource.data.offer.quantity > 0 &&
+            request.resource.data.offer.pricePerUnit is number && request.resource.data.offer.pricePerUnit > 0 &&
+            request.resource.data.offer.totalPrice is number && request.resource.data.offer.totalPrice > 0 &&
+            request.resource.data.offer.unit is string
+          ))
         );
-        allow update: if isAdmin() || (
+        allow update: if isAdminWithSection('chats') || (
           isSignedIn() &&
           request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participantIds &&
           resource.data.type == 'offer' &&
@@ -462,7 +529,7 @@ service cloud.firestore {
              request.resource.data.offer.status == 'cancelled')
           )
         );
-        allow delete: if isAdmin();
+        allow delete: if isAdminWithSection('chats');
       }
     }
 
@@ -736,9 +803,9 @@ service cloud.firestore {
       // to rewrite uid/productId on an existing comment (e.g. reassigning
       // authorship to someone else, or moving it onto a different product),
       // never a real editing use case. Admin-only, matching reviews below.
-      allow update: if isAdmin();
+      allow update: if isAdminWithSection('comments');
       allow delete: if isSignedIn() &&
-        (resource.data.uid == request.auth.uid || isAdmin());
+        (resource.data.uid == request.auth.uid || isAdminWithSection('comments'));
     }
 
     // Logged whenever a user's own client blocks their attempt to share a
@@ -776,11 +843,11 @@ service cloud.firestore {
 
     // A single shared room for every admin — never exposed to regular users.
     match /adminChats/{messageId} {
-      allow read: if isAdmin();
+      allow read: if isAdminWithSection('teamChat');
       // senderId must be the real caller -- without this, any admin could
       // post a message tagged with a DIFFERENT admin's uid, impersonating
       // them in the shared team room.
-      allow create: if isAdmin() && request.resource.data.senderId == request.auth.uid;
+      allow create: if isAdminWithSection('teamChat') && request.resource.data.senderId == request.auth.uid;
       // Owner can always moderate; a message's own sender can also edit/
       // delete their own message any time -- an earlier version limited
       // this to a 15-minute window, but that just meant the delete button
@@ -788,7 +855,7 @@ service cloud.firestore {
       // reading as "deletion is broken" rather than a deliberate limit.
       // This is an internal admin-only room, not the public user chat, so
       // there's no real moderation reason to keep that window.
-      allow update, delete: if isOwner() || (isAdmin() && resource.data.senderId == request.auth.uid);
+      allow update, delete: if isOwner() || (isAdminWithSection('teamChat') && resource.data.senderId == request.auth.uid);
     }
 
     // Written by any signed-in user into another user's own inbox (e.g. a

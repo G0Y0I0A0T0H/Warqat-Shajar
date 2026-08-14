@@ -69,7 +69,7 @@ function render() {
             }
           </div>
           <div class="grid-2 text-muted" style="gap:0.5rem;margin-top:0.5rem;font-size:0.875rem">
-            <div>${t("orders.quantity")}: ${o.quantity} ${o.unit}</div>
+            <div>${t("orders.quantity")}: ${escapeHtml(o.quantity)} ${escapeHtml(o.unit)}</div>
             <div>${t("orders.buyerType")}: ${o.buyerAccountType ? t(`roles.${o.buyerAccountType}`) : ""}</div>
             <div>${t("orders.contact")}: ${escapeHtml(o.buyerName)}</div>
             ${o.deliveryNotes ? `<div>${t("orders.delivery")}: ${escapeHtml(o.deliveryNotes)}</div>` : ""}

@@ -2,7 +2,7 @@ import { initLayout } from "../layout.js";
 import { guardAdmin } from "../admin-shell.js";
 import { t, onLocaleChange } from "../i18n.js";
 import { Reports, Admin } from "../firebase.js";
-import { badgeClass, btnClass } from "../ui.js";
+import { badgeClass, btnClass, escapeHtml } from "../ui.js";
 
 let contentEl;
 let reports = [];
@@ -29,15 +29,15 @@ function render() {
                 <div class="list-row" style="align-items:flex-start;flex-direction:column;gap:0.5rem">
                   <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap">
                     <span class="${badgeClass(isPending ? "outline" : "secondary")}">${r.status}</span>
-                    <span style="font-size:0.85rem"><strong>${t("admin.reporterUser")}:</strong> ${r.reporterName}</span>
-                    <span style="font-size:0.85rem"><strong>${t("admin.reportedUser")}:</strong> ${r.reportedName}</span>
+                    <span style="font-size:0.85rem"><strong>${t("admin.reporterUser")}:</strong> ${escapeHtml(r.reporterName)}</span>
+                    <span style="font-size:0.85rem"><strong>${t("admin.reportedUser")}:</strong> ${escapeHtml(r.reportedName)}</span>
                   </div>
                   <div style="font-size:0.85rem"><strong>${t("report.reasonLabel")}:</strong> ${t(REASON_KEY[r.reason] || REASON_KEY.other)}</div>
-                  ${r.details ? `<p style="margin:0;font-size:0.85rem" class="text-muted">${r.details}</p>` : ""}
+                  ${r.details ? `<p style="margin:0;font-size:0.85rem" class="text-muted">${escapeHtml(r.details)}</p>` : ""}
                   ${
                     isPending
                       ? `
-                      <textarea class="textarea" data-notes="${r.id}" rows="2" placeholder="${t("admin.adminNotes")}">${notesDraft[r.id] ?? r.adminNotes ?? ""}</textarea>
+                      <textarea class="textarea" data-notes="${r.id}" rows="2" placeholder="${t("admin.adminNotes")}">${escapeHtml(notesDraft[r.id] ?? r.adminNotes ?? "")}</textarea>
                       <div class="list-row-actions">
                         <button type="button" class="${btnClass("destructive", "sm")}" data-suspend="${r.id}:${r.reportedUid}">${t("admin.suspend")}</button>
                         <button type="button" class="${btnClass("default", "sm")}" data-actioned="${r.id}">${t("admin.markActioned")}</button>
@@ -45,7 +45,7 @@ function render() {
                       </div>
                     `
                       : r.adminNotes
-                        ? `<p style="margin:0;font-size:0.8rem" class="text-muted"><strong>${t("admin.adminNotes")}:</strong> ${r.adminNotes}</p>`
+                        ? `<p style="margin:0;font-size:0.8rem" class="text-muted"><strong>${t("admin.adminNotes")}:</strong> ${escapeHtml(r.adminNotes)}</p>`
                         : ""
                   }
                 </div>
@@ -79,7 +79,12 @@ function render() {
       const [reportId, reportedUid] = btn.dataset.suspend.split(":");
       const days = prompt(t("admin.suspendDays"), "30");
       if (!days) return;
-      await Admin.setUserStatus(reportedUid, "suspended", Number(days));
+      const daysNum = Number(days);
+      if (!Number.isFinite(daysNum) || daysNum <= 0) {
+        alert(t("admin.suspendDaysInvalid", "Enter a valid number of days."));
+        return;
+      }
+      await Admin.setUserStatus(reportedUid, "suspended", daysNum);
       await Reports.updateReportStatus(reportId, "actioned", notesDraft[reportId] ?? "");
       await reload();
     });
