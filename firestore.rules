@@ -576,7 +576,7 @@ service cloud.firestore {
          request.resource.data.status == 'payment_confirmed' &&
          request.resource.data.noProofPayment == true &&
          get(/databases/$(database)/documents/settings/paymentInfo).data.methods
-           .exists(m, m.id == request.resource.data.paymentMethodId && m.noProofRequired == true))
+           .exists(m, m.id == request.resource.data.paymentMethodId && m.get('noProofRequired', false) == true))
         ||
         (request.auth.uid == resource.data.buyerId &&
          resource.data.status == 'payment_confirmed' &&
