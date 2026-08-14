@@ -2,7 +2,7 @@ import { initLayout } from "../layout.js";
 import { t, getLocale, onLocaleChange } from "../i18n.js";
 import { SiteSettings, Products, Ads } from "../firebase.js";
 import { mergeCategories, CATEGORY_GROUPS, CATEGORY_IMAGES, categoryLabel, categoryLabelById, onCategoriesChange, governorateLabel } from "../constants.js";
-import { renderAdSlot, wireFavoriteButtons, productCardHTML, icon, escapeHtml, safeUrl, btnClass } from "../ui.js";
+import { renderAdSlot, wireFavoriteButtons, productCardHTML, icon, escapeHtml, safeUrl, optimizedImageUrl, btnClass } from "../ui.js";
 import { authState, subscribe } from "../state.js";
 
 const TRUST_ITEMS = [
@@ -22,14 +22,14 @@ let activeSlide = 0;
 function preloadSlide(index) {
   const src = heroImages[index];
   if (!src) return;
-  new Image().src = src;
+  new Image().src = optimizedImageUrl(src, 1600);
 }
 
 function renderHero() {
   const slidesEl = document.getElementById("hero-slides");
   const dotsEl = document.getElementById("hero-dots");
   slidesEl.innerHTML = heroImages
-    .map((src, i) => `<div class="hero-slide ${i === activeSlide ? "is-active" : ""}" style="${i === activeSlide ? `background-image:url('${src}')` : ""}"></div>`)
+    .map((src, i) => `<div class="hero-slide ${i === activeSlide ? "is-active" : ""}" style="${i === activeSlide ? `background-image:url('${optimizedImageUrl(src, 1600)}')` : ""}"></div>`)
     .join("");
   dotsEl.innerHTML =
     heroImages.length > 1
@@ -104,7 +104,7 @@ function renderCategoryGrid() {
       if (!image) return "";
       return `
     <a href="products.html?category=${cat.id}" class="category-card">
-      <img src="${safeUrl(image)}" alt="${escapeHtml(label)}" loading="lazy">
+      <img src="${optimizedImageUrl(image, 500)}" alt="${escapeHtml(label)}" loading="lazy">
       <div class="category-card-overlay"></div>
       <div class="category-card-label">
         <div class="category-card-name">${escapeHtml(label)}</div>

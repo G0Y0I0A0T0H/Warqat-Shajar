@@ -2,7 +2,7 @@ import { initLayout } from "../layout.js";
 import { t, getLocale, onLocaleChange } from "../i18n.js";
 import { Products, Chat, Ads, Notifications, SiteSettings } from "../firebase.js";
 import { governorateLabel, categoryLabelById, onCategoriesChange, computeFreshness, unitLabelKey } from "../constants.js";
-import { renderAdSlot, favoriteButtonHTML, wireFavoriteButtons, shareButtonsHTML, wireShareButtons, initReportDialog, initProductComments, icon, showMessage, escapeHtml, safeUrl, badgeClass, interpolate } from "../ui.js";
+import { renderAdSlot, favoriteButtonHTML, wireFavoriteButtons, shareButtonsHTML, wireShareButtons, initReportDialog, initProductComments, icon, showMessage, escapeHtml, safeUrl, optimizedImageUrl, optimizedVideoUrl, badgeClass, interpolate } from "../ui.js";
 import { authState, subscribe, addToCart } from "../state.js";
 
 const params = new URLSearchParams(location.search);
@@ -27,7 +27,7 @@ function renderGallery() {
   return `
     <div class="product-gallery-zoom-outer">
       <div class="product-gallery-zoom" id="gallery-zoom-box">
-        <img src="${safeUrl(photos[activePhotoIndex])}" alt="" id="gallery-hero-img">
+        <img src="${optimizedImageUrl(photos[activePhotoIndex])}" alt="" id="gallery-hero-img">
         <div class="gallery-zoom-lens" id="gallery-zoom-lens"></div>
         ${
           photos.length > 1
@@ -47,7 +47,7 @@ function renderGallery() {
           ${photos
             .map(
               (url, i) =>
-                `<button type="button" class="product-gallery-thumb ${i === activePhotoIndex ? "is-active" : ""}" data-thumb="${i}"><img src="${safeUrl(url)}" alt=""></button>`,
+                `<button type="button" class="product-gallery-thumb ${i === activePhotoIndex ? "is-active" : ""}" data-thumb="${i}"><img src="${optimizedImageUrl(url, 150)}" alt=""></button>`,
             )
             .join("")}
         </div>
@@ -65,7 +65,7 @@ function setActivePhoto(index) {
   if (!img) return;
   img.classList.add("is-fading");
   setTimeout(() => {
-    img.src = photos[activePhotoIndex];
+    img.src = optimizedImageUrl(photos[activePhotoIndex]);
     img.classList.remove("is-fading");
   }, 180);
   document.querySelectorAll("[data-thumb]").forEach((thumb) => {
@@ -129,7 +129,7 @@ function render() {
   detailEl.innerHTML = `
     <div class="product-gallery">
       ${renderGallery()}
-      ${safeUrl(product.videoUrl) ? `<video src="${safeUrl(product.videoUrl)}" controls style="grid-column:span 3;border-radius:var(--radius-lg);width:100%"></video>` : ""}
+      ${safeUrl(product.videoUrl) ? `<video src="${optimizedVideoUrl(product.videoUrl)}" controls style="grid-column:span 3;border-radius:var(--radius-lg);width:100%"></video>` : ""}
     </div>
     <div>
       <div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem">

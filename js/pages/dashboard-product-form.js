@@ -5,7 +5,7 @@ import { t, getLocale, onLocaleChange, refreshTranslations } from "../i18n.js";
 import { Products, PhoneAttempts, Notifications, AuditLog } from "../firebase.js";
 import { mergeCategories, categoryLabelById, onCategoriesChange, UNITS, unitLabelKey } from "../constants.js";
 import { populateGovernorateSelect } from "./auth-shared.js";
-import { renderStarButtons, showMessage, renderImageInput, containsPhoneNumber, safeUrl, escapeHtml } from "../ui.js";
+import { renderStarButtons, showMessage, renderImageInput, containsPhoneNumber, safeUrl, optimizedImageUrl, escapeHtml } from "../ui.js";
 import { authState } from "../state.js";
 
 function toDateInputValue(value) {
@@ -140,7 +140,7 @@ export function renderProductForm(mountEl, profile, existingProduct, options = {
       .map(
         (url, i) => `
         <div style="position:relative;width:5rem;height:5rem;border-radius:var(--radius-lg);overflow:hidden;background:var(--muted)">
-          <img src="${safeUrl(url)}" alt="" style="width:100%;height:100%;object-fit:cover">
+          <img src="${optimizedImageUrl(url, 200)}" alt="" style="width:100%;height:100%;object-fit:cover">
           <button type="button" class="btn btn-destructive btn-icon-sm" data-remove-photo="${i}" style="position:absolute;top:2px;inset-inline-end:2px;width:1.25rem;height:1.25rem;padding:0">&times;</button>
         </div>
       `,

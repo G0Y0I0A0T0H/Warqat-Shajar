@@ -3,7 +3,7 @@ import { guardAdmin } from "../admin-shell.js";
 import { t, getLocale, onLocaleChange } from "../i18n.js";
 import { SiteSettings } from "../firebase.js";
 import { CATEGORIES, CATEGORY_IMAGES } from "../constants.js";
-import { btnClass, badgeClass, icon, renderImageInput, showMessage, safeUrl, escapeHtml } from "../ui.js";
+import { btnClass, badgeClass, icon, renderImageInput, showMessage, safeUrl, optimizedImageUrl, escapeHtml } from "../ui.js";
 
 let contentEl;
 let siteImages = { heroImages: [], categoryImages: {}, logoUrl: null };
@@ -54,7 +54,7 @@ function render() {
       <h3 class="card-title" style="font-size:0.95rem">${t("branding.logoTitle", "Logo")}</h3>
       <p class="text-muted" style="font-size:0.8rem;margin-top:0.15rem">${t("branding.logoHint", "Used everywhere on the site: header, footer, floating contact button, notification toasts, browser tab icon.")}</p>
       <div style="display:flex;align-items:center;gap:1rem;margin:0.75rem 0">
-        <img src="${safeUrl(siteImages.logoUrl) || "images/logo-icon.png"}" alt="" style="width:3rem;height:3rem;object-fit:contain">
+        <img src="${optimizedImageUrl(siteImages.logoUrl, 96) || "images/logo-icon.png"}" alt="" style="width:3rem;height:3rem;object-fit:contain">
       </div>
       <div id="logo-input-mount"></div>
       <button type="button" class="${btnClass("default", "sm")}" id="save-logo-btn" style="margin-top:0.75rem">${t("branding.saveChanges", "Save")}</button>
@@ -186,7 +186,7 @@ function render() {
           .map(
             (url, i) => `
           <div style="position:relative;width:8rem;height:5rem;border-radius:var(--radius-lg);overflow:hidden;background:var(--muted)">
-            <img src="${safeUrl(url)}" alt="" style="width:100%;height:100%;object-fit:cover">
+            <img src="${optimizedImageUrl(url, 250)}" alt="" style="width:100%;height:100%;object-fit:cover">
             <button type="button" class="btn btn-destructive btn-icon-sm" data-remove-hero="${i}" style="position:absolute;top:2px;inset-inline-end:2px;width:1.5rem;height:1.5rem;padding:0" aria-label="${t("branding.removeImage")}">${icon("x")}</button>
           </div>
         `,
@@ -217,7 +217,7 @@ function render() {
           const current = siteImages.categoryImages[c] || CATEGORY_IMAGES[c];
           return `
           <div class="list-row">
-            <img src="${safeUrl(current)}" alt="" style="width:3.5rem;height:3.5rem;object-fit:cover;border-radius:var(--radius-lg);flex-shrink:0">
+            <img src="${optimizedImageUrl(current, 150)}" alt="" style="width:3.5rem;height:3.5rem;object-fit:cover;border-radius:var(--radius-lg);flex-shrink:0">
             <div class="list-row-main">
               <div style="display:flex;align-items:center;gap:0.4rem">
                 <span style="font-weight:600">${t(`categories.${c}`)}</span>
@@ -241,7 +241,7 @@ function render() {
           <div class="list-row">
             ${
               c.imageUrl
-                ? `<img src="${safeUrl(c.imageUrl)}" alt="" style="width:3.5rem;height:3.5rem;object-fit:cover;border-radius:var(--radius-lg);flex-shrink:0;background:var(--muted)">`
+                ? `<img src="${optimizedImageUrl(c.imageUrl, 150)}" alt="" style="width:3.5rem;height:3.5rem;object-fit:cover;border-radius:var(--radius-lg);flex-shrink:0;background:var(--muted)">`
                 : `<div style="width:3.5rem;height:3.5rem;border-radius:var(--radius-lg);flex-shrink:0;background:var(--muted);display:flex;align-items:center;justify-content:center;color:var(--muted-foreground)">${icon("image")}</div>`
             }
             <div class="list-row-main">

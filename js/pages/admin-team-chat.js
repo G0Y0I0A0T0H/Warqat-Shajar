@@ -3,7 +3,7 @@ import { guardAdmin } from "../admin-shell.js";
 import { t, getLocale, onLocaleChange } from "../i18n.js";
 import { AdminChat, Storage } from "../firebase.js";
 import { authState } from "../state.js";
-import { btnClass, showMessage, escapeHtml, safeUrl, icon, renderAvatar } from "../ui.js";
+import { btnClass, showMessage, escapeHtml, safeUrl, optimizedImageUrl, icon, renderAvatar } from "../ui.js";
 
 let contentEl;
 let messages = [];
@@ -145,7 +145,7 @@ function renderMessages() {
             } else if (fileUrl && isAudio) {
               body = `<audio controls src="${safeUrl(fileUrl)}" style="max-width:14rem"></audio>`;
             } else if (fileUrl) {
-              body = `<a href="${safeUrl(fileUrl)}" target="_blank" rel="noopener noreferrer"><img src="${safeUrl(fileUrl)}" alt="${escapeHtml(m.fileName || "")}" style="max-width:12rem;max-height:12rem;border-radius:var(--radius-lg);display:block"></a>`;
+              body = `<a href="${safeUrl(fileUrl)}" target="_blank" rel="noopener noreferrer"><img src="${optimizedImageUrl(fileUrl, 400)}" alt="${escapeHtml(m.fileName || "")}" style="max-width:12rem;max-height:12rem;border-radius:var(--radius-lg);display:block"></a>`;
             } else {
               body = escapeHtml(m.text);
             }

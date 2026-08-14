@@ -3,7 +3,7 @@ import { guardAdmin } from "../admin-shell.js";
 import { t, getLocale, onLocaleChange } from "../i18n.js";
 import { Admin } from "../firebase.js";
 import { categoryLabelById, onCategoriesChange, unitLabelKey } from "../constants.js";
-import { btnClass, icon, escapeHtml, safeUrl } from "../ui.js";
+import { btnClass, icon, escapeHtml, safeUrl, optimizedImageUrl } from "../ui.js";
 import { authState } from "../state.js";
 import { renderProductForm } from "./dashboard-product-form.js";
 
@@ -74,7 +74,7 @@ function render() {
                 (p) => `
               <div class="list-row">
                 <div style="width:3.5rem;height:3.5rem;border-radius:var(--radius-lg);background:var(--muted);overflow:hidden;flex-shrink:0">
-                  ${p.photoUrls?.[0] ? `<img src="${safeUrl(p.photoUrls[0])}" alt="" style="width:100%;height:100%;object-fit:cover">` : ""}
+                  ${p.photoUrls?.[0] ? `<img src="${optimizedImageUrl(p.photoUrls[0], 150)}" alt="" style="width:100%;height:100%;object-fit:cover">` : ""}
                 </div>
                 <div class="list-row-main">
                   <div style="display:flex;align-items:center;gap:0.4rem;flex-wrap:wrap">

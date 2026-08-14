@@ -57,7 +57,10 @@ export function initials(name) {
 
 export function renderAvatar(name, photoURL, sizeClass = "") {
   if (photoURL) {
-    return `<span class="avatar ${sizeClass}"><img src="${safeUrl(photoURL)}" alt="${escapeHtml(name || "")}"></span>`;
+    // .avatar is 2rem, .avatar-lg 2.5rem (see styles.css) -- requesting ~2x
+    // the CSS size keeps it crisp on retina screens without the full original.
+    const width = sizeClass.includes("avatar-lg") ? 80 : 64;
+    return `<span class="avatar ${sizeClass}"><img src="${optimizedImageUrl(photoURL, width)}" alt="${escapeHtml(name || "")}"></span>`;
   }
   return `<span class="avatar ${sizeClass}">${escapeHtml(initials(name))}</span>`;
 }
@@ -189,6 +192,34 @@ export function safeUrl(value) {
   return escapeHtml(url);
 }
 
+// Every photo/video in this app is uploaded to Cloudinary at whatever
+// resolution the device produced (js/firebase.js's Storage.uploadFile has no
+// client-side resizing) and, until now, requested at that exact original
+// size no matter how small the on-page <img>/<video> actually renders it --
+// a phone photo easily comes in multiple times larger than any thumbnail or
+// card needs. Cloudinary applies transformations from the URL itself with no
+// extra upload step or cost, so inserting one here is a pure win: f_auto
+// serves WebP/AVIF to browsers that support it, q_auto picks a
+// visually-lossless quality per image, and an optional w_<width> caps
+// delivered pixels to what the layout can actually show (~2x the CSS size,
+// for crisp rendering on retina screens without shipping the full original).
+// A no-op for anything that isn't a Cloudinary URL (local /images/ assets,
+// external avatar links from other providers).
+const CLOUDINARY_HOST = "res.cloudinary.com";
+
+export function optimizedImageUrl(value, width) {
+  const url = safeUrl(value);
+  if (!url || !url.includes(CLOUDINARY_HOST)) return url;
+  const transform = width ? `f_auto,q_auto,w_${Math.round(width)}` : "f_auto,q_auto";
+  return url.replace("/image/upload/", `/image/upload/${transform}/`);
+}
+
+export function optimizedVideoUrl(value) {
+  const url = safeUrl(value);
+  if (!url || !url.includes(CLOUDINARY_HOST)) return url;
+  return url.replace("/video/upload/", "/video/upload/q_auto/");
+}
+
 // Shared by dashboard-orders.js, dashboard-my-orders.js, and admin-payments.js's
 // deal rows -- one line, next to the existing deliveryNotes display, for
 // whichever method the buyer picked when they sent the offer.
@@ -231,7 +262,7 @@ export function showToast({ key, params, link }) {
   toast.className = "toast is-clickable";
   toast.innerHTML = `
     <div class="toast-leaf-accent"></div>
-    <img src="${safeUrl(toastBadgeUrl)}" class="toast-badge" alt="">
+    <img src="${optimizedImageUrl(toastBadgeUrl, 48)}" class="toast-badge" alt="">
     <div class="toast-body">
       <div class="toast-title">${escapeHtml(t(`notif.${key}.title`))}<span class="toast-dot"></span></div>
       <div class="toast-subtitle">${interpolate(escapeHtml(t(`notif.${key}.body`)), params)}</div>
@@ -440,7 +471,7 @@ export async function renderAdSlot(containerEl, placement, AdsApi, width = 500, 
   containerEl.style.maxWidth = width + "px";
   containerEl.style.minHeight = height + "px";
   if (ad) {
-    containerEl.innerHTML = `<a class="ad-slot" href="${safeUrl(ad.linkUrl) || "#"}" target="_blank" rel="noopener noreferrer sponsored"><img src="${safeUrl(ad.imageUrl)}" alt="" style="width:100%;height:100%;object-fit:cover"></a>`;
+    containerEl.innerHTML = `<a class="ad-slot" href="${safeUrl(ad.linkUrl) || "#"}" target="_blank" rel="noopener noreferrer sponsored"><img src="${optimizedImageUrl(ad.imageUrl, width * 2)}" alt="" style="width:100%;height:100%;object-fit:cover"></a>`;
   } else {
     containerEl.innerHTML = `<div class="ad-slot ad-slot-placeholder" style="min-height:${height}px" data-ad-slot>${t("ad.label", "Advertisement")} · ${width}&times;${height}</div>`;
   }
@@ -503,7 +534,7 @@ export function renderImageInput(mountEl, { value = "", uploadPathPrefix, accept
 export function renderZoomableImage(url, altText = "") {
   return `
     <div class="zoomable-image" data-zoomable>
-      <img class="zoomable-image-img" src="${safeUrl(url)}" alt="${escapeHtml(altText)}">
+      <img class="zoomable-image-img" src="${optimizedImageUrl(url)}" alt="${escapeHtml(altText)}">
       <div class="zoomable-image-lens"></div>
       <div class="zoomable-image-result"></div>
     </div>
@@ -1023,7 +1054,7 @@ export function productCardHTML(product, categoryLabel, governorateLabel) {
   return `
     <a class="card card-flush product-card" href="product.html?id=${product.id}">
       <div class="product-card-media">
-        ${photo ? `<img src="${safeUrl(photo)}" alt="${heading}" loading="lazy">` : ""}
+        ${photo ? `<img src="${optimizedImageUrl(photo, 400)}" alt="${heading}" loading="lazy">` : ""}
         ${favoriteButtonHTML(product.id)}
       </div>
       <div class="product-card-body">

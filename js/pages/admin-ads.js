@@ -3,7 +3,7 @@ import { guardAdmin } from "../admin-shell.js";
 import { t, onLocaleChange } from "../i18n.js";
 import { Ads, SiteSettings } from "../firebase.js";
 import { AD_PLACEMENTS } from "../constants.js";
-import { badgeClass, btnClass, showMessage, renderImageInput, safeUrl, escapeHtml, icon } from "../ui.js";
+import { badgeClass, btnClass, showMessage, renderImageInput, safeUrl, optimizedImageUrl, escapeHtml, icon } from "../ui.js";
 
 let contentEl;
 let ads = [];
@@ -73,7 +73,7 @@ function renderAdRow(ad, index, total) {
         <button type="button" class="${btnClass("ghost", "icon-sm")}" data-move-up="${ad.id}" ${index === 0 ? "disabled" : ""} aria-label="${t("ads.moveUp", "Move up")}">${icon("chevron-down")}</button>
         <button type="button" class="${btnClass("ghost", "icon-sm")}" data-move-down="${ad.id}" ${index === total - 1 ? "disabled" : ""} aria-label="${t("ads.moveDown", "Move down")}" style="transform:rotate(180deg)">${icon("chevron-down")}</button>
       </div>
-      <img src="${safeUrl(ad.imageUrl)}" alt="" style="width:6rem;height:3rem;object-fit:cover;border-radius:var(--radius-md);flex-shrink:0">
+      <img src="${optimizedImageUrl(ad.imageUrl, 200)}" alt="" style="width:6rem;height:3rem;object-fit:cover;border-radius:var(--radius-md);flex-shrink:0">
       <div class="list-row-main">
         <a href="${safeUrl(ad.linkUrl)}" target="_blank" rel="noopener noreferrer" class="force-ltr" style="font-size:0.75rem;color:var(--text-muted);word-break:break-all">${escapeHtml(ad.linkUrl)}</a>
         <span class="${badgeClass(ad.active ? "default" : "secondary")}">${ad.active ? t("ads.activeLabel") : t("admin.statusSuspended")}</span>
