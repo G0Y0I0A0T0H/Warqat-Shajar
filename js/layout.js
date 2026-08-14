@@ -5,7 +5,7 @@
 import { authState, favoritesState, cartState, notifState, subscribe, isUserThemeDark, setUserThemeDark, applySiteDefaultDarkMode } from "./state.js";
 import { Auth, SiteSettings, Notifications, OWNER_EMAIL, Activity } from "./firebase.js";
 import { t, getLocale, setLocale, initI18n, onLocaleChange } from "./i18n.js";
-import { icon, renderAvatar, wireDropdown, renderIcons, interpolate, showToast, btnClass, escapeHtml, safeUrl } from "./ui.js";
+import { icon, renderAvatar, wireDropdown, renderIcons, interpolate, showToast, btnClass, escapeHtml, safeUrl, optimizedImageUrl } from "./ui.js";
 import { isViewingAs, getEffectiveProfile, stopViewAs } from "./view-as.js";
 
 const SOCIAL_ICON_KEY = {
@@ -269,8 +269,12 @@ function renderFooterYear() {
 async function applyLogo() {
   const images = await SiteSettings.getSiteImagesOnce().catch(() => ({}));
   if (images.logoUrl) {
+    // Loaded on every single page (header, splash screen, about page) --
+    // small display size, so a modest width cap plus Cloudinary's auto
+    // format/quality picks up real savings sitewide for free.
+    const optimized = optimizedImageUrl(images.logoUrl, 120);
     document.querySelectorAll(".logo img, .splash-logo, .about-logo-badge img").forEach((img) => {
-      img.src = images.logoUrl;
+      img.src = optimized;
     });
   }
 }
@@ -413,7 +417,7 @@ function renderContactWidget() {
     SiteSettings.subscribeSiteImages((images) => {
       // The floating contact widget always mirrors the one site logo now --
       // there's no separate "widget icon" setting to fall back through.
-      if (images.logoUrl) trigger.querySelector("img").src = images.logoUrl;
+      if (images.logoUrl) trigger.querySelector("img").src = optimizedImageUrl(images.logoUrl, 120);
     });
     return;
   }

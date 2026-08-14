@@ -3,7 +3,7 @@ import { guardDashboard } from "../dashboard-shell.js";
 import { t, getLocale, onLocaleChange } from "../i18n.js";
 import { Products } from "../firebase.js";
 import { categoryLabelById, onCategoriesChange, unitLabelKey } from "../constants.js";
-import { badgeClass, btnClass, icon, safeUrl, escapeHtml } from "../ui.js";
+import { badgeClass, btnClass, icon, safeUrl, optimizedImageUrl, escapeHtml } from "../ui.js";
 import { initHelpTour } from "../help-tour.js";
 
 const listEl = document.getElementById("products-list");
@@ -22,7 +22,7 @@ function render(products) {
       (p, i) => `
       <div class="list-row" data-product-row="${i === 0 ? "first" : ""}">
         <div style="width:3.5rem;height:3.5rem;border-radius:var(--radius-lg);background:var(--muted);overflow:hidden;flex-shrink:0">
-          ${p.photoUrls?.[0] ? `<img src="${safeUrl(p.photoUrls[0])}" alt="" style="width:100%;height:100%;object-fit:cover">` : ""}
+          ${p.photoUrls?.[0] ? `<img src="${optimizedImageUrl(p.photoUrls[0], 150)}" alt="" style="width:100%;height:100%;object-fit:cover">` : ""}
         </div>
         <div class="list-row-main">
           <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap">

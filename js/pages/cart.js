@@ -3,7 +3,7 @@ import { t, getLocale, onLocaleChange } from "../i18n.js";
 import { Products, Chat, Notifications, SiteSettings, Escrow } from "../firebase.js";
 import { categoryLabelById, onCategoriesChange, unitLabelKey } from "../constants.js";
 import { authState, cartState, subscribe, updateCartQuantity, removeFromCart } from "../state.js";
-import { btnClass, icon, showMessage, escapeHtml, safeUrl, escrowStepperHTML, renderEscrowActions } from "../ui.js";
+import { btnClass, icon, showMessage, escapeHtml, safeUrl, optimizedImageUrl, escrowStepperHTML, renderEscrowActions } from "../ui.js";
 
 const contentEl = document.getElementById("cart-content");
 const productCache = new Map();
@@ -131,7 +131,7 @@ async function render() {
       return `
         <div class="cart-row" data-product="${productId}">
           <a href="product.html?id=${productId}" class="cart-row-media">
-            ${photo ? `<img src="${safeUrl(photo)}" alt="">` : ""}
+            ${photo ? `<img src="${optimizedImageUrl(photo, 160)}" alt="">` : ""}
           </a>
           <div class="cart-row-main">
             <a href="product.html?id=${productId}" style="font-weight:600;color:var(--foreground)">${product.title ? escapeHtml(product.title) : categoryLabelById(product.category, getLocale())}</a>
