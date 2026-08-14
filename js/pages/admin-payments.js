@@ -473,6 +473,7 @@ function render() {
       auditPaymentMethod("payment_method_added", newMethod.id, newMethod.label, { noProofRequired: newMethod.noProofRequired });
     } catch {
       showMessage(errorEl, t("payments.actionFailed"));
+    } finally {
       addSubmitBtn.disabled = false;
     }
   });
