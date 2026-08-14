@@ -1004,6 +1004,11 @@ export function renderEscrowActions(containerEl, { order, viewerUid, paymentInfo
         }).catch(() => {});
         onChange?.();
       } catch (err) {
+        // Was silently swallowed -- a rejected write (a stale/mismatched
+        // payment method, a rules check that no longer matches the order's
+        // real state, ...) showed only the generic message below with
+        // nothing in the console to actually diagnose it by.
+        console.error("escrow mark-paid failed:", err);
         showMessage(
           actionErrorEl,
           err.message === "payment method missing id"
@@ -1020,7 +1025,8 @@ export function renderEscrowActions(containerEl, { order, viewerUid, paymentInfo
     try {
       await Escrow.confirmDelivery(order.id);
       onChange?.();
-    } catch {
+    } catch (err) {
+      console.error("escrow confirm-delivery failed:", err);
       showMessage(actionErrorEl, t("escrow.actionFailed", "Something went wrong -- please try again."));
       e.target.disabled = false;
     }
@@ -1037,7 +1043,8 @@ export function renderEscrowActions(containerEl, { order, viewerUid, paymentInfo
     try {
       await Escrow.raiseDispute(order.id, viewerUid, note);
       onChange?.();
-    } catch {
+    } catch (err) {
+      console.error("escrow dispute failed:", err);
       showMessage(actionErrorEl, t("escrow.actionFailed", "Something went wrong -- please try again."));
       e.target.disabled = false;
     }
