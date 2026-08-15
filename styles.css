@@ -6,6 +6,7 @@
    ========================================================================== */
 
 :root {
+  color-scheme: light;
   --background: #ffffff;
   --foreground: #1a1a1a;
   --card: #ffffff;
@@ -54,6 +55,14 @@
 }
 
 .dark {
+  /* A <select>'s open options list (and other native chrome -- scrollbars,
+     date pickers) is rendered by the OS/browser, not by our CSS -- without
+     this, it stayed stark white with a generic blue highlight even in dark
+     mode, clashing hard against every other themed element on the page.
+     color-scheme tells the browser which palette to draw that native chrome
+     in, so it approximately follows dark mode automatically -- no
+     per-control styling of the open list is otherwise possible. */
+  color-scheme: dark;
   --background: #10150f;
   --foreground: #eef2ec;
   --card: #171d15;
