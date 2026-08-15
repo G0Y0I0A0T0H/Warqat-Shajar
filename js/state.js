@@ -59,23 +59,36 @@ let adminPrefersDark = localStorage.getItem(ADMIN_THEME_KEY)
   ? localStorage.getItem(ADMIN_THEME_KEY) === "dark"
   : true;
 
+// isAdminModeActive alone isn't "is this an admin page" -- it flips true
+// for the owner the instant their admin status resolves after sign-in,
+// which fires on every page (login, cart, browsing...), not just
+// admin-*.html. Using it alone made the owner's admin dark-mode
+// preference hijack the whole site the moment auth resolved, causing a
+// jarring color jump mid-load on completely ordinary pages. Gating on the
+// current page's filename keeps the two theme preferences (site vs admin)
+// scoped to where they actually apply.
+function isOnAdminPage() {
+  const page = location.pathname.split("/").pop() || "index.html";
+  return page === "admin.html" || page.startsWith("admin-");
+}
+
 function applyDarkMode() {
-  const dark = authState.isAdminModeActive ? adminPrefersDark : userPrefersDark;
+  const dark = authState.isAdminModeActive && isOnAdminPage() ? adminPrefersDark : userPrefersDark;
   document.documentElement.classList.toggle("dark", dark);
 }
 applyDarkMode();
 
-// Whichever preference is actually relevant right now -- the admin one
-// while admin mode is active, the regular site one otherwise. This is what
-// the theme toggle button reads and writes, so the same button naturally
-// controls "whichever context you're currently in" and its icon always
-// matches what's really on screen.
+// Whichever preference is actually relevant right now -- the admin one on
+// an admin page while admin mode is active, the regular site one
+// everywhere else. This is what the theme toggle button reads and writes,
+// so the same button naturally controls "whichever context you're
+// currently in" and its icon always matches what's really on screen.
 export function isUserThemeDark() {
-  return authState.isAdminModeActive ? adminPrefersDark : userPrefersDark;
+  return authState.isAdminModeActive && isOnAdminPage() ? adminPrefersDark : userPrefersDark;
 }
 
 export function setUserThemeDark(isDark) {
-  if (authState.isAdminModeActive) {
+  if (authState.isAdminModeActive && isOnAdminPage()) {
     adminPrefersDark = isDark;
     localStorage.setItem(ADMIN_THEME_KEY, isDark ? "dark" : "light");
   } else {

@@ -714,7 +714,16 @@ service cloud.firestore {
     // normal operation once real money is moving through the ledger.
     match /wallets/{uid} {
       allow read: if isSignedIn() && (request.auth.uid == uid || isOwnerOrGranted('payments'));
-      allow create, update: if isOwnerOrGranted('payments') &&
+      // Split from update on purpose -- a farmer's very first credit (or a
+      // withdrawal made before one ever landed) writes this doc for the
+      // first time, so resource.data doesn't exist yet. diff() against a
+      // nonexistent resource throws inside the rule itself, which
+      // Firestore evaluates as a hard deny -- so the create branch below
+      // must never reference resource.data at all.
+      allow create: if isOwnerOrGranted('payments') &&
+        request.resource.data.keys().hasOnly(['availableBalance', 'updatedAt']) &&
+        request.resource.data.availableBalance is number;
+      allow update: if isOwnerOrGranted('payments') &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['availableBalance', 'updatedAt']) &&
         request.resource.data.availableBalance is number;
       allow delete: if isOwner();

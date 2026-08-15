@@ -20,7 +20,7 @@ function auditPaymentMethod(action, targetId, targetLabel, meta) {
 // Small, deliberately limited preset -- enough to represent every method
 // type asked for (mobile wallet, card, delivery) without turning this into
 // a full icon-picker.
-const ICON_CHOICES = ["phone", "credit-card", "package"];
+const ICON_CHOICES = ["phone", "credit-card", "package", "zap"];
 
 let contentEl;
 let paymentInfo = { methods: [], notes: null };
@@ -545,7 +545,7 @@ function migrateLegacyFieldsIfNeeded(data) {
   migrated = true;
   const seeded = [
     { id: "vodafone-cash", label: "فودافون كاش", icon: "phone", value: data.vodafoneCash || "", enabled: Boolean(data.vodafoneCash) },
-    { id: "instapay", label: "إنستاباي", icon: "credit-card", value: data.instapay || "", enabled: Boolean(data.instapay) },
+    { id: "instapay", label: "إنستاباي", icon: "zap", value: data.instapay || "", enabled: Boolean(data.instapay) },
     { id: "visa", label: "فيزا", icon: "credit-card", value: "", enabled: false },
     { id: "mastercard", label: "ماستر كارد", icon: "credit-card", value: "", enabled: false },
     { id: "cod", label: "الدفع عند الاستلام", icon: "package", value: "", enabled: false, noProofRequired: true },
