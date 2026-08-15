@@ -15,7 +15,10 @@ let profileRef = null;
 let escrowOrders = {};
 // The platform's own payment-receiving details -- shown alongside the
 // stepper once an order is awaiting payment. See renderEscrowActions in
-// ui.js. Fetched once; it rarely changes.
+// ui.js. Kept live (see main()'s subscribePaymentInfo below) -- a one-time
+// fetch here could go stale for a tab left open across an admin editing
+// payment methods, and a buyer confirming against a stale method id gets
+// rejected by firestore.rules' own fresh server-side re-check.
 let paymentInfo = null;
 
 const STATUS_KEY = {
@@ -121,9 +124,12 @@ async function reload() {
 async function main() {
   await initLayout();
   profileRef = await guardDashboard("dashboard-my-orders.html");
-  paymentInfo = await SiteSettings.getPaymentInfoOnce().catch(() => null);
   await reload();
   onLocaleChange(render);
+  SiteSettings.subscribePaymentInfo((info) => {
+    paymentInfo = info;
+    render();
+  });
 }
 
 main();

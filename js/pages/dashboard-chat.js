@@ -514,7 +514,15 @@ function renderOfferForm() {
 async function main() {
   await initLayout();
   profile = await guardDashboard("dashboard-messages.html");
-  paymentInfo = await SiteSettings.getPaymentInfoOnce().catch(() => null);
+  // Kept live, not a one-time fetch -- a stale cached copy here could
+  // outlive an admin adding/editing a payment method while this chat tab
+  // stayed open, and a buyer confirming "cash on delivery" against a
+  // payment method id that had since changed got rejected by
+  // firestore.rules' own fresh server-side re-check.
+  SiteSettings.subscribePaymentInfo((info) => {
+    paymentInfo = info;
+    renderEscrowTracker();
+  });
 
   if (!chatId) return;
   // A rejected read (not a participant, or a stale/tampered link) used to

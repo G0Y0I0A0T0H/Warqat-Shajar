@@ -2089,21 +2089,18 @@ export const SiteSettings = {
     await setDoc(chatDisabledRef, { active }, { merge: true });
   },
 
-  // Owner-only in firestore.rules regardless of who calls this client-side.
+  // Any signed-in user in firestore.rules (a buyer needs to see where to
+  // send money) -- writes stay owner/payments-admin-only. Every page that
+  // shows this (cart.js, dashboard-my-orders.js, dashboard-orders.js,
+  // dashboard-chat.js) keeps it live rather than fetching once, so a
+  // buyer confirming payment against a method an admin just added/edited
+  // never gets checked against a stale local copy.
   subscribePaymentInfo(callback) {
     return onSnapshot(
       paymentInfoRef,
       (snap) => callback(snap.exists() ? { ...DEFAULT_PAYMENT_INFO, ...snap.data() } : DEFAULT_PAYMENT_INFO),
       () => callback(DEFAULT_PAYMENT_INFO),
     );
-  },
-
-  // One-time fetch for pages that just need to show it once alongside other
-  // one-time data (cart.js, dashboard-my-orders.js) rather than keep a live
-  // subscription open.
-  async getPaymentInfoOnce() {
-    const snap = await getDoc(paymentInfoRef);
-    return snap.exists() ? { ...DEFAULT_PAYMENT_INFO, ...snap.data() } : DEFAULT_PAYMENT_INFO;
   },
 
   // Replaces the whole methods list -- the admin UI manages it client-side

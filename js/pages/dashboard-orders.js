@@ -205,9 +205,12 @@ async function reload() {
 async function main() {
   await initLayout();
   profileRef = await guardDashboard("dashboard-orders.html");
-  paymentInfo = await SiteSettings.getPaymentInfoOnce().catch(() => null);
   await reload();
   onLocaleChange(render);
+  SiteSettings.subscribePaymentInfo((info) => {
+    paymentInfo = info;
+    render();
+  });
 }
 
 main();
