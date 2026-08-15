@@ -1101,9 +1101,15 @@ export const Escrow = {
   async release(orderId) {
     const snap = await getDoc(doc(db, "escrowOrders", orderId));
     const order = snap.data();
-    await updateDoc(doc(db, "escrowOrders", orderId), { status: "released", releasedAt: serverTimestamp() });
+    // Credit the wallet BEFORE flipping status to "released" -- if the
+    // credit throws (it used to, for a farmer's very first payout, before
+    // the wallets/{uid} create-rule was fixed), the order must not end up
+    // permanently marked released with no money actually credited.
     if (order && !order.noProofPayment) {
       await Wallets.credit(order.sellerId, order.totalAmount, orderId);
+    }
+    await updateDoc(doc(db, "escrowOrders", orderId), { status: "released", releasedAt: serverTimestamp() });
+    if (order && !order.noProofPayment) {
       // Live inventory: this is the completed-deal point for an electronic-
       // payment order (mirrors the COD decrement in confirmDelivery above).
       // isAdmin() already has unconditional product-update rights, so this
