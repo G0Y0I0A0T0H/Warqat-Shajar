@@ -5,7 +5,7 @@
 import { authState, favoritesState, cartState, notifState, subscribe, isUserThemeDark, setUserThemeDark, applySiteDefaultDarkMode } from "./state.js";
 import { Auth, SiteSettings, Notifications, OWNER_EMAIL, Activity } from "./firebase.js";
 import { t, getLocale, setLocale, initI18n, onLocaleChange } from "./i18n.js";
-import { icon, renderAvatar, wireDropdown, renderIcons, interpolate, showToast, btnClass, escapeHtml, safeUrl, optimizedImageUrl } from "./ui.js";
+import { icon, renderAvatar, wireDropdown, renderIcons, interpolate, showToast, btnClass, escapeHtml, safeUrl, optimizedImageUrl, initCustomSelects } from "./ui.js";
 import { isViewingAs, getEffectiveProfile, stopViewAs } from "./view-as.js";
 
 const SOCIAL_ICON_KEY = {
@@ -827,6 +827,7 @@ function renderViewAsBanner() {
 export async function initLayout() {
   await initI18n();
   renderIcons(document);
+  initCustomSelects();
   initSplashScreen();
   wireThemeToggle();
   wireLanguageSwitch();
