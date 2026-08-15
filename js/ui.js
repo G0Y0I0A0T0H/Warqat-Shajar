@@ -864,10 +864,6 @@ export function renderEscrowActions(containerEl, { order, viewerUid, paymentInfo
           <input class="input force-ltr" dir="ltr" type="tel" id="escrow-phone-input-${order.id}" placeholder="${t("escrow.phoneNumberPlaceholder")}">
         </div>
         <div class="field">
-          <label class="label" for="escrow-ref-input-${order.id}">${t("escrow.referenceNumberLabel")}</label>
-          <input class="input force-ltr" dir="ltr" id="escrow-ref-input-${order.id}" placeholder="${t("escrow.referenceNumberPlaceholder")}">
-        </div>
-        <div class="field">
           <label class="label">${t("escrow.proofScreenshotLabel")}</label>
           <div id="escrow-proof-mount-${order.id}"></div>
         </div>
@@ -924,9 +920,8 @@ export function renderEscrowActions(containerEl, { order, viewerUid, paymentInfo
       return;
     }
     const phoneValue = containerEl.querySelector(`#escrow-phone-input-${order.id}`)?.value.trim();
-    const refValue = containerEl.querySelector(`#escrow-ref-input-${order.id}`)?.value.trim();
     const proofUrl = proofInput?.getValue();
-    markPaidBtn.disabled = !(chosen && phoneValue && refValue && proofUrl);
+    markPaidBtn.disabled = !(chosen && phoneValue && proofUrl);
   }
 
   // Reveals the picked method's own receiving value (e.g. a Vodafone Cash
@@ -961,7 +956,6 @@ export function renderEscrowActions(containerEl, { order, viewerUid, paymentInfo
       });
     });
     containerEl.querySelector(`#escrow-phone-input-${order.id}`)?.addEventListener("input", updateMarkPaidState);
-    containerEl.querySelector(`#escrow-ref-input-${order.id}`)?.addEventListener("input", updateMarkPaidState);
   }
 
   // Every escrow action below is a real Firestore write that firestore.rules
@@ -1015,13 +1009,11 @@ export function renderEscrowActions(containerEl, { order, viewerUid, paymentInfo
         }
 
         const phoneNumber = containerEl.querySelector(`#escrow-phone-input-${order.id}`)?.value.trim();
-        const referenceNumber = containerEl.querySelector(`#escrow-ref-input-${order.id}`)?.value.trim();
         const proofUrl = proofInput?.getValue();
         await Escrow.markPaymentClaimed(order.id, {
           method: chosen ? chosen.value : null,
           methodId: chosen?.dataset.methodId || null,
           phoneNumber,
-          referenceNumber,
           proofUrl,
         });
         Notifications.create({
@@ -1032,7 +1024,6 @@ export function renderEscrowActions(containerEl, { order, viewerUid, paymentInfo
             amount: String(order.totalAmount),
             method: chosen?.dataset.methodLabel || "",
             phone: phoneNumber || "",
-            reference: referenceNumber || "",
           },
           link: "dashboard-orders.html",
         }).catch(() => {});

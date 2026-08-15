@@ -965,24 +965,23 @@ export const Escrow = {
     );
   },
 
-  // phoneNumber + referenceNumber + proofUrl are all required by
-  // firestore.rules (not just the UI) -- a bare status claim with no
-  // evidence isn't enough for the owner/granted admin to actually verify a
-  // transfer happened. phoneNumber is the number the buyer paid FROM (e.g.
-  // their Vodafone Cash number), which the seller needs to match the
-  // transfer in their own transaction history. methodId is the payment
-  // method's stable id (not just its display label) -- firestore.rules
-  // doesn't check it here (any electronic method still needs full proof),
-  // it's stored so the admin's Control Room and the buyer's own stepper can
-  // show which method was actually used.
-  async markPaymentClaimed(orderId, { method, methodId, phoneNumber, referenceNumber, proofUrl }) {
+  // phoneNumber + proofUrl are both required by firestore.rules (not just
+  // the UI) -- a bare status claim with no evidence isn't enough for the
+  // owner/granted admin to actually verify a transfer happened. phoneNumber
+  // is the number the buyer paid FROM (e.g. their Vodafone Cash number),
+  // which the seller needs to match the transfer in their own transaction
+  // history. methodId is the payment method's stable id (not just its
+  // display label) -- firestore.rules doesn't check it here (any
+  // electronic method still needs full proof), it's stored so the admin's
+  // Control Room and the buyer's own stepper can show which method was
+  // actually used.
+  async markPaymentClaimed(orderId, { method, methodId, phoneNumber, proofUrl }) {
     await updateDoc(doc(db, "escrowOrders", orderId), {
       status: "payment_claimed",
       paymentClaimedAt: serverTimestamp(),
       paymentMethodChosen: method || null,
       paymentMethodId: methodId || null,
       paymentPhoneNumber: phoneNumber,
-      paymentReferenceNumber: referenceNumber,
       paymentProofUrl: proofUrl,
     });
   },
