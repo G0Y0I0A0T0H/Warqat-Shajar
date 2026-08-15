@@ -639,10 +639,9 @@ service cloud.firestore {
         // just the buyer's bare word.
         (request.auth.uid == resource.data.buyerId &&
          resource.data.status == 'awaiting_payment' &&
-         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'paymentClaimedAt', 'paymentMethodChosen', 'paymentMethodId', 'paymentPhoneNumber', 'paymentReferenceNumber', 'paymentProofUrl']) &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'paymentClaimedAt', 'paymentMethodChosen', 'paymentMethodId', 'paymentPhoneNumber', 'paymentProofUrl']) &&
          request.resource.data.status == 'payment_claimed' &&
          request.resource.data.paymentPhoneNumber is string && request.resource.data.paymentPhoneNumber.size() > 0 &&
-         request.resource.data.paymentReferenceNumber is string && request.resource.data.paymentReferenceNumber.size() > 0 &&
          request.resource.data.paymentProofUrl is string && request.resource.data.paymentProofUrl.size() > 0)
         ||
         // Cash-on-delivery (or any other method the admin flags
