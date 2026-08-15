@@ -700,6 +700,63 @@ main {
 }
 
 /* ---------------------------------------------------------------------- */
+/* Custom select popup (js/ui.js's enhanceSelect) -- a real <select>'s open
+   options list is drawn by the OS/browser, not by this stylesheet, so it
+   always renders as stark light-mode native chrome no matter the site's
+   theme. This is a themed replacement popup shown instead; the real
+   <select> underneath stays in the DOM (still what every page's own JS
+   reads/writes) and still supplies its own closed-state appearance, which
+   the .select rule above already themes correctly. */
+.select-popup {
+  position: fixed;
+  z-index: 300;
+  max-height: 16rem;
+  overflow-y: auto;
+  border-radius: var(--radius-lg);
+  background: var(--popover);
+  color: var(--popover-foreground);
+  padding: 0.25rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15), inset 0 0 0 1px color-mix(in srgb, var(--foreground) 10%, transparent);
+}
+
+.select-popup-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.45rem 0.6rem;
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  background: none;
+  border: none;
+  text-align: start;
+  cursor: pointer;
+  color: inherit;
+}
+
+.select-popup-option:hover,
+.select-popup-option.is-active {
+  background: var(--muted);
+}
+
+.select-popup-option.is-selected {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.select-popup-option svg {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  visibility: hidden;
+}
+
+.select-popup-option.is-selected svg {
+  visibility: visible;
+}
+
+/* ---------------------------------------------------------------------- */
 /* Header                                                                  */
 /* ---------------------------------------------------------------------- */
 .site-header {

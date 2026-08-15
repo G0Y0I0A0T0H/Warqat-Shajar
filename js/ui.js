@@ -354,6 +354,212 @@ export function wireDropdown(triggerEl, contentEl) {
 }
 
 // ---------------------------------------------------------------------------
+// Custom select popup -- a real <select>'s open options list is drawn by the
+// OS/browser as native chrome, not by this stylesheet, so it always renders
+// stark light-mode regardless of the site's theme (see .select-popup in
+// styles.css, which is what this actually shows instead). The real <select>
+// stays in the DOM and still supplies the closed-state appearance (already
+// themed correctly by .select) plus every existing page's own
+// value/change-event/innerHTML-populated-options code, completely
+// untouched -- this only intercepts what opens when it's activated.
+// ---------------------------------------------------------------------------
+let openSelectPopup = null; // { selectEl, popupEl, moveActive, moveActiveTo, chooseActive, typeahead }
+let popupIdCounter = 0;
+let typeaheadBuffer = "";
+let typeaheadTimer = null;
+
+function closeSelectPopup() {
+  if (!openSelectPopup) return;
+  const { popupEl, selectEl } = openSelectPopup;
+  popupEl.remove();
+  selectEl.removeAttribute("aria-expanded");
+  selectEl.removeAttribute("aria-activedescendant");
+  document.removeEventListener("mousedown", onSelectPopupOutsideMouseDown, true);
+  window.removeEventListener("scroll", closeSelectPopup, true);
+  window.removeEventListener("resize", closeSelectPopup);
+  openSelectPopup = null;
+}
+
+function onSelectPopupOutsideMouseDown(e) {
+  if (!openSelectPopup) return;
+  const { popupEl, selectEl } = openSelectPopup;
+  if (!popupEl.contains(e.target) && e.target !== selectEl) closeSelectPopup();
+}
+
+function openSelectPopupFor(selectEl) {
+  if (selectEl.disabled) return;
+  closeSelectPopup();
+
+  const options = [...selectEl.options];
+  if (options.length === 0) return;
+
+  const popupEl = document.createElement("div");
+  popupEl.className = "select-popup";
+  popupEl.setAttribute("role", "listbox");
+  popupEl.id = `select-popup-${++popupIdCounter}`;
+
+  let activeIndex = Math.max(
+    0,
+    options.findIndex((o) => o.value === selectEl.value),
+  );
+
+  function updateActive() {
+    popupEl.querySelectorAll("[data-index]").forEach((el) => {
+      el.classList.toggle("is-active", Number(el.dataset.index) === activeIndex);
+    });
+    const activeEl = popupEl.querySelector(".is-active");
+    if (activeEl) {
+      selectEl.setAttribute("aria-activedescendant", activeEl.id);
+      activeEl.scrollIntoView({ block: "nearest" });
+    }
+  }
+
+  function chooseOption(index) {
+    const option = options[index];
+    if (!option) return;
+    if (selectEl.value !== option.value) {
+      selectEl.value = option.value;
+      selectEl.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+    closeSelectPopup();
+    selectEl.focus();
+  }
+
+  popupEl.innerHTML = options
+    .map((o, i) => {
+      const optId = `${popupEl.id}-opt-${i}`;
+      return `
+        <div class="select-popup-option ${o.value === selectEl.value ? "is-selected" : ""} ${i === activeIndex ? "is-active" : ""}"
+             role="option" id="${optId}" data-index="${i}" aria-selected="${o.value === selectEl.value}">
+          <span>${escapeHtml(o.textContent)}</span>
+          ${icon("check")}
+        </div>
+      `;
+    })
+    .join("");
+  popupEl.querySelectorAll("[data-index]").forEach((el) => {
+    // Prevents the select from blurring on mousedown, which would otherwise
+    // close this popup (via the blur handler in enhanceSelect below) before
+    // the subsequent click ever fires.
+    el.addEventListener("mousedown", (e) => e.preventDefault());
+    el.addEventListener("click", () => chooseOption(Number(el.dataset.index)));
+    el.addEventListener("mouseenter", () => {
+      activeIndex = Number(el.dataset.index);
+      updateActive();
+    });
+  });
+
+  const rect = selectEl.getBoundingClientRect();
+  popupEl.style.width = `${rect.width}px`;
+  popupEl.style.visibility = "hidden";
+  popupEl.style.top = "0px";
+  popupEl.style.left = "0px";
+  document.body.appendChild(popupEl);
+  const popupHeight = popupEl.offsetHeight;
+  const spaceBelow = window.innerHeight - rect.bottom;
+  const openAbove = spaceBelow < popupHeight + 8 && rect.top > popupHeight + 8;
+  popupEl.style.top = `${openAbove ? rect.top - popupHeight - 4 : rect.bottom + 4}px`;
+  popupEl.style.left = `${Math.max(8, Math.min(rect.left, window.innerWidth - rect.width - 8))}px`;
+  popupEl.style.visibility = "";
+
+  selectEl.setAttribute("aria-expanded", "true");
+  const activeEl = popupEl.querySelector(".is-active");
+  if (activeEl) selectEl.setAttribute("aria-activedescendant", activeEl.id);
+
+  openSelectPopup = {
+    selectEl,
+    popupEl,
+    moveActive(delta) {
+      activeIndex = Math.max(0, Math.min(options.length - 1, activeIndex + delta));
+      updateActive();
+    },
+    moveActiveTo(index) {
+      activeIndex = index;
+      updateActive();
+    },
+    chooseActive() {
+      chooseOption(activeIndex);
+    },
+    typeahead(prefix) {
+      const from = (activeIndex + (prefix.length > 1 ? 0 : 1)) % options.length;
+      for (let step = 0; step < options.length; step++) {
+        const i = (from + step) % options.length;
+        if (options[i].textContent.trim().toLowerCase().startsWith(prefix)) {
+          activeIndex = i;
+          updateActive();
+          return;
+        }
+      }
+    },
+  };
+  document.addEventListener("mousedown", onSelectPopupOutsideMouseDown, true);
+  window.addEventListener("scroll", closeSelectPopup, true);
+  window.addEventListener("resize", closeSelectPopup);
+}
+
+function enhanceSelect(selectEl) {
+  if (selectEl.dataset.customEnhanced) return;
+  selectEl.dataset.customEnhanced = "1";
+
+  selectEl.addEventListener("mousedown", (e) => {
+    // preventDefault here is what actually stops the native (unstyled,
+    // always-light) popup from opening at all -- everything else in this
+    // section rebuilds the interaction that would otherwise be lost.
+    e.preventDefault();
+    selectEl.focus();
+    if (openSelectPopup?.selectEl === selectEl) closeSelectPopup();
+    else openSelectPopupFor(selectEl);
+  });
+
+  selectEl.addEventListener("keydown", (e) => {
+    const isOpen = openSelectPopup?.selectEl === selectEl;
+    if (e.key.length === 1 && /\S/.test(e.key) && !e.altKey && !e.ctrlKey && !e.metaKey) {
+      e.preventDefault();
+      if (!isOpen) openSelectPopupFor(selectEl);
+      clearTimeout(typeaheadTimer);
+      typeaheadBuffer += e.key.toLowerCase();
+      openSelectPopup?.typeahead(typeaheadBuffer);
+      typeaheadTimer = setTimeout(() => (typeaheadBuffer = ""), 500);
+      return;
+    }
+    if (!["ArrowDown", "ArrowUp", "Enter", " ", "Home", "End", "Escape"].includes(e.key)) return;
+    e.preventDefault();
+
+    if (!isOpen) {
+      if (e.key !== "Escape") openSelectPopupFor(selectEl);
+      return;
+    }
+    if (e.key === "ArrowDown") openSelectPopup.moveActive(1);
+    else if (e.key === "ArrowUp") openSelectPopup.moveActive(-1);
+    else if (e.key === "Home") openSelectPopup.moveActiveTo(0);
+    else if (e.key === "End") openSelectPopup.moveActiveTo(selectEl.options.length - 1);
+    else if (e.key === "Enter" || e.key === " ") openSelectPopup.chooseActive();
+    else if (e.key === "Escape") closeSelectPopup();
+  });
+
+  selectEl.addEventListener("blur", () => {
+    if (openSelectPopup?.selectEl === selectEl) closeSelectPopup();
+  });
+}
+
+// Auto-applies to every .select on the page, including ones rendered after
+// this runs (dashboard-product-form.js and others populate their <select>
+// markup well after initLayout() already returned) -- called once from
+// layout.js's initLayout(); no page needs to know this exists.
+export function initCustomSelects() {
+  document.querySelectorAll("select.select").forEach(enhanceSelect);
+  new MutationObserver((mutations) => {
+    for (const m of mutations) {
+      m.addedNodes.forEach((node) => {
+        if (node.nodeType !== 1) return;
+        if (node.matches?.("select.select")) enhanceSelect(node);
+        node.querySelectorAll?.("select.select").forEach(enhanceSelect);
+      });
+    }
+  }).observe(document.body, { childList: true, subtree: true });
+}
+
+// ---------------------------------------------------------------------------
 // Favorite button — used on every product card + detail page
 // ---------------------------------------------------------------------------
 export function favoriteButtonHTML(productId, extraClass = "", count = null) {
