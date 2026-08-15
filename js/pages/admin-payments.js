@@ -564,6 +564,30 @@ function migrateLegacyFieldsIfNeeded(data) {
   });
 }
 
+// Separate from migrateLegacyFieldsIfNeeded above (which only ever runs
+// once, for a doc with zero methods) -- this repairs an id-less entry in an
+// otherwise-populated methods list, which the seeding above can't reach.
+// Any method saved before the id field existed (e.g. from directly editing
+// Firestore, or an even earlier version of this page) has no id at all, so
+// escrowOrders' payment_confirmed rule -- which matches the chosen method
+// by id -- can never find it no matter how correctly enabled/noProofRequired
+// it's set, and the resulting permission-denied on confirm looks identical
+// to any other failure. Runs on every load; a no-op once every method has
+// an id, so it's safe to leave in permanently rather than a one-time flag.
+let repairingIds = false;
+function repairMethodsMissingId(data) {
+  if (repairingIds || !data.methods?.length) return;
+  const hasIdless = data.methods.some((m) => !m.id);
+  if (!hasIdless) return;
+  repairingIds = true;
+  const repaired = data.methods.map((m, i) => (m.id ? m : { ...m, id: `pm-${Date.now()}-${i}` }));
+  SiteSettings.setPaymentMethods(repaired)
+    .catch(() => {})
+    .finally(() => {
+      repairingIds = false;
+    });
+}
+
 async function main() {
   await initLayout();
   await guardAdmin("admin-payments.html");
@@ -571,6 +595,7 @@ async function main() {
   SiteSettings.subscribePaymentInfo((data) => {
     paymentInfo = data;
     migrateLegacyFieldsIfNeeded(data);
+    repairMethodsMissingId(data);
     render();
   });
   await reloadOrders();
