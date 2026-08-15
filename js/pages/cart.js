@@ -31,7 +31,13 @@ let orderStateLoaded = false;
 let orderStateRequestedForUid = null;
 // The platform's own payment-receiving details (settings/paymentInfo),
 // shown to the buyer once an order reaches awaiting_payment -- see
-// renderEscrowActions in ui.js. Fetched once; it rarely changes.
+// renderEscrowActions in ui.js. Kept live (see main()'s subscribePaymentInfo
+// below), not a one-time fetch -- a stale cached copy here used to be able
+// to outlive an admin adding/editing a payment method after this tab was
+// already open, so a buyer confirming "cash on delivery" against a payment
+// method id that had since changed got rejected by firestore.rules' own
+// fresh server-side re-check with a bare "Missing or insufficient
+// permissions", no matter how correct the button's own state looked.
 let paymentInfo = null;
 
 // Delivery is only offered once the buyer has a saved address (js/pages/
@@ -63,7 +69,6 @@ async function loadOrderState() {
   const [offers, escrowOrders] = await Promise.all([
     Chat.listMyOffers(authState.user.uid).catch(() => []),
     Escrow.listMyOrdersOnce(authState.user.uid).catch(() => []),
-    paymentInfo ? Promise.resolve(paymentInfo) : SiteSettings.getPaymentInfoOnce().then((info) => (paymentInfo = info)).catch(() => {}),
   ]);
   myOffersByProduct = {};
   offers.forEach((o) => {
@@ -329,6 +334,10 @@ async function main() {
   onCategoriesChange(render);
   SiteSettings.subscribeChatDisabled((active) => {
     chatDisabled = active;
+  });
+  SiteSettings.subscribePaymentInfo((info) => {
+    paymentInfo = info;
+    render();
   });
 }
 
