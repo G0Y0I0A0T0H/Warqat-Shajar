@@ -1190,10 +1190,11 @@ export function renderEscrowActions(containerEl, { order, viewerUid, paymentInfo
           }
           // Temporary diagnostic -- two targeted fixes (stale cached
           // paymentInfo, and methods missing an id) didn't resolve a live
-          // repeat of this same permission-denied, so this dumps every
-          // value firestore.rules' cash-on-delivery branch actually checks,
-          // read fresh from this exact click, to compare against the real
-          // settings/paymentInfo doc directly instead of guessing again.
+          // repeat of this same permission-denied. allMethods is logged as
+          // a pre-formatted JSON string (not a live object reference) so it
+          // prints fully expanded in the console with no manual
+          // triangle-clicking needed -- exactly what firestore.rules'
+          // cash-on-delivery branch checks, read fresh at this click.
           console.log("confirmCodOrder about to send:", {
             orderId: order.id,
             orderBuyerId: order.buyerId,
@@ -1202,7 +1203,7 @@ export function renderEscrowActions(containerEl, { order, viewerUid, paymentInfo
             viewerUid,
             methodId: chosen.dataset.methodId,
             methodLabel: chosen.dataset.methodLabel,
-            allMethods: paymentInfo?.methods,
+            allMethodsJSON: JSON.stringify(paymentInfo?.methods, null, 2),
           });
           await Escrow.confirmCodOrder(order.id, {
             methodId: chosen.dataset.methodId,
