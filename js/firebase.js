@@ -1917,8 +1917,19 @@ export const SiteSettings = {
     await setDoc(siteImagesRef, { categoryImages: { [category]: url } }, { merge: true });
   },
 
+  // Clears a category's custom (Cloudinary-hosted) image so it falls back
+  // to CATEGORY_IMAGES' git-committed default -- there was previously no
+  // way back to the default short of re-uploading the exact same file.
+  async resetCategoryImage(category) {
+    await setDoc(siteImagesRef, { categoryImages: { [category]: deleteField() } }, { merge: true });
+  },
+
   async updateLogoUrl(url) {
     await setDoc(siteImagesRef, { logoUrl: url }, { merge: true });
+  },
+
+  async resetLogo() {
+    await setDoc(siteImagesRef, { logoUrl: deleteField() }, { merge: true });
   },
 
   async getSiteContentOnce() {

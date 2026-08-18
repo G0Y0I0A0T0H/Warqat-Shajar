@@ -989,6 +989,7 @@
     "addImage": "ضيف صورة",
     "removeImage": "امسح الصورة",
     "replaceImage": "استبدل الصورة",
+    "resetToDefault": "رجّع الصورة الافتراضية",
     "uploading": "جاري الرفع...",
     "uploadTypeError": "نوع الملف ده مش مسموح هنا.",
     "uploadSizeError": "حجم الملف كبير أوي.",
