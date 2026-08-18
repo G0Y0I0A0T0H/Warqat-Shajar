@@ -57,7 +57,14 @@ function render() {
         <img src="${optimizedImageUrl(siteImages.logoUrl, 96) || "images/logo-icon.png"}" alt="" style="width:3rem;height:3rem;object-fit:contain">
       </div>
       <div id="logo-input-mount"></div>
-      <button type="button" class="${btnClass("default", "sm")}" id="save-logo-btn" style="margin-top:0.75rem">${t("branding.saveChanges", "Save")}</button>
+      <div style="display:flex;gap:0.5rem;margin-top:0.75rem">
+        <button type="button" class="${btnClass("default", "sm")}" id="save-logo-btn">${t("branding.saveChanges", "Save")}</button>
+        ${
+          siteImages.logoUrl
+            ? `<button type="button" class="${btnClass("outline", "sm")}" id="reset-logo-btn">${t("branding.resetToDefault", "Reset to default")}</button>`
+            : ""
+        }
+      </div>
     </div>
     <div>
       <h3 class="card-title" style="font-size:0.95rem">${t("branding.colorTitle", "Brand Color")}</h3>
@@ -227,6 +234,11 @@ function render() {
             </div>
             <button type="button" class="${btnClass("outline", "sm")}" data-replace-category="${c}">${t("branding.replaceImage")}</button>
             ${
+              siteImages.categoryImages[c]
+                ? `<button type="button" class="${btnClass("outline", "sm")}" data-reset-category="${c}">${t("branding.resetToDefault", "Reset to default")}</button>`
+                : ""
+            }
+            ${
               isHidden
                 ? `<button type="button" class="${btnClass("outline", "sm")}" data-toggle-category-hidden="${c}" data-hidden="true">${t("branding.showCategory", "Show")}</button>`
                 : `<button type="button" class="${btnClass("destructive", "icon-sm")}" data-delete-builtin-category="${c}" aria-label="${t("branding.deleteCategory", "Delete")}">${icon("trash")}</button>`
@@ -289,6 +301,14 @@ function render() {
   });
   contentEl.querySelector("#save-logo-btn").addEventListener("click", async () => {
     await SiteSettings.updateLogoUrl(logoInput.getValue());
+  });
+  contentEl.querySelector("#reset-logo-btn")?.addEventListener("click", async (e) => {
+    e.target.disabled = true;
+    try {
+      await SiteSettings.resetLogo();
+    } catch {
+      e.target.disabled = false;
+    }
   });
 
   // Brand color
@@ -436,6 +456,16 @@ function render() {
       if (!url) return;
       await SiteSettings.updateCategoryImage(cat, url);
       categoryInputs[cat].setValue("");
+    });
+  });
+  contentEl.querySelectorAll("[data-reset-category]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      btn.disabled = true;
+      try {
+        await SiteSettings.resetCategoryImage(btn.dataset.resetCategory);
+      } catch {
+        btn.disabled = false;
+      }
     });
   });
 

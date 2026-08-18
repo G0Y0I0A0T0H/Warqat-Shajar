@@ -119,16 +119,24 @@ export const AD_PLACEMENTS = [
   "product-detail-sidebar",
 ];
 
+// Kept in sync with CATEGORIES above -- these were stale for a while (still
+// keyed by a taxonomy version predating field-crops/trees/herbs/etc, so
+// every current category except vegetables/fruits/nurseries had no default
+// at all and had to be uploaded to Cloudinary by hand just to show
+// anything). livestock/poultry/bee-products/services still have none.
 export const CATEGORY_IMAGES = {
+  "field-crops": "images/categories/field-crops.jpg",
   vegetables: "images/categories/vegetables.jpg",
   fruits: "images/categories/fruits.jpg",
-  wheat: "images/categories/wheat.jpg",
-  cotton: "images/categories/cotton.jpg",
-  barley: "images/categories/barley.jpg",
-  rice: "images/categories/rice.jpg",
-  organic: "images/categories/organic.jpg",
-  "animal-feed": "images/categories/animal-feed.jpg",
+  trees: "images/categories/trees.jpg",
   nurseries: "images/categories/nurseries.jpg",
+  herbs: "images/categories/herbs.jpg",
+  seeds: "images/categories/seeds.jpg",
+  fertilizers: "images/categories/fertilizers.jpg",
+  pesticides: "images/categories/pesticides.jpg",
+  irrigation: "images/categories/irrigation.jpg",
+  equipment: "images/categories/equipment.jpg",
+  "farm-supplies": "images/categories/farm-supplies.jpg",
 };
 
 // Assumed shelf life (days) per category, at good farmer-side storage — used

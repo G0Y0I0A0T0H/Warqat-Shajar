@@ -989,6 +989,7 @@
     "addImage": "Add Image",
     "removeImage": "Remove Image",
     "replaceImage": "Replace Image",
+    "resetToDefault": "Reset to default",
     "uploading": "Uploading...",
     "uploadTypeError": "This file type isn't allowed here.",
     "uploadSizeError": "File is too large.",
