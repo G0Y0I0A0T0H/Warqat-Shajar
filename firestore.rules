@@ -254,22 +254,22 @@ service cloud.firestore {
     }
 
     match /settings/{docId} {
-      // paymentInfo holds the owner's own bank/wallet receiving details --
-      // excluded from the public read here (unlike every other settings
-      // doc) and given its own owner-only rule below.
-      allow read: if docId != 'paymentInfo';
-      // killSwitch, maintenanceMode, chatDisabled, and paymentInfo are all
-      // excluded here and given their own owner-only rules below --
-      // Firestore ORs every matching block together, so without this
-      // exclusion a regular admin would still be able to write through
-      // this generic rule regardless of the narrower ones.
+      // paymentInfo and whatsappConfig are excluded from the public read
+      // here (unlike every other settings doc) and given their own
+      // owner/payments-admin-only rules below.
+      allow read: if docId != 'paymentInfo' && docId != 'whatsappConfig';
+      // killSwitch, maintenanceMode, chatDisabled, paymentInfo, and
+      // whatsappConfig are all excluded here and given their own rules
+      // below -- Firestore ORs every matching block together, so without
+      // this exclusion a regular admin would still be able to write
+      // through this generic rule regardless of the narrower ones.
       // adPlacements is managed from admin-ads.html ("ads" section); every
       // other doc left in this generic rule (siteImages, siteContent,
       // siteTheme, socialLinks, categories) is managed from
       // admin-branding.html ("branding" section) -- each needs its own
       // section grant, not just bare isAdmin(), so a section-restricted
       // admin can't reach either one via a direct SDK call.
-      allow write: if docId != 'killSwitch' && docId != 'maintenanceMode' && docId != 'chatDisabled' && docId != 'paymentInfo' &&
+      allow write: if docId != 'killSwitch' && docId != 'maintenanceMode' && docId != 'chatDisabled' && docId != 'paymentInfo' && docId != 'whatsappConfig' &&
         (docId == 'adPlacements' ? isAdminWithSection('ads') : isAdminWithSection('branding'));
     }
 
@@ -313,6 +313,15 @@ service cloud.firestore {
     match /settings/paymentInfo {
       allow read: if isSignedIn();
       allow write: if isOwnerOrGranted('payments');
+    }
+
+    // The admin's own WhatsApp number(s) -- the admin is always the one who
+    // clicks send (see admin-payments.html's "واتساب" tab and js/ui.js's
+    // escrow action buttons), never a buyer or farmer, so unlike
+    // paymentInfo this stays fully payments-admin-only, no public/buyer
+    // read case.
+    match /settings/whatsappConfig {
+      allow read, write: if isOwnerOrGranted('payments');
     }
 
     // Real homepage stat counters (registered farmers, completed deals) --

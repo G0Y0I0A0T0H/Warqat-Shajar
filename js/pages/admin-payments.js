@@ -1,7 +1,9 @@
 import { initLayout } from "../layout.js";
 import { guardAdmin } from "../admin-shell.js";
 import { t, onLocaleChange } from "../i18n.js";
-import { SiteSettings, Escrow, Wallets, WithdrawalRequests, AuditLog } from "../firebase.js";
+import { SiteSettings, Escrow, Wallets, WithdrawalRequests, AuditLog, Profile } from "../firebase.js";
+import { unitLabelKey } from "../constants.js";
+import { isValidPhone } from "./auth-shared.js";
 import { btnClass, badgeClass, icon, showMessage, escapeHtml, deliveryMethodLineHTML, renderZoomableImage, wireZoomableImages } from "../ui.js";
 import { authState } from "../state.js";
 
@@ -24,6 +26,7 @@ const ICON_CHOICES = ["phone", "credit-card", "package", "zap"];
 
 let contentEl;
 let paymentInfo = { methods: [], notes: null };
+let whatsappConfig = { numbers: [] };
 let activeOrders = [];
 // Unfiltered (includes released/refunded) -- feeds the "every deal" table
 // and the per-farmer rollup below, both of which need the full history, not
@@ -31,16 +34,84 @@ let activeOrders = [];
 let allOrders = [];
 let farmerRollups = [];
 let pendingWithdrawals = [];
+// uid -> phone, batch-loaded for whichever orders currently show a WhatsApp
+// button (see loadContactPhones) -- a plain object survives JSON-free reuse
+// across reloads better than a Map here since nothing needs Map-only methods.
+let contactPhones = {};
 let migrated = false;
 let activeTab = "methods";
 
 const TABS = [
   { key: "methods", labelKey: "payments.tabMethods" },
+  { key: "whatsapp", labelKey: "payments.tabWhatsapp" },
   { key: "needsAction", labelKey: "payments.tabNeedsAction" },
   { key: "allDeals", labelKey: "payments.tabAllDeals" },
   { key: "withdrawals", labelKey: "payments.tabWithdrawals" },
   { key: "farmers", labelKey: "payments.tabFarmers" },
 ];
+
+// ---------------------------------------------------------------------------
+// WhatsApp notify buttons -- there's no server-side send here (no backend
+// exists in this project, and a real WhatsApp Business API token can never
+// live in client-side code without exposing it to every visitor), so this
+// is the closest thing to automatic that's actually safe: a wa.me link with
+// the whole message already typed in, needing just one tap on WhatsApp's
+// own send button. The admin is always the one who taps it -- to their own
+// configured number when a buyer claims payment, then to the farmer and
+// buyer once the admin confirms it -- never a buyer/farmer sending anything.
+// ---------------------------------------------------------------------------
+function toWhatsappNumber(localPhone) {
+  const digits = (localPhone || "").replace(/\D/g, "");
+  return digits.startsWith("0") ? `20${digits.slice(1)}` : digits;
+}
+
+function whatsappHref(phone, message) {
+  return `https://wa.me/${toWhatsappNumber(phone)}?text=${encodeURIComponent(message)}`;
+}
+
+function fillTemplate(str, params) {
+  return Object.entries(params).reduce((s, [k, v]) => s.replaceAll(`{${k}}`, String(v ?? "")), str);
+}
+
+// Only the first enabled entry is ever used -- see whatsappConfig's own doc
+// comment in firebase.js for why the list shape exists anyway.
+function primaryWhatsappNumber() {
+  return whatsappConfig.numbers.find((n) => n.enabled)?.phone || null;
+}
+
+function adminNotifyMessage(o) {
+  return fillTemplate(t("payments.waAdminMessage"), {
+    product: o.productLabel || "",
+    quantity: o.quantity,
+    unit: t(unitLabelKey(o.unit)),
+    total: o.totalAmount,
+    buyerName: o.buyerName || "",
+    sellerName: o.sellerName || "",
+    method: o.paymentMethodChosen || "",
+    phone: o.paymentPhoneNumber || "",
+  });
+}
+
+function farmerConfirmMessage(o) {
+  return fillTemplate(t("payments.waFarmerMessage"), {
+    product: o.productLabel || "",
+    quantity: o.quantity,
+    unit: t(unitLabelKey(o.unit)),
+    total: o.totalAmount,
+    buyerName: o.buyerName || "",
+    buyerPhone: contactPhones[o.buyerId] || "",
+  });
+}
+
+function buyerConfirmMessage(o) {
+  return fillTemplate(t("payments.waBuyerMessage"), {
+    product: o.productLabel || "",
+    quantity: o.quantity,
+    unit: t(unitLabelKey(o.unit)),
+    total: o.totalAmount,
+    sellerName: o.sellerName || "",
+  });
+}
 
 const ESCROW_STATUS_KEY = {
   awaiting_payment: "escrow.statusAwaitingPayment",
@@ -52,10 +123,29 @@ const ESCROW_STATUS_KEY = {
   refunded: "escrow.statusRefunded",
 };
 
+// A wa.me link with the message already typed in -- see the "WhatsApp
+// notify buttons" doc comment above adminNotifyMessage for why this is a
+// link the admin taps send on, not a real automatic send.
+function whatsappBtnHTML(phone, message) {
+  if (!phone) return "";
+  return `<a href="${whatsappHref(phone, message)}" target="_blank" rel="noopener noreferrer" class="${btnClass("outline", "sm")}">${icon("whatsapp")} ${t("payments.waSendBtn")}</a>`;
+}
+
 function renderOrderRow(o) {
   let actionsHtml = "";
   if (o.status === "payment_claimed") {
-    actionsHtml = `<button type="button" class="${btnClass("default", "sm")}" data-confirm-payment="${o.id}">${t("payments.confirmPaymentBtn")}</button>`;
+    actionsHtml = `
+      <button type="button" class="${btnClass("default", "sm")}" data-confirm-payment="${o.id}">${t("payments.confirmPaymentBtn")}</button>
+      ${whatsappBtnHTML(primaryWhatsappNumber(), adminNotifyMessage(o))}
+    `;
+  } else if (o.status === "payment_confirmed") {
+    // No further admin action applies until the buyer confirms delivery --
+    // these are purely the one-click WhatsApp notifications for the farmer
+    // and buyer, see the module doc comment above adminNotifyMessage.
+    actionsHtml = `
+      ${whatsappBtnHTML(contactPhones[o.sellerId], farmerConfirmMessage(o))}
+      ${whatsappBtnHTML(contactPhones[o.buyerId], buyerConfirmMessage(o))}
+    `;
   } else if (o.status === "delivery_confirmed" && !o.noProofPayment) {
     // No release step applies to a COD order -- no money ever passed
     // through the platform for one, so delivery_confirmed IS its terminal
@@ -123,6 +213,24 @@ function methodRowHTML(m) {
       <div style="display:flex;gap:0.4rem">
         <button type="button" class="${btnClass("outline", "sm")}" data-toggle-method="${m.id}">${m.enabled ? t("payments.disableMethod", "Disable") : t("payments.enableMethod", "Enable")}</button>
         <button type="button" class="${btnClass("destructive", "icon-sm")}" data-remove-method="${m.id}" aria-label="${t("payments.removeMethod", "Remove")}">${icon("trash")}</button>
+      </div>
+    </div>
+  `;
+}
+
+function whatsappNumberRowHTML(n) {
+  return `
+    <div class="list-row">
+      <div class="list-row-main">
+        <div style="display:flex;align-items:center;gap:0.4rem">
+          <span style="font-weight:600">${escapeHtml(n.label || n.phone)}</span>
+          ${!n.enabled ? `<span class="${badgeClass("secondary")}">${t("payments.methodDisabled", "Disabled")}</span>` : ""}
+        </div>
+        <div class="text-muted force-ltr" dir="ltr" style="font-size:0.8rem">${escapeHtml(n.phone)}</div>
+      </div>
+      <div style="display:flex;gap:0.4rem">
+        <button type="button" class="${btnClass("outline", "sm")}" data-toggle-whatsapp="${n.id}">${n.enabled ? t("payments.disableMethod", "Disable") : t("payments.enableMethod", "Enable")}</button>
+        <button type="button" class="${btnClass("destructive", "icon-sm")}" data-remove-whatsapp="${n.id}" aria-label="${t("payments.removeMethod", "Remove")}">${icon("trash")}</button>
       </div>
     </div>
   `;
@@ -269,6 +377,35 @@ function tabPanelHTML() {
         <span id="payment-notes-saved" class="success-text" style="display:none">${t("payments.saved")}</span>
         <button type="submit" class="${btnClass("default")}" style="align-self:flex-start">${t("payments.save")}</button>
       </form>
+    `;
+  }
+  if (activeTab === "whatsapp") {
+    return `
+      <div class="card" style="padding:1.5rem;margin-top:1rem">
+        <h2 class="card-title" style="font-size:1rem">${t("payments.waTitle")}</h2>
+        <p class="text-muted" style="font-size:0.8rem;margin-top:0.25rem">${t("payments.waHint")}</p>
+        <div style="margin-top:1rem;display:flex;flex-direction:column;gap:0.5rem">
+          ${
+            whatsappConfig.numbers.length === 0
+              ? `<p class="empty-state">${t("payments.waNoNumbers")}</p>`
+              : whatsappConfig.numbers.map(whatsappNumberRowHTML).join("")
+          }
+        </div>
+        <form id="add-whatsapp-form" class="form-stack" style="margin-top:1.25rem;padding-top:1rem;border-top:1px solid var(--border)">
+          <div class="grid-2" style="gap:0.75rem">
+            <div class="field">
+              <label class="label">${t("payments.waLabelLabel")}</label>
+              <input class="input" id="new-whatsapp-label" maxlength="60" placeholder="${t("payments.waLabelPlaceholder")}">
+            </div>
+            <div class="field">
+              <label class="label">${t("payments.waPhoneLabel")}</label>
+              <input class="input force-ltr" dir="ltr" id="new-whatsapp-phone" maxlength="20" placeholder="01xxxxxxxxx">
+            </div>
+          </div>
+          <p id="add-whatsapp-error" class="error-text" style="display:none"></p>
+          <button type="submit" class="${btnClass("default", "sm")}" style="align-self:flex-start">${t("payments.waAddNumber")}</button>
+        </form>
+      </div>
     `;
   }
   if (activeTab === "needsAction") {
@@ -471,6 +608,54 @@ function render() {
       notesSubmitBtn.disabled = false;
     }
   });
+
+  contentEl.querySelectorAll("[data-toggle-whatsapp]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      btn.disabled = true;
+      try {
+        const id = btn.dataset.toggleWhatsapp;
+        const updated = whatsappConfig.numbers.map((n) => (n.id === id ? { ...n, enabled: !n.enabled } : n));
+        await SiteSettings.setWhatsappNumbers(updated);
+      } catch {
+        alert(t("payments.actionFailed"));
+        btn.disabled = false;
+      }
+    });
+  });
+  contentEl.querySelectorAll("[data-remove-whatsapp]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      if (!confirm(t("payments.confirmRemoveMethod", "Remove this payment method?"))) return;
+      btn.disabled = true;
+      try {
+        const id = btn.dataset.removeWhatsapp;
+        await SiteSettings.setWhatsappNumbers(whatsappConfig.numbers.filter((n) => n.id !== id));
+      } catch {
+        alert(t("payments.actionFailed"));
+        btn.disabled = false;
+      }
+    });
+  });
+  contentEl.querySelector("#add-whatsapp-form")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const errorEl = contentEl.querySelector("#add-whatsapp-error");
+    showMessage(errorEl, "");
+    const label = contentEl.querySelector("#new-whatsapp-label").value.trim();
+    const phone = contentEl.querySelector("#new-whatsapp-phone").value.trim();
+    if (!isValidPhone(phone)) {
+      showMessage(errorEl, t("auth.errors.phoneInvalid"));
+      return;
+    }
+    const newNumber = { id: `wn-${Date.now()}`, label, phone, enabled: true };
+    const addSubmitBtn = e.target.querySelector('button[type="submit"]');
+    addSubmitBtn.disabled = true;
+    try {
+      await SiteSettings.setWhatsappNumbers([...whatsappConfig.numbers, newNumber]);
+    } catch {
+      showMessage(errorEl, t("payments.actionFailed"));
+    } finally {
+      addSubmitBtn.disabled = false;
+    }
+  });
 }
 
 async function reloadOrders() {
@@ -481,7 +666,28 @@ async function reloadOrders() {
   );
   await loadFarmerRollups();
   await loadPendingWithdrawals();
+  await loadContactPhones();
   render();
+}
+
+// Batch-fetches whichever buyer/seller phone numbers the WhatsApp buttons
+// on a payment_confirmed row actually need (farmerConfirmMessage /
+// buyerConfirmMessage above) -- escrowOrders itself never stores a
+// buyer/seller's real contact phone, only their name. Keeps whatever's
+// already cached from a previous reload instead of re-fetching every time.
+async function loadContactPhones() {
+  const uids = new Set();
+  activeOrders.forEach((o) => {
+    if (o.status !== "payment_confirmed") return;
+    if (o.buyerId) uids.add(o.buyerId);
+    if (o.sellerId) uids.add(o.sellerId);
+  });
+  const missing = [...uids].filter((uid) => !(uid in contactPhones));
+  if (missing.length === 0) return;
+  const profiles = await Promise.all(missing.map((uid) => Profile.getUserProfile(uid).catch(() => null)));
+  missing.forEach((uid, i) => {
+    contactPhones[uid] = profiles[i]?.phone || null;
+  });
 }
 
 // A "completed deal" counts a COD order that reached delivery_confirmed
@@ -549,6 +755,10 @@ async function main() {
   SiteSettings.subscribePaymentInfo((data) => {
     paymentInfo = data;
     migrateLegacyFieldsIfNeeded(data);
+    render();
+  });
+  SiteSettings.subscribeWhatsappConfig((data) => {
+    whatsappConfig = data;
     render();
   });
   await reloadOrders();

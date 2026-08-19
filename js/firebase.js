@@ -1819,6 +1819,13 @@ const DEFAULT_PAYMENT_INFO = {
 };
 const paymentInfoRef = doc(db, "settings", "paymentInfo");
 
+// The admin's own WhatsApp number(s) -- see admin-payments.html's "واتساب"
+// tab. numbers is a list (id/label/phone/enabled) so more can be added
+// later, but only the first enabled entry is ever actually used as a send
+// target today (see whatsappLink() in js/pages/admin-payments.js).
+const DEFAULT_WHATSAPP_CONFIG = { numbers: [] };
+const whatsappConfigRef = doc(db, "settings", "whatsappConfig");
+
 // Kept in sync by hand with js/constants.js's CATEGORIES -- not imported
 // directly to avoid a circular import (constants.js already imports
 // SiteSettings from this file).
@@ -2102,6 +2109,19 @@ export const SiteSettings = {
 
   async updatePaymentNotes(notes) {
     await setDoc(paymentInfoRef, { notes: notes || null }, { merge: true });
+  },
+
+  subscribeWhatsappConfig(callback) {
+    return onSnapshot(
+      whatsappConfigRef,
+      (snap) => callback(snap.exists() ? { ...DEFAULT_WHATSAPP_CONFIG, ...snap.data() } : DEFAULT_WHATSAPP_CONFIG),
+      () => callback(DEFAULT_WHATSAPP_CONFIG),
+    );
+  },
+
+  // Replaces the whole list, same pattern as setPaymentMethods above.
+  async setWhatsappNumbers(numbers) {
+    await setDoc(whatsappConfigRef, { numbers }, { merge: true });
   },
 };
 
