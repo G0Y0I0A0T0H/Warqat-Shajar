@@ -644,20 +644,11 @@ service cloud.firestore {
          request.resource.data.paymentPhoneNumber is string && request.resource.data.paymentPhoneNumber.size() > 0 &&
          request.resource.data.paymentProofUrl is string && request.resource.data.paymentProofUrl.size() > 0)
         ||
-        // Cash-on-delivery (or any other method the admin flags
-        // noProofRequired) -- no transfer to verify, so this skips
-        // payment_claimed entirely and jumps straight to payment_confirmed.
-        // The chosen method must actually exist in settings/paymentInfo and
-        // be flagged noProofRequired -- a buyer can't just claim "cod" on a
-        // method that requires real proof.
-        (request.auth.uid == resource.data.buyerId &&
-         resource.data.status == 'awaiting_payment' &&
-         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'paymentConfirmedAt', 'paymentMethodId', 'paymentMethodChosen', 'noProofPayment']) &&
-         request.resource.data.status == 'payment_confirmed' &&
-         request.resource.data.noProofPayment == true &&
-         get(/databases/$(database)/documents/settings/paymentInfo).data.methods
-           .exists(m, m.id == request.resource.data.paymentMethodId && m.get('noProofRequired', false) == true))
-        ||
+        // Cash-on-delivery has been fully retired -- every payment method
+        // now requires real proof (see the branch above). Orders that
+        // already reached payment_confirmed with noProofPayment == true
+        // before this removal still read/complete normally below; this
+        // just removes the ability to ever create a new one.
         (request.auth.uid == resource.data.buyerId &&
          resource.data.status == 'payment_confirmed' &&
          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'deliveryConfirmedAt']) &&
