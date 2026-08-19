@@ -125,10 +125,12 @@ const ESCROW_STATUS_KEY = {
 
 // A wa.me link with the message already typed in -- see the "WhatsApp
 // notify buttons" doc comment above adminNotifyMessage for why this is a
-// link the admin taps send on, not a real automatic send.
-function whatsappBtnHTML(phone, message) {
+// link the admin taps send on, not a real automatic send. label says WHO
+// it's addressed to -- two of these can sit side by side on the same row
+// (payment_confirmed below) and looked identical without it.
+function whatsappBtnHTML(phone, message, label) {
   if (!phone) return "";
-  return `<a href="${whatsappHref(phone, message)}" target="_blank" rel="noopener noreferrer" class="${btnClass("outline", "sm")}">${icon("whatsapp")} ${t("payments.waSendBtn")}</a>`;
+  return `<a href="${whatsappHref(phone, message)}" target="_blank" rel="noopener noreferrer" class="${btnClass("outline", "sm")}">${icon("whatsapp")} ${label}</a>`;
 }
 
 function renderOrderRow(o) {
@@ -136,15 +138,15 @@ function renderOrderRow(o) {
   if (o.status === "payment_claimed") {
     actionsHtml = `
       <button type="button" class="${btnClass("default", "sm")}" data-confirm-payment="${o.id}">${t("payments.confirmPaymentBtn")}</button>
-      ${whatsappBtnHTML(primaryWhatsappNumber(), adminNotifyMessage(o))}
+      ${whatsappBtnHTML(primaryWhatsappNumber(), adminNotifyMessage(o), t("payments.waSendToAdminBtn"))}
     `;
   } else if (o.status === "payment_confirmed") {
     // No further admin action applies until the buyer confirms delivery --
     // these are purely the one-click WhatsApp notifications for the farmer
     // and buyer, see the module doc comment above adminNotifyMessage.
     actionsHtml = `
-      ${whatsappBtnHTML(contactPhones[o.sellerId], farmerConfirmMessage(o))}
-      ${whatsappBtnHTML(contactPhones[o.buyerId], buyerConfirmMessage(o))}
+      ${whatsappBtnHTML(contactPhones[o.sellerId], farmerConfirmMessage(o), t("payments.waSendToFarmerBtn"))}
+      ${whatsappBtnHTML(contactPhones[o.buyerId], buyerConfirmMessage(o), t("payments.waSendToBuyerBtn"))}
     `;
   } else if (o.status === "delivery_confirmed" && !o.noProofPayment) {
     // No release step applies to a COD order -- no money ever passed
