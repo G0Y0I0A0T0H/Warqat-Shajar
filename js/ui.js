@@ -934,9 +934,11 @@ export function escrowAmountBreakdownHTML(order) {
 export function escrowStepperHTML(order) {
   const total = `${order.totalAmount + (order.deliveryFee || 0)} ${t("products.currency", "EGP")}`;
 
-  // Cash-on-delivery (or any other admin-flagged noProofRequired method)
-  // never has a payment to verify or funds to release -- it's done the
-  // moment the buyer confirms delivery, no 5th "released" step applies.
+  // Cash-on-delivery has been retired (no new order can have this field
+  // set), but a historical COD order never had a payment to verify or
+  // funds to release -- it was done the moment the buyer confirmed
+  // delivery, no 5th "released" step applied -- so this stays purely to
+  // render those old orders correctly.
   if (order.noProofPayment && order.status === "delivery_confirmed") {
     return `
       <div class="escrow-stepper">
@@ -1009,7 +1011,6 @@ function paymentMethodCircle(orderId, method) {
         data-method-value="${escapeHtml(method.value || "")}"
         data-method-label="${escapeHtml(method.label)}"
         data-method-id="${escapeHtml(method.id || "")}"
-        data-no-proof="${method.noProofRequired ? "1" : "0"}"
       >
       <span class="escrow-method-circle-icon">${icon(method.icon || "credit-card")}</span>
       <span class="escrow-method-circle-label">${escapeHtml(method.label)}</span>
@@ -1059,10 +1060,6 @@ export function renderEscrowActions(containerEl, { order, viewerUid, paymentInfo
   let primaryBtnHtml = "";
   if (isAwaitingPaymentAsBuyer) {
     topHtml = escrowAmountBreakdownHTML(order) + escrowPaymentMethodsHTML(order.id, paymentInfo);
-    // Wrapped so it can be hidden entirely once a noProofRequired method
-    // (cash on delivery, or anything else the admin flags that way) is
-    // picked -- see updateMarkPaidState below, which toggles this and swaps
-    // the button's label/behavior based on the selected method.
     proofFormHtml = `
       <div id="escrow-proof-form-${order.id}">
         <div class="field">
@@ -1076,9 +1073,8 @@ export function renderEscrowActions(containerEl, { order, viewerUid, paymentInfo
       </div>
     `;
     // Starts disabled regardless of whether methods exist yet -- method +
-    // phone number + reference number + screenshot are all required,
-    // checked in updateMarkPaidState below (unless a no-proof method is
-    // picked, in which case just choosing it is enough).
+    // phone number + screenshot are all required, checked in
+    // updateMarkPaidState below.
     primaryBtnHtml = `<button type="button" class="${btnClass("default", "sm")}" id="escrow-mark-paid-btn" disabled>${icon("check")} <span id="escrow-mark-paid-label-${order.id}">${t("escrow.markPaidBtn")}</span></button>`;
   } else if (isBuyer && order.status === "payment_confirmed") {
     primaryBtnHtml = `<button type="button" class="${btnClass("default", "sm")}" id="escrow-confirm-delivery-btn">${icon("package")} ${t("escrow.confirmDeliveryBtn")}</button>`;
@@ -1116,15 +1112,6 @@ export function renderEscrowActions(containerEl, { order, viewerUid, paymentInfo
   function updateMarkPaidState() {
     if (!markPaidBtn) return;
     const chosen = containerEl.querySelector(`input[name="escrow-payment-method-${order.id}"]:checked`);
-    const proofFormEl = containerEl.querySelector(`#escrow-proof-form-${order.id}`);
-    const labelEl = containerEl.querySelector(`#escrow-mark-paid-label-${order.id}`);
-    const isNoProof = chosen?.dataset.noProof === "1";
-    if (proofFormEl) proofFormEl.style.display = isNoProof ? "none" : "";
-    if (labelEl) labelEl.textContent = isNoProof ? t("escrow.confirmCodBtn") : t("escrow.markPaidBtn");
-    if (isNoProof) {
-      markPaidBtn.disabled = false;
-      return;
-    }
     const phoneValue = containerEl.querySelector(`#escrow-phone-input-${order.id}`)?.value.trim();
     const proofUrl = proofInput?.getValue();
     markPaidBtn.disabled = !(chosen && phoneValue && proofUrl);
@@ -1177,48 +1164,6 @@ export function renderEscrowActions(containerEl, { order, viewerUid, paymentInfo
       showMessage(actionErrorEl, "");
 
       try {
-        if (chosen?.dataset.noProof === "1") {
-          // firestore.rules cross-checks this exact id against
-          // settings/paymentInfo.methods server-side -- a method with no id
-          // (only possible for data saved before that field existed) can
-          // never pass that check no matter how correctly noProofRequired is
-          // set, and the resulting permission-denied looks identical to any
-          // other failure. Catching it here gives a precise, actionable
-          // error instead of the generic one below.
-          if (!chosen.dataset.methodId) {
-            throw new Error("payment method missing id");
-          }
-          // Temporary diagnostic -- two targeted fixes (stale cached
-          // paymentInfo, and methods missing an id) didn't resolve a live
-          // repeat of this same permission-denied. allMethods is logged as
-          // a pre-formatted JSON string (not a live object reference) so it
-          // prints fully expanded in the console with no manual
-          // triangle-clicking needed -- exactly what firestore.rules'
-          // cash-on-delivery branch checks, read fresh at this click.
-          console.log("confirmCodOrder about to send:", {
-            orderId: order.id,
-            orderBuyerId: order.buyerId,
-            orderSellerId: order.sellerId,
-            orderStatus: order.status,
-            viewerUid,
-            methodId: chosen.dataset.methodId,
-            methodLabel: chosen.dataset.methodLabel,
-            allMethodsJSON: JSON.stringify(paymentInfo?.methods, null, 2),
-          });
-          await Escrow.confirmCodOrder(order.id, {
-            methodId: chosen.dataset.methodId,
-            methodLabel: chosen.dataset.methodLabel,
-          });
-          Notifications.create({
-            uid: order.sellerId,
-            key: "codOrderConfirmed",
-            params: { product: order.productLabel || "", amount: String(order.totalAmount) },
-            link: "dashboard-orders.html",
-          }).catch(() => {});
-          onChange?.();
-          return;
-        }
-
         const phoneNumber = containerEl.querySelector(`#escrow-phone-input-${order.id}`)?.value.trim();
         const proofUrl = proofInput?.getValue();
         await Escrow.markPaymentClaimed(order.id, {
@@ -1245,12 +1190,7 @@ export function renderEscrowActions(containerEl, { order, viewerUid, paymentInfo
         // real state, ...) showed only the generic message below with
         // nothing in the console to actually diagnose it by.
         console.error("escrow mark-paid failed:", err);
-        showMessage(
-          actionErrorEl,
-          err.message === "payment method missing id"
-            ? t("escrow.methodMissingId", "This payment method needs to be re-added by the site admin before it can be used -- please contact support.")
-            : t("escrow.actionFailed", "Something went wrong -- please try again."),
-        );
+        showMessage(actionErrorEl, t("escrow.actionFailed", "Something went wrong -- please try again."));
         markPaidBtn.disabled = false;
       }
     });
