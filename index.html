@@ -23,13 +23,27 @@
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
-    "@type": "Organization",
-    "name": "ورقة شجر",
-    "alternateName": "Waraqat Shajar",
-    "url": "https://waraqatshajar.com/",
-    "logo": "https://waraqatshajar.com/images/logo-icon.png",
-    "description": "السوق الزراعي المصري - منصة إلكترونية تربط المزارع المصري مباشرة بالتاجر والمصنع والمستهلك.",
-    "areaServed": "EG"
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": "https://waraqatshajar.com/#organization",
+        "name": "ورقة شجر",
+        "alternateName": "Waraqat Shajar",
+        "url": "https://waraqatshajar.com/",
+        "logo": "https://waraqatshajar.com/images/logo-icon.png",
+        "description": "منصة ورقة شجر هي السوق الزراعي المصري الإلكتروني اللي بيربط المزارع المصري مباشرة بالتاجر والمصنع والمستهلك، لبيع وشراء المحاصيل الزراعية بسعر عادل ومن غير وسيط.",
+        "areaServed": "EG",
+        "knowsAbout": ["التجارة الزراعية", "بيع وشراء المحاصيل", "سوق المزارعين المصري"]
+      },
+      {
+        "@type": "WebSite",
+        "@id": "https://waraqatshajar.com/#website",
+        "name": "ورقة شجر",
+        "url": "https://waraqatshajar.com/",
+        "inLanguage": "ar",
+        "publisher": { "@id": "https://waraqatshajar.com/#organization" }
+      }
+    ]
   }
   </script>
 </head>
