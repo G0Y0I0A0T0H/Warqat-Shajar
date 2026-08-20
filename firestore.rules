@@ -658,14 +658,20 @@ service cloud.firestore {
         // payment_claimed entirely and jumps straight to payment_confirmed.
         // The chosen method must actually exist in settings/paymentInfo and
         // be flagged noProofRequired -- a buyer can't just claim "cod" on a
-        // method that requires real proof.
+        // method that requires real proof. settings/paymentInfo.methods is
+        // a map keyed by method id (not a list) specifically so this can be
+        // a plain map lookup -- Firestore's rules language has no
+        // list.exists()/filter()/any() predicate macro (confirmed via the
+        // Rules Playground: "Function not found error: Name: [exists]"),
+        // so there was never a working way to search a *list* of method
+        // objects by id here at all.
         (request.auth.uid == resource.data.buyerId &&
          resource.data.status == 'awaiting_payment' &&
          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'paymentConfirmedAt', 'paymentMethodId', 'paymentMethodChosen', 'noProofPayment']) &&
          request.resource.data.status == 'payment_confirmed' &&
          request.resource.data.noProofPayment == true &&
          get(/databases/$(database)/documents/settings/paymentInfo).data.methods
-           .exists(m, m.id == request.resource.data.paymentMethodId && m.get('noProofRequired', false) == true))
+           .get(request.resource.data.paymentMethodId, {}).get('noProofRequired', false) == true)
         ||
         (request.auth.uid == resource.data.buyerId &&
          resource.data.status == 'payment_confirmed' &&

@@ -25,7 +25,7 @@ function auditPaymentMethod(action, targetId, targetLabel, meta) {
 const ICON_CHOICES = ["phone", "credit-card", "package", "zap"];
 
 let contentEl;
-let paymentInfo = { methods: [], notes: null };
+let paymentInfo = { methods: {}, notes: null };
 let whatsappConfig = { numbers: [] };
 let activeOrders = [];
 // Unfiltered (includes released/refunded) -- feeds the "every deal" table
@@ -346,9 +346,9 @@ function tabPanelHTML() {
         <p class="text-muted" style="font-size:0.8rem;margin-top:0.25rem">${t("payments.methodsHint", "Add, remove, or enable/disable any payment method shown to buyers -- full control, nothing hardcoded.")}</p>
         <div style="margin-top:1rem;display:flex;flex-direction:column;gap:0.5rem">
           ${
-            paymentInfo.methods.length === 0
+            Object.keys(paymentInfo.methods).length === 0
               ? `<p class="empty-state">${t("payments.noMethods", "No payment methods yet")}</p>`
-              : paymentInfo.methods.map(methodRowHTML).join("")
+              : Object.values(paymentInfo.methods).map(methodRowHTML).join("")
           }
         </div>
         <form id="add-method-form" class="form-stack" style="margin-top:1.25rem;padding-top:1rem;border-top:1px solid var(--border)">
@@ -544,8 +544,8 @@ function render() {
       btn.disabled = true;
       try {
         const id = btn.dataset.toggleNoProof;
-        const target = paymentInfo.methods.find((m) => m.id === id);
-        const updated = paymentInfo.methods.map((m) => (m.id === id ? { ...m, noProofRequired: !m.noProofRequired } : m));
+        const target = paymentInfo.methods[id];
+        const updated = { ...paymentInfo.methods, [id]: { ...target, noProofRequired: !target?.noProofRequired } };
         await SiteSettings.setPaymentMethods(updated);
         auditPaymentMethod("payment_method_changed", id, target?.label, { noProofRequired: !target?.noProofRequired });
       } catch {
@@ -559,8 +559,8 @@ function render() {
       btn.disabled = true;
       try {
         const id = btn.dataset.toggleMethod;
-        const target = paymentInfo.methods.find((m) => m.id === id);
-        const updated = paymentInfo.methods.map((m) => (m.id === id ? { ...m, enabled: !m.enabled } : m));
+        const target = paymentInfo.methods[id];
+        const updated = { ...paymentInfo.methods, [id]: { ...target, enabled: !target?.enabled } };
         await SiteSettings.setPaymentMethods(updated);
         auditPaymentMethod("payment_method_changed", id, target?.label, { enabled: !target?.enabled });
       } catch {
@@ -575,8 +575,9 @@ function render() {
       btn.disabled = true;
       try {
         const id = btn.dataset.removeMethod;
-        const target = paymentInfo.methods.find((m) => m.id === id);
-        await SiteSettings.setPaymentMethods(paymentInfo.methods.filter((m) => m.id !== id));
+        const target = paymentInfo.methods[id];
+        const { [id]: _removed, ...remaining } = paymentInfo.methods;
+        await SiteSettings.setPaymentMethods(remaining);
         auditPaymentMethod("payment_method_removed", id, target?.label);
       } catch {
         alert(t("payments.actionFailed"));
@@ -608,7 +609,7 @@ function render() {
     const addSubmitBtn = e.target.querySelector('button[type="submit"]');
     addSubmitBtn.disabled = true;
     try {
-      await SiteSettings.setPaymentMethods([...paymentInfo.methods, newMethod]);
+      await SiteSettings.setPaymentMethods({ ...paymentInfo.methods, [newMethod.id]: newMethod });
       auditPaymentMethod("payment_method_added", newMethod.id, newMethod.label, { noProofRequired: newMethod.noProofRequired });
     } catch {
       showMessage(errorEl, t("payments.actionFailed"));
@@ -741,15 +742,24 @@ async function loadPendingWithdrawals() {
   pendingWithdrawals = await WithdrawalRequests.listAllPendingOnce().catch(() => []);
 }
 
+function methodsToMap(list) {
+  return Object.fromEntries(
+    list.map((m, i) => {
+      const id = m.id || `pm-${Date.now()}-${i}`;
+      return [id, { ...m, id }];
+    }),
+  );
+}
+
 // One-time, additive migration from the old fixed-field shape
-// (vodafoneCash/instapay/bank*) to the new admin-managed methods list, the
+// (vodafoneCash/instapay/bank*) to the new admin-managed methods map, the
 // first time this page loads after the switch -- nothing is deleted, the
 // old fields just stop being read once real methods exist. Also seeds the
 // other commonly-requested method types (Visa, Mastercard, cash on
 // delivery) as disabled placeholders so the admin can just fill in details
 // and flip them on, rather than typing every one from scratch.
 function migrateLegacyFieldsIfNeeded(data) {
-  if (migrated || (data.methods && data.methods.length > 0)) return;
+  if (migrated || Object.keys(data.methods || {}).length > 0) return;
   migrated = true;
   const seeded = [
     { id: "vodafone-cash", label: "فودافون كاش", icon: "phone", value: data.vodafoneCash || "", enabled: Boolean(data.vodafoneCash) },
@@ -767,32 +777,26 @@ function migrateLegacyFieldsIfNeeded(data) {
       enabled: true,
     });
   }
-  SiteSettings.setPaymentMethods(seeded).catch(() => {
+  SiteSettings.setPaymentMethods(methodsToMap(seeded)).catch(() => {
     migrated = false;
   });
 }
 
-// Separate from migrateLegacyFieldsIfNeeded above (which only ever runs
-// once, for a doc with zero methods) -- this repairs an id-less entry in an
-// otherwise-populated methods list, which the seeding above can't reach.
-// Any method saved before the id field existed (e.g. from directly editing
-// Firestore, or an even earlier version of this page) has no id at all, so
-// escrowOrders' payment_confirmed rule -- which matches the chosen method
-// by id -- can never find it no matter how correctly enabled/noProofRequired
-// it's set, and the resulting permission-denied on confirm looks identical
-// to any other failure. Runs on every load; a no-op once every method has
-// an id, so it's safe to leave in permanently rather than a one-time flag.
-let repairingIds = false;
-function repairMethodsMissingId(data) {
-  if (repairingIds || !data.methods?.length) return;
-  const hasIdless = data.methods.some((m) => !m.id);
-  if (!hasIdless) return;
-  repairingIds = true;
-  const repaired = data.methods.map((m, i) => (m.id ? m : { ...m, id: `pm-${Date.now()}-${i}` }));
-  SiteSettings.setPaymentMethods(repaired)
+// One-time repair for data saved back when methods was still a *list* --
+// escrowOrders' payment_confirmed rule now does a map lookup by id
+// (get(id, {}) -- see firestore.rules), which a list can't satisfy at all,
+// so any live site still holding the old array shape needs it converted
+// once. Also backfills an id for any entry that predates the id field
+// existing at all (e.g. from directly editing Firestore). No-op once
+// methods is already a map, so it's safe to leave in permanently.
+let repairingShape = false;
+function repairMethodsArrayShape(data) {
+  if (repairingShape || !Array.isArray(data.methods)) return;
+  repairingShape = true;
+  SiteSettings.setPaymentMethods(methodsToMap(data.methods))
     .catch(() => {})
     .finally(() => {
-      repairingIds = false;
+      repairingShape = false;
     });
 }
 
@@ -803,7 +807,7 @@ async function main() {
   SiteSettings.subscribePaymentInfo((data) => {
     paymentInfo = data;
     migrateLegacyFieldsIfNeeded(data);
-    repairMethodsMissingId(data);
+    repairMethodsArrayShape(data);
     render();
   });
   SiteSettings.subscribeWhatsappConfig((data) => {
