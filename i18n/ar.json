@@ -199,7 +199,7 @@
   },
   "deliveryMethod": {
     "title": "طريقة الاستلام",
-    "pickup": "استلام (ببلاش)",
+    "pickup": "الاستلام من نقطة البيع",
     "delivery": "توصيل للبيت",
     "pickupLabel": "استلام",
     "deliveryLabel": "توصيل لـ"
