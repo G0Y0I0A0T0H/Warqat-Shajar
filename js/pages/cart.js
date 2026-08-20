@@ -263,6 +263,7 @@ async function handleOrderNow(productId) {
         productLabel,
         buyerId: authState.user.uid,
         buyerName: authState.profile.fullName,
+        buyerAccountType: authState.profile.accountType,
         sellerId: product.ownerId,
         sellerName: product.ownerName,
         quantity,

@@ -2,6 +2,7 @@ import { initLayout } from "../layout.js";
 import { guardDashboard } from "../dashboard-shell.js";
 import { t, onLocaleChange } from "../i18n.js";
 import { Chat, Products, Escrow, Notifications, SiteSettings } from "../firebase.js";
+import { unitLabelKey } from "../constants.js";
 import { badgeClass, btnClass, icon, escapeHtml, deliveryMethodLineHTML, renderEscrowActions, scrollToAndHighlightOrder } from "../ui.js";
 import { initHelpTour } from "../help-tour.js";
 
@@ -74,7 +75,7 @@ function render() {
             }
           </div>
           <div class="grid-2 text-muted" style="gap:0.5rem;margin-top:0.5rem;font-size:0.875rem">
-            <div>${t("orders.quantity")}: ${escapeHtml(o.quantity)} ${escapeHtml(o.unit)}</div>
+            <div>${t("orders.quantity")}: ${escapeHtml(o.quantity)} ${t(unitLabelKey(o.unit))}</div>
             <div>${t("orders.buyerType")}: ${o.buyerAccountType ? t(`roles.${o.buyerAccountType}`) : ""}</div>
             <div>${t("orders.contact")}: ${escapeHtml(o.buyerName)}</div>
             ${o.deliveryNotes ? `<div>${t("orders.delivery")}: ${escapeHtml(o.deliveryNotes)}</div>` : ""}
@@ -129,6 +130,7 @@ function render() {
             productLabel: offer.productLabel,
             buyerId: offer.buyerId,
             buyerName: offer.buyerName,
+            buyerAccountType: offer.buyerAccountType,
             sellerId: profileRef.uid,
             sellerName: profileRef.fullName,
             quantity: offer.quantity,
@@ -196,6 +198,7 @@ async function reload() {
     productLabel: o.productLabel,
     buyerId: o.buyerId,
     buyerName: o.buyerName,
+    buyerAccountType: o.buyerAccountType,
     quantity: o.quantity,
     unit: o.unit,
     deliveryMethod: o.deliveryMethod,

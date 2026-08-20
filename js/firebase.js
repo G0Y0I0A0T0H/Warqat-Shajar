@@ -909,6 +909,7 @@ export const Escrow = {
     productLabel,
     buyerId,
     buyerName,
+    buyerAccountType,
     sellerId,
     sellerName,
     quantity,
@@ -923,6 +924,12 @@ export const Escrow = {
       productLabel: productLabel || null,
       buyerId,
       buyerName,
+      // Optional -- the chat-based accept path already has this on the
+      // accepted offer message itself (see dashboard-orders.js's own
+      // "نوع المشتري" row), stored here too now so a direct (chat-disabled)
+      // order, which has no offer message to fall back on, can show the
+      // same thing instead of a blank field.
+      buyerAccountType: buyerAccountType || null,
       sellerId,
       sellerName,
       quantity,
