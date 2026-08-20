@@ -360,7 +360,7 @@ function deliveryMethodSectionHTML() {
       <div style="display:flex;gap:1rem;margin-top:0.3rem;flex-wrap:wrap">
         <label style="display:flex;align-items:center;gap:0.3rem">
           <input type="radio" name="of-delivery-method" value="pickup" ${offerDeliveryMethod === "pickup" ? "checked" : ""}>
-          ${t("deliveryMethod.pickup", "Pickup (free)")}
+          ${t("deliveryMethod.pickup", "Pickup from the seller's location")}
         </label>
         <label style="display:flex;align-items:center;gap:0.3rem">
           <input type="radio" name="of-delivery-method" value="delivery" ${offerDeliveryMethod === "delivery" ? "checked" : ""}>
