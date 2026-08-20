@@ -1022,6 +1022,27 @@ main {
   }
 }
 
+/* Deep-link landing (cart.html?order=.../dashboard-orders.html?order=...
+   from a WhatsApp confirmation message -- see ui.js's
+   scrollToAndHighlightOrder) -- a brief themed glow so the specific row
+   the link promised to show is obviously the one that just got scrolled
+   to, not just "somewhere in this list." */
+@keyframes order-highlight {
+  0%,
+  100% {
+    box-shadow: none;
+  }
+  15%,
+  85% {
+    box-shadow: 0 0 0 2px var(--ring), 0 0 24px color-mix(in srgb, var(--ring) 45%, transparent);
+  }
+}
+
+.is-order-highlighted {
+  animation: order-highlight 3s ease-in-out;
+  border-radius: var(--radius-lg);
+}
+
 /* ---------------------------------------------------------------------- */
 /* Hero / carousel                                                        */
 /* ---------------------------------------------------------------------- */

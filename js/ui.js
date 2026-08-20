@@ -1488,3 +1488,22 @@ export function showMessage(el, text, kind = "error") {
   el.className = kind === "error" ? "error-text" : "success-text";
   el.style.display = text ? "block" : "none";
 }
+
+// ---------------------------------------------------------------------------
+// Deep-link scroll+highlight — the WhatsApp order-confirmation messages
+// (see admin-payments.js) link straight to "cart.html?order=<id>" /
+// "dashboard-orders.html?order=<id>" instead of just the bare page, so the
+// buyer/farmer lands right on their order instead of having to hunt for it
+// in a list. Call once after the page has actually rendered every
+// [data-order-id] row (order state loads asynchronously on both pages, so
+// calling this before that finishes would find nothing to scroll to).
+// ---------------------------------------------------------------------------
+export function scrollToAndHighlightOrder() {
+  const id = new URLSearchParams(location.search).get("order");
+  if (!id) return;
+  const el = document.querySelector(`[data-order-id="${CSS.escape(id)}"]`);
+  if (!el) return;
+  el.scrollIntoView({ behavior: "smooth", block: "center" });
+  el.classList.add("is-order-highlighted");
+  setTimeout(() => el.classList.remove("is-order-highlighted"), 3000);
+}
