@@ -3,7 +3,7 @@ import { guardDashboard } from "../dashboard-shell.js";
 import { t, onLocaleChange } from "../i18n.js";
 import { Chat, Products, Escrow, Notifications, SiteSettings } from "../firebase.js";
 import { unitLabelKey } from "../constants.js";
-import { badgeClass, btnClass, icon, escapeHtml, deliveryMethodLineHTML, renderEscrowActions, scrollToAndHighlightOrder } from "../ui.js";
+import { badgeClass, btnClass, icon, escapeHtml, deliveryMethodLineHTML, renderEscrowActions, escrowStepperHTML, scrollToAndHighlightOrder } from "../ui.js";
 import { initHelpTour } from "../help-tour.js";
 
 const listEl = document.getElementById("orders-list");
@@ -15,10 +15,12 @@ let tourStarted = false;
 // first real render, not on every later reload() (accept/decline actions
 // call reload() again too).
 let didScrollToOrder = false;
-// messageId -> escrow order status, fetched once per accepted offer (see
-// loadEscrowStatuses) so this list shows payment progress without opening
-// the chat.
-let escrowStatuses = {};
+// messageId -> full escrow order doc, for every accepted offer (chat-based
+// or direct) -- see reload(), which builds this straight from
+// Escrow.listMySalesOnce (already the full doc, so no separate per-order
+// fetch is needed). Drives both the small status badge and the visual
+// stepper below each accepted row -- see escrowStepperHTML in ui.js.
+let escrowOrders = {};
 // The real escrowOrders doc for every chatless "direct_" order (placed
 // while chat was sitewide-disabled) -- these never show up in
 // Chat.listIncomingOffers (no chat/offer message exists for them), so
@@ -54,54 +56,60 @@ function render() {
   }
 
   let firstPendingFound = false;
-  listEl.innerHTML = `<div class="card" style="padding:0 1rem">${orders
+  listEl.innerHTML = orders
     .map((o) => {
       const isFirstPending = o.status === "pending" && !firstPendingFound;
       if (o.status === "pending") firstPendingFound = true;
+      const escrowOrder = o.status === "accepted" ? escrowOrders[o.messageId] : null;
       return `
-      <div class="list-row" ${o.status === "accepted" ? `data-order-id="${o.messageId}"` : ""}>
-        <div class="list-row-main">
-          <div style="display:flex;align-items:center;gap:0.5rem">
+      <div class="card" style="padding:1rem;margin-bottom:0.75rem">
+        <div class="list-row" style="padding:0" ${o.status === "accepted" ? `data-order-id="${o.messageId}"` : ""}>
+          <div class="list-row-main">
+            <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap">
+              ${
+                o.contextType === "sourcing"
+                  ? `<span style="font-weight:600">${escapeHtml(o.productLabel)}</span>`
+                  : `<a href="product.html?id=${o.productId}" style="font-weight:600;color:var(--foreground)">${escapeHtml(o.productLabel)}</a>`
+              }
+              <span class="${badgeClass(o.status === "accepted" ? "default" : "outline")}">${t(STATUS_KEY[o.status] || STATUS_KEY.pending)}</span>
+              ${
+                escrowOrder
+                  ? `<span class="${badgeClass(escrowOrder.status === "disputed" ? "destructive" : "outline")}" style="font-size:0.7rem">${t(ESCROW_STATUS_KEY[escrowOrder.status])}</span>`
+                  : ""
+              }
+            </div>
+            <div class="grid-2 text-muted" style="gap:0.5rem;margin-top:0.5rem;font-size:0.875rem">
+              <div>${t("orders.quantity")}: ${escapeHtml(o.quantity)} ${t(unitLabelKey(o.unit))}</div>
+              <div>${t("orders.buyerType")}: ${o.buyerAccountType ? t(`roles.${o.buyerAccountType}`) : ""}</div>
+              <div>${t("orders.contact")}: ${escapeHtml(o.buyerName)}</div>
+              ${o.deliveryNotes ? `<div>${t("orders.delivery")}: ${escapeHtml(o.deliveryNotes)}</div>` : ""}
+              ${deliveryMethodLineHTML(o)}
+            </div>
+          </div>
+          <div class="list-row-actions" ${isFirstPending ? 'data-order-actions="first-pending"' : ""}>
             ${
-              o.contextType === "sourcing"
-                ? `<span style="font-weight:600">${escapeHtml(o.productLabel)}</span>`
-                : `<a href="product.html?id=${o.productId}" style="font-weight:600;color:var(--foreground)">${escapeHtml(o.productLabel)}</a>`
-            }
-            <span class="${badgeClass(o.status === "accepted" ? "default" : "outline")}">${t(STATUS_KEY[o.status] || STATUS_KEY.pending)}</span>
-            ${
-              o.status === "accepted" && escrowStatuses[o.messageId]
-                ? `<span class="${badgeClass(escrowStatuses[o.messageId] === "disputed" ? "destructive" : "outline")}" style="font-size:0.7rem">${t(ESCROW_STATUS_KEY[escrowStatuses[o.messageId]])}</span>`
+              o.status === "pending"
+                ? `
+                <button type="button" class="${btnClass("default", "sm")}" data-accept="${o.chatId}:${o.messageId}:${o.productId}">${icon("check")} ${t("chat.acceptOffer")}</button>
+                <button type="button" class="${btnClass("ghost", "sm")}" data-decline="${o.chatId}:${o.messageId}">${icon("x")} ${t("chat.declineOffer")}</button>
+              `
                 : ""
             }
+            ${o.chatId ? `<a href="dashboard-chat.html?id=${o.chatId}" class="${btnClass("outline", "sm")}">${t("orders.openChat")}</a>` : ""}
           </div>
-          <div class="grid-2 text-muted" style="gap:0.5rem;margin-top:0.5rem;font-size:0.875rem">
-            <div>${t("orders.quantity")}: ${escapeHtml(o.quantity)} ${t(unitLabelKey(o.unit))}</div>
-            <div>${t("orders.buyerType")}: ${o.buyerAccountType ? t(`roles.${o.buyerAccountType}`) : ""}</div>
-            <div>${t("orders.contact")}: ${escapeHtml(o.buyerName)}</div>
-            ${o.deliveryNotes ? `<div>${t("orders.delivery")}: ${escapeHtml(o.deliveryNotes)}</div>` : ""}
-            ${deliveryMethodLineHTML(o)}
-          </div>
-          ${
-            !o.chatId && o.status === "accepted"
-              ? `<div style="margin-top:0.5rem" data-escrow-actions="${o.messageId}"></div>`
-              : ""
-          }
         </div>
-        <div class="list-row-actions" ${isFirstPending ? 'data-order-actions="first-pending"' : ""}>
-          ${
-            o.status === "pending"
-              ? `
-              <button type="button" class="${btnClass("default", "sm")}" data-accept="${o.chatId}:${o.messageId}:${o.productId}">${icon("check")} ${t("chat.acceptOffer")}</button>
-              <button type="button" class="${btnClass("ghost", "sm")}" data-decline="${o.chatId}:${o.messageId}">${icon("x")} ${t("chat.declineOffer")}</button>
-            `
-              : ""
-          }
-          ${o.chatId ? `<a href="dashboard-chat.html?id=${o.chatId}" class="${btnClass("outline", "sm")}">${t("orders.openChat")}</a>` : ""}
-        </div>
+        ${
+          escrowOrder
+            ? `<div style="margin-top:0.85rem">
+                 ${!o.chatId ? `<div data-escrow-actions="${o.messageId}"></div>` : ""}
+                 <div style="margin-top:0.75rem">${escrowStepperHTML(escrowOrder)}</div>
+               </div>`
+            : ""
+        }
       </div>
     `;
     })
-    .join("")}</div>`;
+    .join("");
 
   listEl.querySelectorAll("[data-escrow-actions]").forEach((mountEl) => {
     const order = directOrdersById.get(mountEl.dataset.escrowActions);
@@ -170,23 +178,16 @@ function render() {
   }
 }
 
-async function loadEscrowStatuses() {
-  const accepted = orders.filter((o) => o.status === "accepted");
-  const results = await Promise.all(
-    accepted.map((o) => Escrow.getOrderOnce(o.messageId).catch(() => null)),
-  );
-  escrowStatuses = {};
-  accepted.forEach((o, i) => {
-    if (results[i]) escrowStatuses[o.messageId] = results[i].status;
-  });
-  render();
-}
-
 async function reload() {
   const [offerOrders, sales] = await Promise.all([
     Chat.listIncomingOffers(profileRef.uid).catch(() => []),
     Escrow.listMySalesOnce(profileRef.uid).catch(() => []),
   ]);
+  // sales already holds the full doc for every escrow order this farmer is
+  // selling, chat-based and direct alike -- reused as-is for escrowOrders
+  // (badge + stepper) instead of a second per-order Escrow.getOrderOnce
+  // round trip like this page used to make.
+  escrowOrders = Object.fromEntries(sales.map((o) => [o.id, o]));
   const directOrders = sales.filter((o) => !o.chatId);
   directOrdersById = new Map(directOrders.map((o) => [o.id, o]));
   const directRows = directOrders.map((o) => ({
@@ -207,7 +208,6 @@ async function reload() {
   }));
   orders = [...offerOrders, ...directRows].sort((a, b) => (b.createdAt?.toMillis() ?? 0) - (a.createdAt?.toMillis() ?? 0));
   render();
-  loadEscrowStatuses();
   if (!didScrollToOrder) {
     didScrollToOrder = true;
     scrollToAndHighlightOrder();
