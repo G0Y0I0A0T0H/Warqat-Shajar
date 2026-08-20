@@ -867,6 +867,10 @@
     "confirmReleaseFunds": "Release these funds to the seller? This is final and can't easily be undone.",
     "confirmPaymentReceived": "Confirm you've actually received this payment?",
     "actionFailed": "Something went wrong -- please try again.",
+    "noProofRequiredLabel": "Cash on delivery (no transfer number or proof photo needed)",
+    "noProofBadge": "No proof needed",
+    "markNoProof": "Mark as cash on delivery",
+    "unmarkNoProof": "Unmark cash on delivery",
     "codBadge": "Cash on delivery",
     "quantityLabel": "Agreed quantity",
     "jumpToChatBtn": "Open chat",
@@ -972,6 +976,7 @@
     "deliveryFeeLabel": "Delivery fee",
     "grandTotalLabel": "Total to transfer",
     "markPaidBtn": "I sent the payment",
+    "confirmCodBtn": "Confirm order",
     "confirmDeliveryBtn": "I received the goods",
     "awaitingPaymentBuyerHint": "Send the amount to the receiving method the seller listed, then click the button below.",
     "choosePaymentMethod": "Choose a payment method and transfer the order amount to it, then click \"I sent the payment\":",
@@ -988,7 +993,8 @@
     "disputeNotePlaceholder": "Briefly describe the problem...",
     "disputeSubmitBtn": "Submit report",
     "tourExplain": "This card tracks payment for this deal — it shows exactly where things stand: payment, delivery, and payout. If anything goes wrong, you can report it here any time.",
-    "actionFailed": "Something went wrong -- please try again."
+    "actionFailed": "Something went wrong -- please try again.",
+    "methodMissingId": "This payment method needs to be re-added by the site admin before it can be used -- please contact support."
   },
   "branding": {
     "title": "Visual Identity Control",

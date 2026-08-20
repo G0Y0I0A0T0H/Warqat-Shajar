@@ -986,8 +986,29 @@ export const Escrow = {
     });
   },
 
+  // Cash-on-delivery path -- no transfer to verify, so this jumps straight
+  // from awaiting_payment to payment_confirmed (skipping payment_claimed's
+  // "buyer attests, admin verifies" meaning entirely). firestore.rules
+  // checks methodId really is flagged noProofRequired in
+  // settings/paymentInfo before allowing this, so a buyer can't just claim
+  // "cod" to skip proof on what should be an electronic payment.
+  async confirmCodOrder(orderId, { methodId, methodLabel }) {
+    await updateDoc(doc(db, "escrowOrders", orderId), {
+      status: "payment_confirmed",
+      paymentConfirmedAt: serverTimestamp(),
+      paymentMethodId: methodId,
+      paymentMethodChosen: methodLabel || null,
+      // Explicit flag rather than checking paymentMethodId against a magic
+      // "cod" string -- the admin can flag ANY payment method as
+      // noProofRequired, not just the one seeded default, so this is what
+      // the stepper banner and release()'s wallet-skip actually key off.
+      noProofPayment: true,
+    });
+  },
+
   // Owner-only in firestore.rules -- confirms a real transfer was received
-  // against the owner's own settings/paymentInfo details.
+  // against the owner's own settings/paymentInfo details. Never reached for
+  // a COD order (confirmCodOrder above goes straight to payment_confirmed).
   async confirmPaymentReceived(orderId) {
     await updateDoc(doc(db, "escrowOrders", orderId), { status: "payment_confirmed", paymentConfirmedAt: serverTimestamp() });
   },
