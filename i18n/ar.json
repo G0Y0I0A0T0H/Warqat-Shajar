@@ -195,7 +195,8 @@
     "locationRequired": "حط دبوس على الخريطة لعنوان التوصيل",
     "deliveryAddressLabel": "عنوان التوصيل",
     "deliveryAddressHint": "بيتحفظ مرة واحدة، وبيبقى العنوان الافتراضي وقت الطلب -- تقدر تعدّله في كل طلب برضو.",
-    "setAddressLink": "حدد عنوان التوصيل بتاعك"
+    "setAddressLink": "حدد عنوان التوصيل بتاعك",
+    "viewOnMap": "افتح الموقع على الخريطة"
   },
   "deliveryMethod": {
     "title": "طريقة الاستلام",

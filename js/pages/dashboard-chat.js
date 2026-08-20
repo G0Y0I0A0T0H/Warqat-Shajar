@@ -334,6 +334,7 @@ async function acceptOffer(messageId) {
         productId: chat.contextId,
         productLabel: chat.contextLabel,
         ...dealParties,
+        buyerAccountType: offerMsg.offer.buyerAccountType,
         quantity: offerMsg.offer.quantity,
         unit: offerMsg.offer.unit,
         pricePerUnit: offerMsg.offer.pricePerUnit,

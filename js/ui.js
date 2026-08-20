@@ -234,7 +234,12 @@ export function deliveryMethodLineHTML(order) {
     return `<div>${t("deliveryMethod.deliveryLabel", "Delivery to")}: ${t("map.noLocationSet", "No location set yet -- click the map to drop a pin")}</div>`;
   }
   const mapUrl = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=16/${lat}/${lng}`;
-  return `<div>${t("deliveryMethod.deliveryLabel", "Delivery to")}: <a href="${mapUrl}" target="_blank" rel="noopener noreferrer" class="force-ltr" style="display:inline-block">${lat.toFixed(4)}, ${lng.toFixed(4)}</a></div>`;
+  // Raw coordinates used to be the link's own visible text -- meaningless
+  // to read at a glance for a farmer deciding where to deliver. A plain
+  // labeled "view on map" link (with the coordinates only as a title
+  // tooltip, for anyone who does want the exact numbers) is what's
+  // actually useful here.
+  return `<div>${t("deliveryMethod.deliveryLabel", "Delivery to")}: <a href="${mapUrl}" target="_blank" rel="noopener noreferrer" title="${lat.toFixed(4)}, ${lng.toFixed(4)}" style="display:inline-flex;align-items:center;gap:0.3rem">${icon("map-pin")} ${t("map.viewOnMap", "View location on map")}</a></div>`;
 }
 
 export function interpolate(str, params) {

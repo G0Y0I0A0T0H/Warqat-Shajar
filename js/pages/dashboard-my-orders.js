@@ -5,6 +5,7 @@ import { initLayout } from "../layout.js";
 import { guardDashboard } from "../dashboard-shell.js";
 import { t, onLocaleChange } from "../i18n.js";
 import { Chat, Notifications, Escrow, SiteSettings } from "../firebase.js";
+import { unitLabelKey } from "../constants.js";
 import { badgeClass, btnClass, escapeHtml, escrowStepperHTML, renderEscrowActions, deliveryMethodLineHTML } from "../ui.js";
 
 const listEl = document.getElementById("my-orders-list");
@@ -51,7 +52,7 @@ function render() {
               <span class="${badgeClass(o.status === "accepted" ? "default" : "outline")}">${t(STATUS_KEY[o.status] || STATUS_KEY.pending)}</span>
             </div>
             <div class="grid-2 text-muted" style="gap:0.5rem;margin-top:0.5rem;font-size:0.875rem">
-              <div>${t("orders.quantity")}: ${escapeHtml(o.quantity)} ${escapeHtml(o.unit)}</div>
+              <div>${t("orders.quantity")}: ${escapeHtml(o.quantity)} ${t(unitLabelKey(o.unit))}</div>
               <div>${t("myOrders.farmer")}: ${escapeHtml(o.farmerName)}</div>
               <div>${t("chat.offerTotal")}: ${escapeHtml(o.totalPrice)}</div>
               ${deliveryMethodLineHTML(o)}
