@@ -2,13 +2,18 @@ import { initLayout } from "../layout.js";
 import { guardDashboard } from "../dashboard-shell.js";
 import { t, onLocaleChange } from "../i18n.js";
 import { Chat, Products, Escrow, Notifications, SiteSettings } from "../firebase.js";
-import { badgeClass, btnClass, icon, escapeHtml, deliveryMethodLineHTML, renderEscrowActions } from "../ui.js";
+import { badgeClass, btnClass, icon, escapeHtml, deliveryMethodLineHTML, renderEscrowActions, scrollToAndHighlightOrder } from "../ui.js";
 import { initHelpTour } from "../help-tour.js";
 
 const listEl = document.getElementById("orders-list");
 let orders = [];
 let profileRef = null;
 let tourStarted = false;
+// A WhatsApp confirmation message links straight to
+// "dashboard-orders.html?order=<id>" -- only scroll to it once, on the
+// first real render, not on every later reload() (accept/decline actions
+// call reload() again too).
+let didScrollToOrder = false;
 // messageId -> escrow order status, fetched once per accepted offer (see
 // loadEscrowStatuses) so this list shows payment progress without opening
 // the chat.
@@ -53,7 +58,7 @@ function render() {
       const isFirstPending = o.status === "pending" && !firstPendingFound;
       if (o.status === "pending") firstPendingFound = true;
       return `
-      <div class="list-row">
+      <div class="list-row" ${o.status === "accepted" ? `data-order-id="${o.messageId}"` : ""}>
         <div class="list-row-main">
           <div style="display:flex;align-items:center;gap:0.5rem">
             ${
@@ -200,6 +205,10 @@ async function reload() {
   orders = [...offerOrders, ...directRows].sort((a, b) => (b.createdAt?.toMillis() ?? 0) - (a.createdAt?.toMillis() ?? 0));
   render();
   loadEscrowStatuses();
+  if (!didScrollToOrder) {
+    didScrollToOrder = true;
+    scrollToAndHighlightOrder();
+  }
 }
 
 async function main() {

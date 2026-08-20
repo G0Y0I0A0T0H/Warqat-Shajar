@@ -1,6 +1,6 @@
 import { initLayout } from "../layout.js";
 import { guardAdmin } from "../admin-shell.js";
-import { t, onLocaleChange } from "../i18n.js";
+import { t, getLocale, onLocaleChange } from "../i18n.js";
 import { SiteSettings, Escrow, Wallets, WithdrawalRequests, AuditLog, Profile } from "../firebase.js";
 import { unitLabelKey } from "../constants.js";
 import { isValidPhone } from "./auth-shared.js";
@@ -79,12 +79,39 @@ function primaryWhatsappNumber() {
   return whatsappConfig.numbers.find((n) => n.enabled)?.phone || null;
 }
 
+function orderDateLabel(o) {
+  if (!o.createdAt?.toDate) return "";
+  return o.createdAt.toDate().toLocaleString(getLocale() === "ar" ? "ar-EG" : "en-US", { dateStyle: "medium", timeStyle: "short" });
+}
+
+function deliveryMethodLabel(o) {
+  return t(o.deliveryMethod === "delivery" ? "deliveryMethod.delivery" : "deliveryMethod.pickup");
+}
+
+// The buyer's own order tracking -- cart.html shows every escrow order the
+// buyer has regardless of how it was created (direct or chat-accepted), so
+// one link works for both.
+function buyerTrackingLink(o) {
+  return `${location.origin}/cart.html?order=${o.id}`;
+}
+
+// The farmer's side is split: a chat-based order already has a perfect
+// per-conversation deep link (the escrow tracker renders right inside that
+// chat); a chatless "direct_" order has no chat at all, so it needs its own
+// order= deep link into dashboard-orders.html instead (see
+// scrollToAndHighlightOrder in ui.js).
+function farmerTrackingLink(o) {
+  return o.chatId ? `${location.origin}/dashboard-chat.html?id=${o.chatId}` : `${location.origin}/dashboard-orders.html?order=${o.id}`;
+}
+
 function adminNotifyMessage(o) {
   return fillTemplate(t("payments.waAdminMessage"), {
     product: o.productLabel || "",
     quantity: o.quantity,
     unit: t(unitLabelKey(o.unit)),
     total: o.totalAmount,
+    deliveryMethod: deliveryMethodLabel(o),
+    orderDate: orderDateLabel(o),
     buyerName: o.buyerName || "",
     sellerName: o.sellerName || "",
     method: o.paymentMethodChosen || "",
@@ -92,14 +119,22 @@ function adminNotifyMessage(o) {
   });
 }
 
+// buyerPhone is deliberately NOT included here -- this app never surfaces
+// one user's real phone number to another (see containsPhoneNumber's whole
+// reason for existing), and a WhatsApp message is an even easier leak
+// vector than in-app chat text since it can't be filtered at all. The
+// farmer only needs to know a real person placed the order and where to
+// track it; actual contact stays in-app.
 function farmerConfirmMessage(o) {
   return fillTemplate(t("payments.waFarmerMessage"), {
     product: o.productLabel || "",
     quantity: o.quantity,
     unit: t(unitLabelKey(o.unit)),
     total: o.totalAmount,
+    deliveryMethod: deliveryMethodLabel(o),
+    orderDate: orderDateLabel(o),
     buyerName: o.buyerName || "",
-    buyerPhone: contactPhones[o.buyerId] || "",
+    link: farmerTrackingLink(o),
   });
 }
 
@@ -109,7 +144,10 @@ function buyerConfirmMessage(o) {
     quantity: o.quantity,
     unit: t(unitLabelKey(o.unit)),
     total: o.totalAmount,
+    deliveryMethod: deliveryMethodLabel(o),
+    orderDate: orderDateLabel(o),
     sellerName: o.sellerName || "",
+    link: buyerTrackingLink(o),
   });
 }
 

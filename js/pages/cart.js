@@ -3,7 +3,7 @@ import { t, getLocale, onLocaleChange } from "../i18n.js";
 import { Products, Chat, Notifications, SiteSettings, Escrow } from "../firebase.js";
 import { categoryLabelById, onCategoriesChange, unitLabelKey } from "../constants.js";
 import { authState, cartState, subscribe, updateCartQuantity, removeFromCart } from "../state.js";
-import { btnClass, icon, showMessage, escapeHtml, safeUrl, optimizedImageUrl, escrowStepperHTML, renderEscrowActions } from "../ui.js";
+import { btnClass, icon, showMessage, escapeHtml, safeUrl, optimizedImageUrl, escrowStepperHTML, renderEscrowActions, scrollToAndHighlightOrder } from "../ui.js";
 
 const contentEl = document.getElementById("cart-content");
 const productCache = new Map();
@@ -23,6 +23,13 @@ let myEscrowByProduct = {};
 // brief window before that fetch completes -- on a slow connection this
 // looked like an already-ordered item's tracking status had been reset.
 let orderStateLoaded = false;
+// A WhatsApp confirmation message links straight to "cart.html?order=<id>"
+// -- only worth scrolling to on the first real render once that row
+// actually exists in the DOM, not on every subsequent reload (an in-page
+// action like markPaidBtn's onChange calls loadOrderState() again, which
+// would otherwise re-trigger the scroll/highlight on top of whatever the
+// buyer's doing).
+let didScrollToOrder = false;
 // uid we've already triggered loadOrderState() for -- lets main()'s
 // subscribe(render) callback safely call this on every state change without
 // re-fetching every time, while still firing it the moment authState.user
@@ -80,6 +87,10 @@ async function loadOrderState() {
   });
   orderStateLoaded = true;
   render();
+  if (!didScrollToOrder) {
+    didScrollToOrder = true;
+    scrollToAndHighlightOrder();
+  }
 }
 
 async function loadProducts(productIds) {
@@ -134,7 +145,7 @@ async function render() {
       if (orderStateLoaded && !isTracking) grandTotal += subtotal;
 
       return `
-        <div class="cart-row" data-product="${productId}">
+        <div class="cart-row" data-product="${productId}" ${escrowOrder ? `data-order-id="${escrowOrder.id}"` : ""}>
           <a href="product.html?id=${productId}" class="cart-row-media">
             ${photo ? `<img src="${optimizedImageUrl(photo, 160)}" alt="">` : ""}
           </a>
