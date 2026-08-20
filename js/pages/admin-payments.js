@@ -208,11 +208,13 @@ function methodRowHTML(m) {
           <div style="display:flex;align-items:center;gap:0.4rem">
             <span style="font-weight:600">${escapeHtml(m.label)}</span>
             ${!m.enabled ? `<span class="${badgeClass("secondary")}">${t("payments.methodDisabled", "Disabled")}</span>` : ""}
+            ${m.noProofRequired ? `<span class="${badgeClass("outline")}">${t("payments.noProofBadge")}</span>` : ""}
           </div>
           ${m.value ? `<div class="text-muted force-ltr" dir="ltr" style="font-size:0.8rem">${escapeHtml(m.value)}</div>` : ""}
         </div>
       </div>
       <div style="display:flex;gap:0.4rem">
+        <button type="button" class="${btnClass("outline", "sm")}" data-toggle-no-proof="${m.id}">${m.noProofRequired ? t("payments.unmarkNoProof") : t("payments.markNoProof")}</button>
         <button type="button" class="${btnClass("outline", "sm")}" data-toggle-method="${m.id}">${m.enabled ? t("payments.disableMethod", "Disable") : t("payments.enableMethod", "Enable")}</button>
         <button type="button" class="${btnClass("destructive", "icon-sm")}" data-remove-method="${m.id}" aria-label="${t("payments.removeMethod", "Remove")}">${icon("trash")}</button>
       </div>
@@ -366,6 +368,10 @@ function tabPanelHTML() {
             <label class="label">${t("payments.methodValueLabel", "Receiving details (phone number, ID, card info -- optional)")}</label>
             <input class="input force-ltr" dir="ltr" id="new-method-value" maxlength="100">
           </div>
+          <label class="checkbox-row">
+            <input type="checkbox" id="new-method-no-proof">
+            <span>${t("payments.noProofRequiredLabel")}</span>
+          </label>
           <p id="add-method-error" class="error-text" style="display:none"></p>
           <button type="submit" class="${btnClass("default", "sm")}" style="align-self:flex-start">${t("payments.addMethod", "Add method")}</button>
         </form>
@@ -533,6 +539,21 @@ function render() {
     });
   });
 
+  contentEl.querySelectorAll("[data-toggle-no-proof]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      btn.disabled = true;
+      try {
+        const id = btn.dataset.toggleNoProof;
+        const target = paymentInfo.methods.find((m) => m.id === id);
+        const updated = paymentInfo.methods.map((m) => (m.id === id ? { ...m, noProofRequired: !m.noProofRequired } : m));
+        await SiteSettings.setPaymentMethods(updated);
+        auditPaymentMethod("payment_method_changed", id, target?.label, { noProofRequired: !target?.noProofRequired });
+      } catch {
+        alert(t("payments.actionFailed"));
+        btn.disabled = false;
+      }
+    });
+  });
   contentEl.querySelectorAll("[data-toggle-method]").forEach((btn) => {
     btn.addEventListener("click", async () => {
       btn.disabled = true;
@@ -582,12 +603,13 @@ function render() {
       icon: contentEl.querySelector("#new-method-icon").value,
       value: contentEl.querySelector("#new-method-value").value.trim(),
       enabled: true,
+      noProofRequired: contentEl.querySelector("#new-method-no-proof").checked,
     };
     const addSubmitBtn = e.target.querySelector('button[type="submit"]');
     addSubmitBtn.disabled = true;
     try {
       await SiteSettings.setPaymentMethods([...paymentInfo.methods, newMethod]);
-      auditPaymentMethod("payment_method_added", newMethod.id, newMethod.label);
+      auditPaymentMethod("payment_method_added", newMethod.id, newMethod.label, { noProofRequired: newMethod.noProofRequired });
     } catch {
       showMessage(errorEl, t("payments.actionFailed"));
     } finally {
@@ -723,10 +745,9 @@ async function loadPendingWithdrawals() {
 // (vodafoneCash/instapay/bank*) to the new admin-managed methods list, the
 // first time this page loads after the switch -- nothing is deleted, the
 // old fields just stop being read once real methods exist. Also seeds the
-// other commonly-requested method types (Visa, Mastercard) as disabled
-// placeholders so the admin can just fill in details and flip them on,
-// rather than typing every one from scratch. Cash-on-delivery used to be
-// seeded here too -- removed along with the rest of that system.
+// other commonly-requested method types (Visa, Mastercard, cash on
+// delivery) as disabled placeholders so the admin can just fill in details
+// and flip them on, rather than typing every one from scratch.
 function migrateLegacyFieldsIfNeeded(data) {
   if (migrated || (data.methods && data.methods.length > 0)) return;
   migrated = true;
@@ -735,6 +756,7 @@ function migrateLegacyFieldsIfNeeded(data) {
     { id: "instapay", label: "إنستاباي", icon: "zap", value: data.instapay || "", enabled: Boolean(data.instapay) },
     { id: "visa", label: "فيزا", icon: "credit-card", value: "", enabled: false },
     { id: "mastercard", label: "ماستر كارد", icon: "credit-card", value: "", enabled: false },
+    { id: "cod", label: "الدفع عند الاستلام", icon: "package", value: "", enabled: false, noProofRequired: true },
   ];
   if (data.bankAccountNumber) {
     seeded.push({
@@ -750,6 +772,30 @@ function migrateLegacyFieldsIfNeeded(data) {
   });
 }
 
+// Separate from migrateLegacyFieldsIfNeeded above (which only ever runs
+// once, for a doc with zero methods) -- this repairs an id-less entry in an
+// otherwise-populated methods list, which the seeding above can't reach.
+// Any method saved before the id field existed (e.g. from directly editing
+// Firestore, or an even earlier version of this page) has no id at all, so
+// escrowOrders' payment_confirmed rule -- which matches the chosen method
+// by id -- can never find it no matter how correctly enabled/noProofRequired
+// it's set, and the resulting permission-denied on confirm looks identical
+// to any other failure. Runs on every load; a no-op once every method has
+// an id, so it's safe to leave in permanently rather than a one-time flag.
+let repairingIds = false;
+function repairMethodsMissingId(data) {
+  if (repairingIds || !data.methods?.length) return;
+  const hasIdless = data.methods.some((m) => !m.id);
+  if (!hasIdless) return;
+  repairingIds = true;
+  const repaired = data.methods.map((m, i) => (m.id ? m : { ...m, id: `pm-${Date.now()}-${i}` }));
+  SiteSettings.setPaymentMethods(repaired)
+    .catch(() => {})
+    .finally(() => {
+      repairingIds = false;
+    });
+}
+
 async function main() {
   await initLayout();
   await guardAdmin("admin-payments.html");
@@ -757,6 +803,7 @@ async function main() {
   SiteSettings.subscribePaymentInfo((data) => {
     paymentInfo = data;
     migrateLegacyFieldsIfNeeded(data);
+    repairMethodsMissingId(data);
     render();
   });
   SiteSettings.subscribeWhatsappConfig((data) => {
