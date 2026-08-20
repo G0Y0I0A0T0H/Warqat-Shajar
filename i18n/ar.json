@@ -963,7 +963,7 @@
     "stepPaymentClaimed": "اتدفع",
     "stepPaymentConfirmed": "مؤكد",
     "stepDeliveryConfirmed": "اتسلّم",
-    "stepReleased": "اتفرج عنه",
+    "stepReleased": "اتحول",
     "statusAwaitingPayment": "مستني الدفع",
     "statusPaymentClaimed": "المشتري بلّغ إنه دفع — مستني تأكيد الإدارة",
     "statusPaymentConfirmed": "اتأكد استلام الدفعة، الفلوس محجوزة وآمنة",
