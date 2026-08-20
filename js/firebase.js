@@ -1827,15 +1827,22 @@ const maintenanceModeRef = doc(db, "settings", "maintenanceMode");
 // which is a separate collection entirely.
 const chatDisabledRef = doc(db, "settings", "chatDisabled");
 
-// The platform's payment-receiving methods -- a fully admin-managed list
+// The platform's payment-receiving methods -- a fully admin-managed map
 // (add/remove/enable/disable any method, not a fixed set of fields), so the
 // owner (or an admin granted "payments") has complete control over what
-// shows up in the buyer-facing method picker. Each entry:
-// { id, label, icon, value, enabled }. See firestore.rules for why this doc
-// is write-restricted to isOwnerOrGranted('payments') (read is any signed-in
-// user, since a buyer needs to see it to know where to send money).
+// shows up in the buyer-facing method picker. Keyed by method id (each
+// value also carries its own id field redundantly, for convenience):
+// { id, label, icon, value, enabled }. A map, not a list, specifically so
+// firestore.rules' cash-on-delivery check can do a plain .get(id, {})
+// lookup -- Firestore's rules language has no list.exists()/filter()
+// predicate macro to search a *list* of method objects by id (confirmed
+// via the Rules Playground: a real "Function not found" error at runtime,
+// silently surfacing to buyers as a plain permission-denied). See
+// firestore.rules for why this doc is write-restricted to
+// isOwnerOrGranted('payments') (read is any signed-in user, since a buyer
+// needs to see it to know where to send money).
 const DEFAULT_PAYMENT_INFO = {
-  methods: [],
+  methods: {},
   notes: null,
 };
 const paymentInfoRef = doc(db, "settings", "paymentInfo");

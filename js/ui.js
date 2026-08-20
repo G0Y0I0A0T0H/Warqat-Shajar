@@ -1026,7 +1026,7 @@ function paymentMethodCircle(orderId, method) {
 // value is revealed separately once picked -- see the
 // #escrow-method-value-${orderId} wiring in renderEscrowActions.
 export function escrowPaymentMethodsHTML(orderId, paymentInfo) {
-  const enabledMethods = (paymentInfo?.methods || []).filter((m) => m.enabled);
+  const enabledMethods = Object.values(paymentInfo?.methods || {}).filter((m) => m.enabled);
   if (enabledMethods.length === 0) {
     return `<p class="text-muted" style="font-size:0.8rem">${t("escrow.noPaymentMethodsYet")}</p>`;
   }
@@ -1188,22 +1188,6 @@ export function renderEscrowActions(containerEl, { order, viewerUid, paymentInfo
           if (!chosen.dataset.methodId) {
             throw new Error("payment method missing id");
           }
-          // Temporary diagnostic -- the exact same permission-denied is
-          // recurring after COD was re-added, despite the rule text being
-          // byte-for-byte identical to before and the rules confirmed
-          // published. Dumps every value firestore.rules' cash-on-delivery
-          // branch checks, read fresh at this click, as a JSON string (not
-          // a live object reference) so it prints fully expanded with no
-          // manual triangle-clicking needed.
-          console.log("confirmCodOrder about to send:", {
-            orderId: order.id,
-            orderBuyerId: order.buyerId,
-            orderStatus: order.status,
-            viewerUid,
-            methodId: chosen.dataset.methodId,
-            methodLabel: chosen.dataset.methodLabel,
-            allMethodsJSON: JSON.stringify(paymentInfo?.methods, null, 2),
-          });
           await Escrow.confirmCodOrder(order.id, {
             methodId: chosen.dataset.methodId,
             methodLabel: chosen.dataset.methodLabel,
