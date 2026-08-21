@@ -253,6 +253,20 @@ service cloud.firestore {
       allow create, update, delete: if isAdminWithSection('ads');
     }
 
+    // Team page (team.html / admin-team.html) -- personnel bios and the
+    // "our journey" timeline, both admin-managed and publicly readable.
+    // Not a SENSITIVE_KEYS section (see admin-shell.js) since it's neither
+    // money nor security, same tier as ads/listings above.
+    match /teamMembers/{memberId} {
+      allow read: if true;
+      allow create, update, delete: if isAdminWithSection('team');
+    }
+
+    match /teamMilestones/{milestoneId} {
+      allow read: if true;
+      allow create, update, delete: if isAdminWithSection('team');
+    }
+
     match /settings/{docId} {
       // paymentInfo and whatsappConfig are excluded from the public read
       // here (unlike every other settings doc) and given their own
