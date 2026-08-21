@@ -18,6 +18,7 @@ export const NAV_ITEMS = [
   { href: "admin-team-chat.html", key: "teamChat", icon: "headset" },
   { href: "admin-broadcast.html", key: "broadcast", icon: "bell" },
   { href: "admin-ads.html", key: "ads", icon: "megaphone" },
+  { href: "admin-team.html", key: "team", icon: "users" },
   { href: "admin-branding.html", key: "branding", icon: "image" },
   { href: "admin-payments.html", key: "payments", icon: "credit-card" },
 ];
