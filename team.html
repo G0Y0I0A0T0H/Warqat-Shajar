@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>فريق العمل | ورقة شجر - السوق الزراعي المصري</title>
+  <meta name="description" content="تعرف على فريق ورقة شجر، المجموعة اللي بتبني وتطوّر السوق الزراعي المصري.">
+  <link rel="canonical" href="https://waraqatshajar.com/team.html">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="ورقة شجر">
+  <meta property="og:title" content="فريق العمل | ورقة شجر">
+  <meta property="og:description" content="تعرف على فريق ورقة شجر، المجموعة اللي بتبني وتطوّر السوق الزراعي المصري.">
+  <meta property="og:image" content="https://waraqatshajar.com/images/logo-icon.png">
+  <link rel="icon" href="images/favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@200..1000&family=Inter:wght@100..900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="cursor/cursor.css">
+</head>
+<body>
+  <div id="splash-screen" class="splash-screen is-hidden">
+    <img src="images/logo-icon.png" class="splash-logo" alt="">
+    <span class="splash-wordmark" data-i18n="brand.name">Waraqat Shajar</span>
+  </div>
+
+  <header class="site-header">
+    <div class="container site-header-row">
+      <a class="logo" href="index.html">
+        <img src="images/logo-icon.png" alt="">
+        <span class="logo-text">
+          <span class="logo-wordmark" data-i18n="brand.name">Waraqat Shajar</span>
+          <span class="logo-tagline" data-i18n="brand.tagline">Egypt's Agricultural Marketplace</span>
+        </span>
+      </a>
+      <div class="header-search">
+        <span data-icon="search" aria-hidden="true"></span>
+        <input type="search" class="input" data-i18n-placeholder="header.searchPlaceholder" placeholder="Search products, farmers, governorates...">
+      </div>
+      <div class="header-actions">
+        <div class="header-actions-scroll">
+          <button type="button" class="btn btn-ghost btn-icon" id="theme-toggle" aria-label="Toggle dark mode"></button>
+          <button type="button" class="btn btn-outline btn-sm" id="lang-switch">English</button>
+          <a href="cart.html" class="btn btn-ghost btn-icon icon-badge" id="header-cart-link">
+            <span data-icon="shopping-cart"></span>
+            <span class="icon-badge-count" id="header-cart-badge" style="display:none">0</span>
+          </a>
+          <a href="favorites.html" class="btn btn-ghost btn-icon icon-badge" id="header-wishlist-link">
+            <span data-icon="heart"></span>
+            <span class="icon-badge-count" id="header-wishlist-badge" style="display:none">0</span>
+          </a>
+        </div>
+        <div id="header-notif-area"></div>
+        <div id="header-auth-area"></div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="team-hero">
+      <div class="container team-hero-inner">
+        <h1 style="font-family:var(--font-sans);font-weight:800;font-size:clamp(1.75rem,4vw,2.75rem);color:var(--foreground)" data-i18n="team.heroTitle">فريق العمل</h1>
+        <p class="text-muted" style="margin-top:0.6rem" data-i18n="team.heroSubtitle">مجموعة من المبدعين والمطورين والمتخصصين الذين يعملون معًا لتحويل الفكرة إلى واقع يخدم المزارع والمجتمع.</p>
+        <div class="team-stats-grid" id="team-stats"></div>
+      </div>
+    </section>
+
+    <section class="section container reveal" id="team-spotlight-section" style="display:none">
+      <div class="section-header" style="display:block;text-align:center">
+        <h2 class="section-title" data-i18n="team.spotlightTitle">القيادة</h2>
+      </div>
+      <div class="team-spotlight" id="team-spotlight"></div>
+    </section>
+
+    <section class="section container reveal" id="team-org-section" style="display:none">
+      <div class="section-header" style="display:block;text-align:center">
+        <h2 class="section-title" data-i18n="team.structureTitle">هيكل الفريق</h2>
+        <p class="section-subtitle" data-i18n="team.structureSubtitle">نعمل كفريق واحد يجمع تخصصات مختلفة لتحقيق هدف واحد.</p>
+      </div>
+      <div class="team-org-chart" id="team-org-chart"></div>
+    </section>
+
+    <section class="section container reveal" id="team-grid-section" style="display:none">
+      <div class="section-header" style="display:block;text-align:center">
+        <h2 class="section-title" data-i18n="team.membersTitle">أعضاء الفريق</h2>
+      </div>
+      <div class="team-grid" id="team-grid"></div>
+    </section>
+
+    <section class="section container reveal" id="team-timeline-section" style="display:none">
+      <div class="section-header" style="display:block;text-align:center">
+        <h2 class="section-title" data-i18n="team.journeyTitle">رحلة بناء ورقة شجر</h2>
+      </div>
+      <div class="team-timeline" id="team-timeline" style="max-width:36rem;margin-inline:auto"></div>
+    </section>
+
+    <section class="trust-grid">
+      <div class="container">
+        <h2 class="section-title" style="text-align:center;margin-bottom:1.5rem" data-i18n="team.valuesTitle">ما يجمعنا</h2>
+        <div class="trust-grid-inner" style="padding-block:0">
+          <div class="trust-item">
+            <div class="trust-icon"><span data-icon="sparkles"></span></div>
+            <div>
+              <div class="trust-title" data-i18n="team.value1Title">الابتكار</div>
+              <div class="trust-subtitle" data-i18n="team.value1Body">نبحث عن حلول ذكية للمشكلات الحقيقية.</div>
+            </div>
+          </div>
+          <div class="trust-item">
+            <div class="trust-icon"><span data-icon="users"></span></div>
+            <div>
+              <div class="trust-title" data-i18n="team.value2Title">التعاون</div>
+              <div class="trust-subtitle" data-i18n="team.value2Body">نعمل كفريق واحد لتحقيق الهدف.</div>
+            </div>
+          </div>
+          <div class="trust-item">
+            <div class="trust-icon"><span data-icon="package"></span></div>
+            <div>
+              <div class="trust-title" data-i18n="team.value3Title">الاستدامة</div>
+              <div class="trust-subtitle" data-i18n="team.value3Body">ندعم مستقبلًا زراعيًا أكثر استدامة.</div>
+            </div>
+          </div>
+          <div class="trust-item">
+            <div class="trust-icon"><span data-icon="verified"></span></div>
+            <div>
+              <div class="trust-title" data-i18n="team.value4Title">الموثوقية</div>
+              <div class="trust-subtitle" data-i18n="team.value4Body">نلتزم بالجودة والشفافية في كل ما نقدمه.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div class="dialog-overlay" id="team-member-dialog-overlay"></div>
+  <div class="dialog-content" id="team-member-dialog" style="max-width:32rem">
+    <div id="team-member-dialog-body"></div>
+    <button type="button" class="dialog-close btn btn-ghost btn-icon-sm" data-dialog-close aria-label="Close">✕</button>
+  </div>
+
+  <footer class="site-footer">
+    <div class="container footer-grid">
+      <div>
+        <h3 class="footer-heading" data-i18n="footer.accountTypes">Account Types</h3>
+        <ul class="footer-list">
+          <li data-i18n="footer.farmer">Farmer</li>
+          <li data-i18n="footer.trader">Trader</li>
+          <li data-i18n="footer.factory">Factory</li>
+          <li data-i18n="footer.consumer">Consumer</li>
+        </ul>
+      </div>
+      <div>
+        <h3 class="footer-heading" data-i18n="footer.links">Links</h3>
+        <ul class="footer-list">
+          <li><a href="about.html" data-i18n="footer.about">About the Platform</a></li>
+          <li><a href="team.html" data-i18n="footer.team">Team</a></li>
+          <li><a href="terms.html" data-i18n="footer.terms">Terms of Use</a></li>
+          <li><a href="terms.html" id="footer-privacy-link" data-i18n="footer.privacy">Privacy Policy</a></li>
+          <li><a href="contact.html" data-i18n="footer.contact">Contact Us</a></li>
+          <li><a href="contact.html" id="footer-help-link" data-i18n="footer.help">Help Center</a></li>
+        </ul>
+      </div>
+      <div class="footer-col-brand">
+        <a class="logo" href="index.html">
+          <img src="images/logo-icon.png" alt="">
+          <span class="logo-wordmark" style="color:#eef2ec" data-i18n="brand.name">Waraqat Shajar</span>
+        </a>
+        <p style="font-size:0.875rem;color:#c9d6c8;margin-top:0.5rem" data-i18n="footer.tagline">Egypt's agricultural marketplace</p>
+        <div class="footer-phone force-ltr" id="footer-phone"><span data-icon="phone"></span> <span>19XXX</span></div>
+        <div class="footer-phone force-ltr" id="footer-whatsapp" style="display:none"><span data-icon="whatsapp"></span> <span></span></div>
+        <div class="footer-social" id="footer-social"></div>
+      </div>
+    </div>
+    <div class="container footer-bottom">
+      <span>&copy; <span id="footer-year">2026</span> <span data-i18n="brand.name">Waraqat Shajar</span>. <span data-i18n="footer.rights">All rights reserved.</span></span>
+      <span data-i18n="footer.madeIn">Made with care in Egypt</span> 🇪🇬
+    </div>
+  </footer>
+
+  <script type="module" src="js/pages/team.js"></script>
+  <script src="cursor/cursor.js" defer></script>
+</body>
+</html>
