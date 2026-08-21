@@ -703,6 +703,19 @@ service cloud.firestore {
          resource.data.status == 'disputed' &&
          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'refundedAt']) &&
          request.resource.data.status == 'refunded')
+        ||
+        // Lets the admin reject an order outright (a fake/spam order, say)
+        // before any real payment has actually been verified -- still
+        // awaiting_payment, or just a buyer's unverified payment_claimed
+        // claim. Deliberately NOT offered from payment_confirmed onward:
+        // past that point the admin has already confirmed real money
+        // changed hands, so undoing it goes through raiseDispute ->
+        // the disputed->refunded branch above instead, which keeps a note
+        // of why.
+        (isOwnerOrGranted('payments') &&
+         (resource.data.status == 'awaiting_payment' || resource.data.status == 'payment_claimed') &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'refundedAt']) &&
+         request.resource.data.status == 'refunded')
       );
 
       // Owner-only, strictly -- not delegable via isOwnerOrGranted. Exists
