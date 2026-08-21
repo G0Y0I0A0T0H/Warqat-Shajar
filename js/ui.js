@@ -961,6 +961,14 @@ export function escrowStepperHTML(order) {
 
   if (order.status === "disputed" || order.status === "refunded") {
     const isDisputed = order.status === "disputed";
+    // rejectReason only exists on an order the admin rejected outright
+    // (Escrow.rejectOrder, before any real payment was verified) -- gets
+    // its own distinct title so it reads as "the admin rejected this,
+    // here's why" rather than the generic dispute-resolution refund
+    // wording, per the note above escrow.statusRejectedByAdmin.
+    const isAdminRejected = !isDisputed && order.rejectReason;
+    const note = order.rejectReason || order.disputeNote;
+    const titleKey = isDisputed ? "escrow.statusDisputed" : isAdminRejected ? "escrow.statusRejectedByAdmin" : "escrow.statusRefunded";
     return `
       <div class="escrow-stepper">
         <div class="escrow-stepper-header">
@@ -970,8 +978,8 @@ export function escrowStepperHTML(order) {
         <div class="escrow-stepper-banner ${isDisputed ? "is-dispute" : "is-refund"}">
           ${icon(isDisputed ? "alert-triangle" : "log-out")}
           <div>
-            <div class="escrow-stepper-banner-title">${t(isDisputed ? "escrow.statusDisputed" : "escrow.statusRefunded")}</div>
-            ${isDisputed && order.disputeNote ? `<div class="escrow-stepper-banner-note">${escapeHtml(order.disputeNote)}</div>` : ""}
+            <div class="escrow-stepper-banner-title">${t(titleKey)}</div>
+            ${note ? `<div class="escrow-stepper-banner-note">${escapeHtml(note)}</div>` : ""}
           </div>
         </div>
       </div>

@@ -57,7 +57,7 @@ function render() {
 
   let firstPendingFound = false;
   listEl.innerHTML = orders
-    .map((o) => {
+    .map((o, index) => {
       const isFirstPending = o.status === "pending" && !firstPendingFound;
       if (o.status === "pending") firstPendingFound = true;
       const escrowOrder = o.status === "accepted" ? escrowOrders[o.messageId] : null;
@@ -66,6 +66,7 @@ function render() {
         <div class="list-row" style="padding:0" ${o.status === "accepted" ? `data-order-id="${o.messageId}"` : ""}>
           <div class="list-row-main">
             <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap">
+              <span class="text-muted" style="font-size:0.8rem">#${index + 1}</span>
               ${
                 o.contextType === "sourcing"
                   ? `<span style="font-weight:600">${escapeHtml(o.productLabel)}</span>`
@@ -206,7 +207,10 @@ async function reload() {
     deliveryLocation: o.deliveryLocation,
     createdAt: o.createdAt,
   }));
-  orders = [...offerOrders, ...directRows].sort((a, b) => (b.createdAt?.toMillis() ?? 0) - (a.createdAt?.toMillis() ?? 0));
+  // Oldest first -- whoever ordered first shows first (matches the same
+  // change on admin-payments.html's deals list), with the #N badge above
+  // making that ordering visible instead of only implied by scroll order.
+  orders = [...offerOrders, ...directRows].sort((a, b) => (a.createdAt?.toMillis() ?? 0) - (b.createdAt?.toMillis() ?? 0));
   render();
   if (!didScrollToOrder) {
     didScrollToOrder = true;

@@ -763,6 +763,7 @@
     "deliveryConfirmedNeedsRelease": { "title": "An order needs its funds released", "body": "{buyer} confirmed receiving {product} -- release the payment to the farmer from the payments admin panel." },
     "identityVerificationFailed": { "title": "We couldn't process your identity verification", "body": "Something went wrong uploading your ID photo -- your account was created, but your identity details are still missing. Please contact us to fix it." },
     "disputeRaised": { "title": "A deal is under dispute", "body": "A dispute was raised on the deal for {product} -- it needs review." },
+    "orderRejectedByAdmin": { "title": "Order rejected by admin", "body": "Your order for {product} was rejected by Waraqat Shajar's admin. Reason: {reason}" },
     "newFollower": { "title": "New follower", "body": "{name} started following you" }
   },
   "ads": {
@@ -862,7 +863,7 @@
     "markPaidFailed": "Couldn't mark this paid -- the farmer's balance may no longer cover it (check for other pending requests).",
     "confirmPaymentBtn": "Confirm payment received",
     "rejectOrderBtn": "Reject order",
-    "confirmRejectOrder": "Are you sure you want to reject this order? Use this for fake orders before any real payment is confirmed -- it'll be marked cancelled.",
+    "rejectOrderReasonPrompt": "Reason for rejecting this order (required -- the buyer and seller will both be notified):",
     "releaseBtn": "Release funds to seller",
     "resolveReleaseBtn": "Resolve dispute: release to seller",
     "resolveRefundBtn": "Resolve dispute: refund buyer",
@@ -973,6 +974,7 @@
     "statusDisputed": "This deal is disputed, the admin is reviewing it",
     "statusReleased": "Funds released to the seller",
     "statusRefunded": "Refunded to the buyer",
+    "statusRejectedByAdmin": "Rejected by Waraqat Shajar's admin",
     "statusCodCompleted": "Order completed — paid in cash on delivery",
     "totalLabel": "Total",
     "productPriceLabel": "Product price",
