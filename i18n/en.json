@@ -861,6 +861,8 @@
     "receivingAccountLabel": "Receiving account",
     "markPaidFailed": "Couldn't mark this paid -- the farmer's balance may no longer cover it (check for other pending requests).",
     "confirmPaymentBtn": "Confirm payment received",
+    "rejectOrderBtn": "Reject order",
+    "confirmRejectOrder": "Are you sure you want to reject this order? Use this for fake orders before any real payment is confirmed -- it'll be marked cancelled.",
     "releaseBtn": "Release funds to seller",
     "resolveReleaseBtn": "Resolve dispute: release to seller",
     "resolveRefundBtn": "Resolve dispute: refund buyer",

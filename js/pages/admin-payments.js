@@ -171,11 +171,23 @@ function whatsappBtnHTML(phone, message, label) {
   return `<a href="${whatsappHref(phone, message)}" target="_blank" rel="noopener noreferrer" class="${btnClass("outline", "sm")}">${icon("whatsapp")} ${label}</a>`;
 }
 
+// Lets the admin cancel an order before any real payment has actually been
+// verified (still awaiting_payment, or just a buyer's unverified claim of
+// payment_claimed) -- e.g. a spam/fake order -- without waiting for it to
+// escalate into a real dispute. Deliberately NOT offered once payment_confirmed
+// or later: past that point the admin has already confirmed real money
+// changed hands, so undoing it goes through the existing dispute flow
+// (raiseDispute -> resolveRefundBtn above) instead, which keeps a note of why.
+const rejectOrderBtnHTML = (o) => `<button type="button" class="${btnClass("destructive", "sm")}" data-reject-order="${o.id}">${t("payments.rejectOrderBtn")}</button>`;
+
 function renderOrderRow(o) {
   let actionsHtml = "";
-  if (o.status === "payment_claimed") {
+  if (o.status === "awaiting_payment") {
+    actionsHtml = rejectOrderBtnHTML(o);
+  } else if (o.status === "payment_claimed") {
     actionsHtml = `
       <button type="button" class="${btnClass("default", "sm")}" data-confirm-payment="${o.id}">${t("payments.confirmPaymentBtn")}</button>
+      ${rejectOrderBtnHTML(o)}
       ${whatsappBtnHTML(primaryWhatsappNumber(), adminNotifyMessage(o), t("payments.waSendToAdminBtn"))}
     `;
   } else if (o.status === "payment_confirmed") {
@@ -282,18 +294,18 @@ function whatsappNumberRowHTML(n) {
 // same payment-proof markup as renderOrderRow above, plus a chat-jump link
 // (dashboard-chat.html?id=... is the same pattern used everywhere else,
 // e.g. dashboard-orders.js) and a badge for the no-proof/COD path.
-function renderDealRow(o) {
-  const date = o.createdAt?.toDate ? o.createdAt.toDate().toLocaleDateString() : "";
+function renderDealRow(o, index) {
   return `
     <div class="list-row">
       <div class="list-row-main">
         <div style="display:flex;align-items:center;gap:0.4rem;flex-wrap:wrap">
+          <span class="text-muted" style="font-size:0.8rem">#${index + 1}</span>
           <span style="font-weight:600">${escapeHtml(o.productLabel || "")}</span>
           <span class="${badgeClass(o.status === "disputed" ? "destructive" : "outline")}">${t(ESCROW_STATUS_KEY[o.status] || o.status)}</span>
           ${o.noProofPayment ? `<span class="${badgeClass("secondary")}">${t("payments.codBadge")}</span>` : ""}
         </div>
         <div class="text-muted" style="font-size:0.8rem;margin-top:0.25rem">
-          ${t("payments.buyerLabel")}: ${escapeHtml(o.buyerName || "")} · ${t("payments.sellerLabel")}: ${escapeHtml(o.sellerName || "")} · ${t("escrow.totalLabel")}: ${o.totalAmount}${o.deliveryFee ? ` (+${o.deliveryFee} ${t("escrow.deliveryFeeLabel")})` : ""} · ${date}
+          ${t("payments.buyerLabel")}: ${escapeHtml(o.buyerName || "")} · ${t("payments.sellerLabel")}: ${escapeHtml(o.sellerName || "")} · ${t("escrow.totalLabel")}: ${o.totalAmount}${o.deliveryFee ? ` (+${o.deliveryFee} ${t("escrow.deliveryFeeLabel")})` : ""} · ${orderDateLabel(o)}
         </div>
         <div class="text-muted" style="font-size:0.8rem;margin-top:0.15rem">
           ${t("payments.quantityLabel")}: ${o.quantity} ${escapeHtml(o.unit || "")}
@@ -481,7 +493,7 @@ function tabPanelHTML() {
   return `
     <p class="text-muted" style="font-size:0.85rem;margin-top:1rem;max-width:40rem">${t("payments.allDealsHint")}</p>
     <div class="card" style="margin-top:0.75rem;padding:0 1rem">
-      ${allOrders.length === 0 ? `<p class="empty-state">${t("payments.noOrders")}</p>` : allOrders.map(renderDealRow).join("")}
+      ${allOrders.length === 0 ? `<p class="empty-state">${t("payments.noOrders")}</p>` : allOrders.map((o, i) => renderDealRow(o, i)).join("")}
     </div>
   `;
 }
@@ -541,6 +553,22 @@ function render() {
       btn.disabled = true;
       try {
         await Escrow.refund(btn.dataset.refund);
+        await reloadOrders();
+      } catch {
+        alert(t("payments.actionFailed"));
+        btn.disabled = false;
+      }
+    });
+  });
+  contentEl.querySelectorAll("[data-reject-order]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      if (!confirm(t("payments.confirmRejectOrder"))) return;
+      btn.disabled = true;
+      try {
+        // Same underlying write as resolveRefundBtn's data-refund handler
+        // above (status -> refunded) -- firestore.rules allows it from
+        // awaiting_payment/payment_claimed too now, not just disputed.
+        await Escrow.refund(btn.dataset.rejectOrder);
         await reloadOrders();
       } catch {
         alert(t("payments.actionFailed"));
@@ -723,7 +751,10 @@ function render() {
 
 async function reloadOrders() {
   const all = await Escrow.listAllOnce().catch(() => []);
-  allOrders = all.sort((a, b) => (b.createdAt?.toMillis() ?? 0) - (a.createdAt?.toMillis() ?? 0));
+  // Oldest first -- whoever ordered first shows first, both here and in the
+  // "needs action" queue derived from this below, so the admin naturally
+  // works through the longest-waiting orders before today's newest ones.
+  allOrders = all.sort((a, b) => (a.createdAt?.toMillis() ?? 0) - (b.createdAt?.toMillis() ?? 0));
   activeOrders = allOrders.filter(
     (o) => o.status !== "released" && o.status !== "refunded" && !(o.noProofPayment && o.status === "delivery_confirmed"),
   );
