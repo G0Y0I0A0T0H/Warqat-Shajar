@@ -104,6 +104,9 @@ const ICON_PATHS = {
     '<path d="M12 2a10 10 0 0 0-8.5 15.3L2 22l4.9-1.3A10 10 0 1 0 12 2Z"/><path d="M8.5 8.3c.2-.5.5-.5.7-.5h.5c.2 0 .4 0 .6.4.2.5.6 1.6.7 1.7.1.1.1.3 0 .5-.1.2-.2.3-.4.5-.2.2-.4.3-.2.6.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.3 2.5 1.5.3.1.5.1.7-.1.2-.2.8-.9 1-1.2.2-.3.4-.2.6-.1.2.1 1.5.7 1.8.9.3.1.4.2.5.3.1.2.1 1-.3 1.9-.4.9-2.1 1.7-2.9 1.8-.7.1-1.6.2-4.6-1-3.7-1.5-6-5.3-6.2-5.6-.2-.3-1.5-2-1.5-3.8 0-1.8.9-2.6 1.3-3z" fill="currentColor" stroke="none"/>',
   tiktok: '<path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5"/>',
   youtube: '<rect x="2" y="6" width="20" height="12" rx="3"/><path d="M10 9l5 3-5 3z" fill="currentColor" stroke="none"/>',
+  linkedin: '<path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/>',
+  github: '<path d="M9 19c-4.3 1.4-4.3-2.5-6-3m12 5v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6a4.6 4.6 0 0 0-1.3-3.2 4.2 4.2 0 0 0-.1-3.2s-1.1-.3-3.5 1.3a12.3 12.3 0 0 0-6.2 0C6.5 2.8 5.4 3.1 5.4 3.1a4.2 4.2 0 0 0-.1 3.2A4.6 4.6 0 0 0 4 9.5c0 4.6 2.7 5.7 5.5 6-.6.6-.6 1.2-.5 2V21"/>',
+  globe: '<circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>',
   moon: '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
   eye: '<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>',
   "shopping-cart": '<circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/>',
@@ -755,6 +758,68 @@ export function renderImageInput(mountEl, { value = "", uploadPathPrefix, accept
       urlInput.value = v;
     },
   };
+}
+
+// A free-text tag list -- type a value, press Enter or the add button, it
+// becomes a removable pill. Used for a team member's skills[]/projects[] in
+// admin-team.js; no fixed vocabulary exists for either (unlike
+// auth-shared.js's renderCategoryCheckboxGrid, which is for a closed set of
+// categories), so this is a real add-any-text-you-want editor instead.
+export function renderTagListInput(mountEl, { values = [], placeholder = "" } = {}) {
+  let tags = [...values];
+
+  function paint() {
+    mountEl.innerHTML = `
+      <div style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-bottom:0.5rem">
+        ${tags
+          .map(
+            (tag, i) => `
+          <span class="${badgeClass("outline")}" style="display:inline-flex;align-items:center;gap:0.3rem">
+            ${escapeHtml(tag)}
+            <button type="button" data-remove-tag="${i}" aria-label="${t("team.removeTagBtn", "Remove")}" style="display:inline-flex;line-height:0;cursor:pointer;background:none;border:none;color:inherit;padding:0">${icon("x")}</button>
+          </span>
+        `,
+          )
+          .join("")}
+      </div>
+      <div style="display:flex;gap:0.4rem">
+        <input class="input" type="text" placeholder="${escapeHtml(placeholder)}" data-tag-input style="flex:1">
+        <button type="button" class="${btnClass("outline", "sm")}" data-add-tag>${icon("plus")}</button>
+      </div>
+    `;
+    const input = mountEl.querySelector("[data-tag-input]");
+    const add = () => {
+      const v = input.value.trim();
+      if (!v) return;
+      tags.push(v);
+      input.value = "";
+      paint();
+      input.focus();
+    };
+    mountEl.querySelector("[data-add-tag]").addEventListener("click", add);
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        add();
+      }
+    });
+    mountEl.querySelectorAll("[data-remove-tag]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        tags.splice(Number(btn.dataset.removeTag), 1);
+        paint();
+      });
+    });
+  }
+  paint();
+
+  return { getValues: () => [...tags] };
+}
+
+// Same icon("verified") + tooltip pattern already used for a verified user
+// profile (js/pages/profile.js) -- shared here so team members use the
+// exact same visual language instead of a second bespoke badge.
+export function verifiedBadgeHTML() {
+  return `<span title="${t("team.verifiedTooltip", "Verified by the platform's admin")}" style="color:var(--primary);display:inline-flex">${icon("verified")}</span>`;
 }
 
 // ---------------------------------------------------------------------------
