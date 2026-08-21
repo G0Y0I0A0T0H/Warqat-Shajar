@@ -714,8 +714,9 @@ service cloud.firestore {
         // of why.
         (isOwnerOrGranted('payments') &&
          (resource.data.status == 'awaiting_payment' || resource.data.status == 'payment_claimed') &&
-         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'refundedAt']) &&
-         request.resource.data.status == 'refunded')
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'refundedAt', 'rejectReason']) &&
+         request.resource.data.status == 'refunded' &&
+         request.resource.data.rejectReason is string && request.resource.data.rejectReason.size() > 0)
       );
 
       // Owner-only, strictly -- not delegable via isOwnerOrGranted. Exists

@@ -562,13 +562,15 @@ function render() {
   });
   contentEl.querySelectorAll("[data-reject-order]").forEach((btn) => {
     btn.addEventListener("click", async () => {
-      if (!confirm(t("payments.confirmRejectOrder"))) return;
+      // Required, not optional (unlike data-reject-withdrawal's prompt
+      // above) -- firestore.rules itself now rejects an empty reason too,
+      // since this is what shows up on the buyer's own tracking page
+      // (escrowStepperHTML in ui.js) explaining why their order is gone.
+      const reason = prompt(t("payments.rejectOrderReasonPrompt"))?.trim();
+      if (!reason) return;
       btn.disabled = true;
       try {
-        // Same underlying write as resolveRefundBtn's data-refund handler
-        // above (status -> refunded) -- firestore.rules allows it from
-        // awaiting_payment/payment_claimed too now, not just disputed.
-        await Escrow.refund(btn.dataset.rejectOrder);
+        await Escrow.rejectOrder(btn.dataset.rejectOrder, reason);
         await reloadOrders();
       } catch {
         alert(t("payments.actionFailed"));

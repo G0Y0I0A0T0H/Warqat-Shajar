@@ -763,7 +763,8 @@
     "newFollower": { "title": "متابع جديد", "body": "{name} بدأ يتابعك" },
     "deliveryConfirmedNeedsRelease": { "title": "طلب محتاج تحويل المبلغ", "body": "{buyer} أكد استلام {product} — محتاج تحوّل المبلغ للمزارع من لوحة إدارة الدفع." },
     "identityVerificationFailed": { "title": "معرفناش نستلم بيانات التحقق من الهوية", "body": "حصلت مشكلة وإحنا بنرفع صورة بطاقتك -- حسابك اتعمل بس بيانات الهوية لسه ناقصة. تواصل معانا عشان نظبطها." },
-    "disputeRaised": { "title": "في خلاف على صفقة", "body": "فيه خلاف اتفتح على صفقة {product} -- محتاج مراجعة." }
+    "disputeRaised": { "title": "في خلاف على صفقة", "body": "فيه خلاف اتفتح على صفقة {product} -- محتاج مراجعة." },
+    "orderRejectedByAdmin": { "title": "طلب اترفض من الإدارة", "body": "الطلب على {product} اترفض من إدارة ورقة شجر. السبب: {reason}" }
   },
   "ads": {
     "title": "إدارة الإعلانات",
@@ -862,7 +863,7 @@
     "markPaidFailed": "معرفناش نأكد التحويل -- ممكن رصيد المزارع مبقاش كفاية (اتأكد من طلبات سحب تانية معلّقة).",
     "confirmPaymentBtn": "أكّد استلام الدفعة",
     "rejectOrderBtn": "ارفض الطلب",
-    "confirmRejectOrder": "متأكد إنك عايز ترفض الطلب ده؟ ده للطلبات الوهمية قبل ما يتأكد فيها أي دفع حقيقي -- هيتحط كملغي.",
+    "rejectOrderReasonPrompt": "سبب رفض الطلب (لازم تكتب سبب -- هيوصل للمشتري والبائع كإشعار):",
     "releaseBtn": "حوّل المبلغ للبائع",
     "resolveReleaseBtn": "حل الخلاف: حوّل للبائع",
     "resolveRefundBtn": "حل الخلاف: رجّع للمشتري",
@@ -973,6 +974,7 @@
     "statusDisputed": "في خلاف على الصفقة دي، الإدارة بتراجعه",
     "statusReleased": "اتحول المبلغ للبائع",
     "statusRefunded": "اترجع المبلغ للمشتري",
+    "statusRejectedByAdmin": "الطلب اترفض من إدارة ورقة شجر",
     "statusCodCompleted": "الصفقة خلصت — دفع نقدي عند الاستلام",
     "totalLabel": "الإجمالي",
     "productPriceLabel": "سعر المنتج",

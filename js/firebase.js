@@ -1135,6 +1135,36 @@ export const Escrow = {
     await updateDoc(doc(db, "escrowOrders", orderId), { status: "refunded", refundedAt: serverTimestamp() });
   },
 
+  // Admin-only reject of an order before any real payment has been
+  // verified (see the matching firestore.rules branch, gated to
+  // awaiting_payment/payment_claimed only) -- e.g. a fake/spam order.
+  // Same end state as refund() above (status -> refunded), but keeps the
+  // admin's stated reason on the order itself (escrowStepperHTML in ui.js
+  // shows it on the buyer's own tracking page) and, unlike refund(),
+  // always tells both sides it happened -- a silent status flip here would
+  // otherwise leave the buyer wondering why their order just vanished.
+  async rejectOrder(orderId, reason) {
+    const snap = await getDoc(doc(db, "escrowOrders", orderId));
+    const order = snap.data();
+    await updateDoc(doc(db, "escrowOrders", orderId), {
+      status: "refunded",
+      refundedAt: serverTimestamp(),
+      rejectReason: reason,
+    });
+    if (order) {
+      const notify = (uid, link) =>
+        uid &&
+        Notifications.create({
+          uid,
+          key: "orderRejectedByAdmin",
+          params: { product: order.productLabel || "", reason },
+          link,
+        }).catch(() => {});
+      notify(order.buyerId, `cart.html?order=${orderId}`);
+      notify(order.sellerId, order.chatId ? `dashboard-chat.html?id=${order.chatId}` : `dashboard-orders.html?order=${orderId}`);
+    }
+  },
+
   // Owner-only oversight list (admin-payments.js) -- fetched in full and
   // filtered client-side since the collection is expected to stay small.
   async listAllOnce() {
