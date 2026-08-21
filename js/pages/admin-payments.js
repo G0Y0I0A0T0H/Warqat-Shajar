@@ -32,6 +32,13 @@ let activeOrders = [];
 // and the per-farmer rollup below, both of which need the full history, not
 // just what still needs admin action.
 let allOrders = [];
+// Orders with a buyer-submitted cancellation request still pending review
+// -- see the "cancellation requests" tab and Escrow.requestCancellation/
+// dismissCancelRequest in firebase.js. Excludes already-final orders same
+// as activeOrders below, since a cancellation request on an order that's
+// since been released/refunded/disputed some other way has nothing left to
+// review.
+let cancelRequestOrders = [];
 let farmerRollups = [];
 let pendingWithdrawals = [];
 // uid -> phone, batch-loaded for whichever orders currently show a WhatsApp
@@ -45,6 +52,7 @@ const TABS = [
   { key: "methods", labelKey: "payments.tabMethods" },
   { key: "whatsapp", labelKey: "payments.tabWhatsapp" },
   { key: "needsAction", labelKey: "payments.tabNeedsAction" },
+  { key: "cancelRequests", labelKey: "payments.tabCancelRequests" },
   { key: "allDeals", labelKey: "payments.tabAllDeals" },
   { key: "withdrawals", labelKey: "payments.tabWithdrawals" },
   { key: "farmers", labelKey: "payments.tabFarmers" },
@@ -151,6 +159,20 @@ function buyerConfirmMessage(o) {
   });
 }
 
+// Opens a WhatsApp chat straight to the buyer who filed a cancellation
+// request, with their own stated reason already quoted back to them --
+// this app never surfaces one user's phone to ANOTHER user (see the note
+// above farmerConfirmMessage), but the admin already has legitimate access
+// to it for exactly this kind of direct contact (same contactPhones lookup
+// used by the WhatsApp buttons above).
+function cancelContactMessage(o) {
+  return fillTemplate(t("payments.waCancelContactMessage"), {
+    buyerName: o.buyerName || "",
+    product: o.productLabel || "",
+    reason: o.cancelRequestReason || "",
+  });
+}
+
 const ESCROW_STATUS_KEY = {
   awaiting_payment: "escrow.statusAwaitingPayment",
   payment_claimed: "escrow.statusPaymentClaimed",
@@ -245,6 +267,36 @@ function renderOrderRow(o) {
         ${o.status === "disputed" && o.disputeNote ? `<p class="error-text" style="font-size:0.8rem;margin-top:0.25rem">${escapeHtml(o.disputeNote)}</p>` : ""}
       </div>
       ${actionsHtml ? `<div style="display:flex;gap:0.4rem;flex-wrap:wrap">${actionsHtml}</div>` : ""}
+    </div>
+  `;
+}
+
+// The "cancellation requests" tab -- a buyer-filed Escrow.requestCancellation,
+// reviewed here instead of self-service so the admin can weigh in when the
+// seller may already be preparing the order or real money's involved. The
+// reject button only applies while the order's still eligible for it (see
+// rejectOrderBtnHTML's own doc comment -- awaiting_payment/payment_claimed
+// only); past that, WhatsApp + dismiss are the only actions, same as any
+// order this far along.
+function renderCancelRequestRow(o) {
+  const canReject = o.status === "awaiting_payment" || o.status === "payment_claimed";
+  return `
+    <div class="list-row">
+      <div class="list-row-main">
+        <div style="display:flex;align-items:center;gap:0.4rem;flex-wrap:wrap">
+          <span style="font-weight:600">${escapeHtml(o.productLabel || "")}</span>
+          <span class="${badgeClass("outline")}">${t(ESCROW_STATUS_KEY[o.status] || o.status)}</span>
+        </div>
+        <div class="text-muted" style="font-size:0.8rem;margin-top:0.25rem">
+          ${t("payments.buyerLabel")}: ${escapeHtml(o.buyerName || "")} · ${t("payments.sellerLabel")}: ${escapeHtml(o.sellerName || "")} · ${t("escrow.totalLabel")}: ${o.totalAmount}${o.deliveryFee ? ` (+${o.deliveryFee} ${t("escrow.deliveryFeeLabel")})` : ""} · ${orderDateLabel(o)}
+        </div>
+        <p class="error-text" style="font-size:0.8rem;margin-top:0.25rem">${t("payments.cancelReasonLabel")}: ${escapeHtml(o.cancelRequestReason || "")}</p>
+      </div>
+      <div style="display:flex;gap:0.4rem;flex-wrap:wrap">
+        ${whatsappBtnHTML(contactPhones[o.buyerId], cancelContactMessage(o), t("payments.waContactBuyerBtn"))}
+        ${canReject ? rejectOrderBtnHTML(o) : ""}
+        <button type="button" class="${btnClass("outline", "sm")}" data-dismiss-cancel="${o.id}">${t("payments.dismissCancelRequestBtn")}</button>
+      </div>
     </div>
   `;
 }
@@ -381,6 +433,7 @@ function summaryHTML() {
   return `
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(9rem,1fr));gap:0.6rem;margin-top:1rem">
       ${statCardHTML(t("payments.summaryNeedsActionLabel"), activeOrders.length)}
+      ${statCardHTML(t("payments.summaryCancelRequestsLabel"), cancelRequestOrders.length)}
       ${statCardHTML(t("payments.summaryPendingWithdrawalsLabel"), `${pendingWithdrawalsTotal} ${t("products.currency")}`)}
       ${statCardHTML(t("payments.summaryFarmerBalancesLabel"), `${farmerBalancesTotal} ${t("products.currency")}`)}
       ${statCardHTML(t("payments.summaryCompletedDealsLabel"), completedDeals)}
@@ -471,6 +524,14 @@ function tabPanelHTML() {
       <p class="text-muted" style="font-size:0.85rem;margin-top:1rem;max-width:40rem">${t("payments.ordersHint")}</p>
       <div class="card" style="margin-top:0.75rem;padding:0 1rem">
         ${activeOrders.length === 0 ? `<p class="empty-state">${t("payments.noOrders")}</p>` : activeOrders.map(renderOrderRow).join("")}
+      </div>
+    `;
+  }
+  if (activeTab === "cancelRequests") {
+    return `
+      <p class="text-muted" style="font-size:0.85rem;margin-top:1rem;max-width:40rem">${t("payments.cancelRequestsHint")}</p>
+      <div class="card" style="margin-top:0.75rem;padding:0 1rem">
+        ${cancelRequestOrders.length === 0 ? `<p class="empty-state">${t("payments.noCancelRequests")}</p>` : cancelRequestOrders.map(renderCancelRequestRow).join("")}
       </div>
     `;
   }
@@ -571,6 +632,19 @@ function render() {
       btn.disabled = true;
       try {
         await Escrow.rejectOrder(btn.dataset.rejectOrder, reason);
+        await reloadOrders();
+      } catch {
+        alert(t("payments.actionFailed"));
+        btn.disabled = false;
+      }
+    });
+  });
+  contentEl.querySelectorAll("[data-dismiss-cancel]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      if (!confirm(t("payments.confirmDismissCancelRequest"))) return;
+      btn.disabled = true;
+      try {
+        await Escrow.dismissCancelRequest(btn.dataset.dismissCancel);
         await reloadOrders();
       } catch {
         alert(t("payments.actionFailed"));
@@ -760,6 +834,9 @@ async function reloadOrders() {
   activeOrders = allOrders.filter(
     (o) => o.status !== "released" && o.status !== "refunded" && !(o.noProofPayment && o.status === "delivery_confirmed"),
   );
+  cancelRequestOrders = allOrders.filter(
+    (o) => o.cancelRequested && o.status !== "released" && o.status !== "refunded" && o.status !== "disputed",
+  );
   await loadFarmerRollups();
   await loadPendingWithdrawals();
   await loadContactPhones();
@@ -777,6 +854,11 @@ async function loadContactPhones() {
     if (o.status !== "payment_confirmed") return;
     if (o.buyerId) uids.add(o.buyerId);
     if (o.sellerId) uids.add(o.sellerId);
+  });
+  // The cancellation-requests tab's WhatsApp-to-buyer button needs this too,
+  // regardless of the order's own status.
+  cancelRequestOrders.forEach((o) => {
+    if (o.buyerId) uids.add(o.buyerId);
   });
   const missing = [...uids].filter((uid) => !(uid in contactPhones));
   if (missing.length === 0) return;

@@ -1098,6 +1098,41 @@ export const Escrow = {
     }
   },
 
+  // Buyer-initiated "please cancel this" -- unlike raiseDispute above, this
+  // doesn't change status at all (see the matching firestore.rules branch):
+  // it's a flag + reason sitting alongside whatever status the order is
+  // already in, reviewed by an admin in admin-payments.html's dedicated
+  // "cancellation requests" tab (which gets a WhatsApp button straight to
+  // the buyer to ask for more detail, then either the existing
+  // rejectOrder() above to actually cancel it, or dismissCancelRequest
+  // below to leave it running as-is).
+  async requestCancellation(orderId, reason) {
+    const snap = await getDoc(doc(db, "escrowOrders", orderId));
+    const order = snap.data();
+    await updateDoc(doc(db, "escrowOrders", orderId), {
+      cancelRequested: true,
+      cancelRequestReason: reason,
+      cancelRequestedAt: serverTimestamp(),
+    });
+    if (order) {
+      Admin.listAllAdmins()
+        .then((admins) =>
+          Notifications.broadcastToAll(
+            admins.map((a) => a.uid),
+            { key: "cancelRequestSubmitted", params: { product: order.productLabel || "" }, link: "admin-payments.html" },
+          ),
+        )
+        .catch(() => {});
+    }
+  },
+
+  // Admin decided not to cancel (chased it up over WhatsApp and it's a
+  // non-issue, say) -- clears the flag so the order drops back out of the
+  // "cancellation requests" tab and keeps running its normal course.
+  async dismissCancelRequest(orderId) {
+    await updateDoc(doc(db, "escrowOrders", orderId), { cancelRequested: false });
+  },
+
   // Both owner-only in firestore.rules -- the owner physically pays the
   // farmer (or refunds the buyer) outside the app, then marks it here.
   // release() is also the ONLY place a farmer's wallet ever gets credited --

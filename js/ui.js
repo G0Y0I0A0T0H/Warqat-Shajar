@@ -1066,6 +1066,14 @@ export function renderEscrowActions(containerEl, { order, viewerUid, paymentInfo
   const isFinal = order.status === "released" || order.status === "refunded" || order.status === "disputed";
   const canDispute = !isFinal && (isBuyer || isSeller);
   const isAwaitingPaymentAsBuyer = isBuyer && order.status === "awaiting_payment";
+  // Buyer-only "please cancel this" request -- an admin reviews it
+  // (admin-payments.html's "cancellation requests" tab) rather than letting
+  // the buyer unilaterally cancel, since the seller may already be
+  // preparing the order or have real money involved. Once submitted it
+  // shows as pending instead of the button until an admin resolves it one
+  // way or the other (Escrow.rejectOrder or dismissCancelRequest).
+  const canRequestCancel = isBuyer && !isFinal && !order.cancelRequested;
+  const cancelRequestPending = isBuyer && order.cancelRequested;
 
   let topHtml = "";
   let proofFormHtml = "";
@@ -1097,7 +1105,7 @@ export function renderEscrowActions(containerEl, { order, viewerUid, paymentInfo
     primaryBtnHtml = `<button type="button" class="${btnClass("default", "sm")}" id="escrow-confirm-delivery-btn">${icon("package")} ${t("escrow.confirmDeliveryBtn")}</button>`;
   }
 
-  if (!topHtml && !proofFormHtml && !primaryBtnHtml && !canDispute) {
+  if (!topHtml && !proofFormHtml && !primaryBtnHtml && !canDispute && !canRequestCancel && !cancelRequestPending) {
     containerEl.innerHTML = "";
     return;
   }
@@ -1117,6 +1125,19 @@ export function renderEscrowActions(containerEl, { order, viewerUid, paymentInfo
               </div>
             </div>`
           : ""
+      }
+      ${
+        canRequestCancel
+          ? `<div>
+              <button type="button" class="${btnClass("ghost", "sm")}" id="escrow-cancel-toggle-btn">${t("escrow.requestCancelBtn")}</button>
+              <div id="escrow-cancel-form" style="display:none;flex-direction:column;gap:0.4rem;margin-top:0.5rem">
+                <textarea class="textarea" id="escrow-cancel-note" rows="2" placeholder="${t("escrow.cancelReasonPlaceholder")}"></textarea>
+                <button type="button" class="${btnClass("destructive", "sm")}" id="escrow-cancel-submit-btn" style="align-self:flex-start">${t("escrow.cancelSubmitBtn")}</button>
+              </div>
+            </div>`
+          : cancelRequestPending
+            ? `<p class="text-muted" style="font-size:0.8rem">${t("escrow.cancelRequestPending")}</p>`
+            : ""
       }
       <p id="escrow-action-error-${order.id}" class="error-text" style="display:none"></p>
     </div>
@@ -1277,6 +1298,25 @@ export function renderEscrowActions(containerEl, { order, viewerUid, paymentInfo
       onChange?.();
     } catch (err) {
       console.error("escrow dispute failed:", err);
+      showMessage(actionErrorEl, t("escrow.actionFailed", "Something went wrong -- please try again."));
+      e.target.disabled = false;
+    }
+  });
+
+  containerEl.querySelector("#escrow-cancel-toggle-btn")?.addEventListener("click", () => {
+    const form = containerEl.querySelector("#escrow-cancel-form");
+    form.style.display = form.style.display === "none" ? "flex" : "none";
+  });
+  containerEl.querySelector("#escrow-cancel-submit-btn")?.addEventListener("click", async (e) => {
+    const note = containerEl.querySelector("#escrow-cancel-note").value.trim();
+    if (!note) return;
+    e.target.disabled = true;
+    showMessage(actionErrorEl, "");
+    try {
+      await Escrow.requestCancellation(order.id, note);
+      onChange?.();
+    } catch (err) {
+      console.error("escrow cancel request failed:", err);
       showMessage(actionErrorEl, t("escrow.actionFailed", "Something went wrong -- please try again."));
       e.target.disabled = false;
     }
