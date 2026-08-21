@@ -717,6 +717,29 @@ service cloud.firestore {
          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'refundedAt', 'rejectReason']) &&
          request.resource.data.status == 'refunded' &&
          request.resource.data.rejectReason is string && request.resource.data.rejectReason.size() > 0)
+        ||
+        // Buyer asking an admin to cancel this order (any reason -- changed
+        // their mind, ordered by mistake, whatever) -- doesn't touch status
+        // at all, just flags it for admin-payments.html's "cancellation
+        // requests" tab to pick up. Blocked once already final for the same
+        // reason disputing is, and can't be re-filed while one's already
+        // pending (resource.data.cancelRequested must not already be true).
+        (request.auth.uid == resource.data.buyerId &&
+         resource.data.status != 'released' && resource.data.status != 'refunded' && resource.data.status != 'disputed' &&
+         resource.data.get('cancelRequested', false) == false &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['cancelRequested', 'cancelRequestReason', 'cancelRequestedAt']) &&
+         request.resource.data.cancelRequested == true &&
+         request.resource.data.cancelRequestReason is string && request.resource.data.cancelRequestReason.size() > 0)
+        ||
+        // Admin reviewed a cancellation request (via the WhatsApp button
+        // next to it, most likely) and decided not to act on it -- clears
+        // the flag so the order drops back out of that tab and keeps
+        // running normally. The actual "yes, cancel it" path reuses the
+        // rejectOrder branch above instead of a branch here.
+        (isOwnerOrGranted('payments') &&
+         resource.data.get('cancelRequested', false) == true &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['cancelRequested']) &&
+         request.resource.data.cancelRequested == false)
       );
 
       // Owner-only, strictly -- not delegable via isOwnerOrGranted. Exists
