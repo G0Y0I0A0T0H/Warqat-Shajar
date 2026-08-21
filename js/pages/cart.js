@@ -82,9 +82,19 @@ async function loadOrderState() {
     myOffersByProduct[o.productId] = newerByCreatedAt(myOffersByProduct[o.productId], o);
   });
   myEscrowByProduct = {};
-  escrowOrders.forEach((o) => {
-    myEscrowByProduct[o.productId] = newerByCreatedAt(myEscrowByProduct[o.productId], o);
-  });
+  escrowOrders
+    // A finished order (paid out to the seller, or refunded) shouldn't keep
+    // blocking this product's row forever -- without this, ordering the
+    // same product a second time after the first one fully completed just
+    // kept showing that old, done order's stepper instead of ever letting a
+    // new "Order Now" go through, since the row below only offers the
+    // quantity/order controls when myEscrowByProduct has nothing for this
+    // productId. Every other status (including disputed, still unresolved)
+    // stays tracked as-is.
+    .filter((o) => o.status !== "released" && o.status !== "refunded")
+    .forEach((o) => {
+      myEscrowByProduct[o.productId] = newerByCreatedAt(myEscrowByProduct[o.productId], o);
+    });
   orderStateLoaded = true;
   render();
   if (!didScrollToOrder) {
