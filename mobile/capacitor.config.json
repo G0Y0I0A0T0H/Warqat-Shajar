@@ -1,0 +1,13 @@
+{
+  "appId": "com.waraqatshajar.app",
+  "appName": "ورقة شجر",
+  "webDir": "www",
+  "server": {
+    "url": "https://waraqatshajar.com",
+    "cleartext": false,
+    "androidScheme": "https"
+  },
+  "android": {
+    "allowMixedContent": false
+  }
+}
