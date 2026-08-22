@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "931782671707",
+    "project_id": "waraqat-shajar",
+    "storage_bucket": "waraqat-shajar.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:931782671707:android:f98adef7aa4dd3eb652e7e",
+        "android_client_info": {
+          "package_name": "com.waraqatshajar.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "931782671707-38qpnl5sk1lodsmt1vn7fiscupi1a67p.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCltBRBdV_l5ghxSAchQsyxMrvyuWKVSmY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "931782671707-38qpnl5sk1lodsmt1vn7fiscupi1a67p.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
