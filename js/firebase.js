@@ -11,6 +11,7 @@ import {
   signInWithEmailAndPassword,
   signInWithPopup,
   signInWithRedirect,
+  signInWithCredential,
   getRedirectResult,
   GoogleAuthProvider,
   signOut,
@@ -218,10 +219,25 @@ export const Auth = {
     return credential.user;
   },
 
-  // Popups get silently blocked by some mobile browsers/in-app webviews, so
-  // fall back to a full-page redirect flow there; completeGoogleRedirect()
-  // below picks the result back up once the page reloads after redirecting.
+  // Inside the Android app (see mobile/), Google deliberately blocks its
+  // own OAuth popup/redirect flow in a plain embedded WebView -- an
+  // anti-phishing measure on Google's end, not something catchable as a
+  // normal Firebase error (Google's own consent page just refuses to
+  // proceed). There's no web-side workaround for that; the app instead
+  // bridges to real native Google Sign-In via the
+  // @capacitor-firebase/authentication plugin (mobile/README.md has the
+  // setup). Capacitor's own runtime -- window.Capacitor, including
+  // Capacitor.Plugins -- is injected automatically by the app's WebView,
+  // no import needed here, so this branch is simply never reached from a
+  // normal browser tab; it stays exactly as it always has for the site.
   async signInWithGoogle() {
+    const nativeAuth = window.Capacitor?.isNativePlatform?.() ? window.Capacitor.Plugins?.FirebaseAuthentication : null;
+    if (nativeAuth) {
+      const { credential } = await nativeAuth.signInWithGoogle();
+      if (!credential?.idToken) throw new Error("Google sign-in was cancelled.");
+      const userCredential = await signInWithCredential(auth, GoogleAuthProvider.credential(credential.idToken));
+      return { user: userCredential.user, redirected: false };
+    }
     try {
       const credential = await signInWithPopup(auth, googleProvider);
       return { user: credential.user, redirected: false };
