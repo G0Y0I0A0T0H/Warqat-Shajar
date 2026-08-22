@@ -13,4 +13,11 @@ ext {
     androidxJunitVersion = '1.3.0'
     androidxEspressoCoreVersion = '3.7.0'
     cordovaAndroidVersion = '14.0.1'
+    // Required by @capacitor-firebase/authentication's Android Google
+    // Sign-In support (see its docs/setup-google.md) -- without this the
+    // plugin's native Google provider code isn't even compiled in, so
+    // signInWithGoogle() fails immediately, before any Google account
+    // picker ever opens (exactly what was reported).
+    rgcfaIncludeGoogle = true
+    androidxCredentialsVersion = '1.3.0'
 }
