@@ -116,6 +116,77 @@ function buildShareData(p) {
   return { url: location.href, title, summary: lines.join("\n") };
 }
 
+function setMeta(nameOrProp, content, isProperty = false) {
+  const attr = isProperty ? "property" : "name";
+  let el = document.head.querySelector(`meta[${attr}="${nameOrProp}"]`);
+  if (!el) {
+    el = document.createElement("meta");
+    el.setAttribute(attr, nameOrProp);
+    document.head.appendChild(el);
+  }
+  el.setAttribute("content", content);
+}
+
+function setLink(rel, href) {
+  let el = document.head.querySelector(`link[rel="${rel}"]`);
+  if (!el) {
+    el = document.createElement("link");
+    el.setAttribute("rel", rel);
+    document.head.appendChild(el);
+  }
+  el.setAttribute("href", href);
+}
+
+// product.html's own <title>/meta tags are static and generic ("تفاصيل
+// المنتج" for every single product) since there's no server-side rendering
+// here to inject the real product per request -- Google's own indexer does
+// execute this page's JS before reading <title>/meta description, though
+// (unlike social-preview crawlers, which never run JS -- buildShareData's
+// own share text is unaffected either way, already generic before this),
+// so overwriting them here for real once the product's loaded genuinely
+// helps two different products stop looking identical to Google. The
+// Product JSON-LD block is the bigger win: it's what actually makes a
+// price/availability rich result possible in search at all.
+function updateSeoMetaTags(p) {
+  const unitLabel = t(unitLabelKey(p.unit));
+  const title = p.title || categoryLabelById(p.category, getLocale());
+  const fullTitle = `${title} | ورقة شجر`;
+  const descParts = [
+    `${t("products.priceLabel")}: ${p.price} ${t("products.currency")}/${unitLabel}`,
+    `${t("share.sellerLabel")}: ${p.ownerName || ""}`,
+  ];
+  if (p.description) descParts.push(p.description.length > 100 ? `${p.description.slice(0, 100)}…` : p.description);
+  const description = descParts.join(" · ");
+  const url = `https://waraqatshajar.com/product.html?id=${p.id}`;
+  const image = p.photoUrls?.[0] ? optimizedImageUrl(p.photoUrls[0], 800) : "https://waraqatshajar.com/images/logo-icon.png";
+
+  document.title = fullTitle;
+  setMeta("description", description);
+  setMeta("og:title", fullTitle, true);
+  setMeta("og:description", description, true);
+  setMeta("og:image", image, true);
+  setMeta("og:url", url, true);
+  setLink("canonical", url);
+
+  const ldJson = document.createElement("script");
+  ldJson.type = "application/ld+json";
+  ldJson.textContent = JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: title,
+    image: p.photoUrls?.length ? p.photoUrls : [image],
+    description: p.description || description,
+    offers: {
+      "@type": "Offer",
+      priceCurrency: "EGP",
+      price: p.price,
+      availability: p.quantity > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+      url,
+    },
+  });
+  document.head.appendChild(ldJson);
+}
+
 function render() {
   if (!product) {
     // Previously left whatever was already in detailEl (a loading
@@ -354,6 +425,7 @@ async function main() {
   // product.ownerId, throwing and skipping every subscribe()/onLocaleChange()
   // registration below it.
   if (!product) return;
+  updateSeoMetaTags(product);
   // firestore.rules now requires isSignedIn() for this counter (an
   // unauthenticated script could otherwise inflate/reset it with unlimited,
   // untraceable requests) -- a signed-out visitor's view genuinely won't be
