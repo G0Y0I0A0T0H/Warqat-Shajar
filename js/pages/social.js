@@ -166,7 +166,7 @@ function render() {
 
   cardEl.innerHTML = `
     <div class="social-card-logo-ring">
-      <img src="${logoUrl}" alt="">
+      <div class="social-card-logo-inner"><img src="${logoUrl}" alt=""></div>
       <span class="social-card-logo-sparkle"></span>
     </div>
     <h1 class="social-card-name">${escapeHtml(t("brand.name"))}</h1>
