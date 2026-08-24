@@ -1,0 +1,159 @@
+/* Standalone premium "link-in-bio" card for social.html only -- never
+   linked from styles.css or any other page, so nothing here can leak
+   sideways. This page deliberately doesn't use the site header/footer or
+   light/dark toggle -- it's a fixed, always-dark branded card, closer to a
+   digital business card than a regular site page. */
+
+.social-card-body {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1.25rem;
+  background: radial-gradient(circle at 50% -10%, #1b5e20 0%, #0f1b10 45%, #070b06 100%);
+  color: #eef2ec;
+  font-family: var(--font-sans, "Cairo", sans-serif);
+  position: relative;
+  overflow-x: hidden;
+}
+
+.social-card-orb {
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: 0.35;
+  pointer-events: none;
+  z-index: 0;
+}
+.social-card-orb-1 { width: 22rem; height: 22rem; background: #2e7d32; top: -6rem; inset-inline-start: -6rem; }
+.social-card-orb-2 { width: 18rem; height: 18rem; background: #66bb6a; bottom: -5rem; inset-inline-end: -5rem; }
+
+.social-card {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 26rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.social-card-logo-ring {
+  width: 6.5rem;
+  height: 6.5rem;
+  border-radius: 50%;
+  padding: 0.3rem;
+  background: linear-gradient(135deg, #66bb6a, #2e7d32 55%, #1b5e20);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08), 0 20px 45px -15px rgba(46, 125, 50, 0.7);
+  opacity: 0;
+  transform: translateY(-10px) scale(0.92);
+  animation: social-card-in 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+.social-card-logo-ring img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+  background: #0f1b10;
+}
+
+.social-card-name {
+  margin-top: 1.25rem;
+  font-size: 1.6rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  opacity: 0;
+  animation: social-card-in 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.08s forwards;
+}
+.social-card-tagline {
+  margin-top: 0.35rem;
+  font-size: 0.9rem;
+  color: #a9c2ab;
+  opacity: 0;
+  animation: social-card-in 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.14s forwards;
+}
+
+.social-card-links {
+  margin-top: 2.25rem;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.social-card-link {
+  --item-delay: 0ms;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.85rem 1.1rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(10px);
+  color: #eef2ec;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.95rem;
+  opacity: 0;
+  transform: translateY(10px);
+  animation: social-card-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation-delay: calc(0.2s + var(--item-delay));
+  transition: background 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+}
+.social-card-link:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.22);
+  transform: translateY(-2px);
+}
+.social-card-link:active { transform: translateY(0); }
+
+.social-card-link-icon {
+  flex: none;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.1);
+}
+.social-card-link-icon svg { width: 1.1rem; height: 1.1rem; }
+.social-card-link-label { flex: 1; text-align: start; }
+.social-card-link-chevron { flex: none; opacity: 0.55; }
+.social-card-link-chevron svg { width: 1rem; height: 1rem; transform: rotate(-90deg); }
+[dir="rtl"] .social-card-link-chevron svg { transform: rotate(90deg); }
+
+.social-card-link.is-primary {
+  background: linear-gradient(135deg, #2e7d32, #1b5e20);
+  border-color: transparent;
+  box-shadow: 0 12px 28px -12px rgba(46, 125, 50, 0.8);
+}
+.social-card-link.is-primary:hover { background: linear-gradient(135deg, #348a38, #1f6b23); }
+.social-card-link.is-primary .social-card-link-icon { background: rgba(255, 255, 255, 0.18); }
+
+.social-card-link.is-whatsapp { border-color: rgba(37, 211, 102, 0.4); }
+.social-card-link.is-whatsapp .social-card-link-icon { background: rgba(37, 211, 102, 0.22); color: #25d366; }
+
+.social-card-footer {
+  margin-top: 2.5rem;
+  font-size: 0.75rem;
+  color: #6b8a6d;
+  opacity: 0;
+  animation: social-card-in 0.6s ease 0.5s forwards;
+}
+
+@keyframes social-card-in {
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .social-card-logo-ring, .social-card-name, .social-card-tagline, .social-card-link, .social-card-footer {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}

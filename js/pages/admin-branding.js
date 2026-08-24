@@ -42,7 +42,7 @@ const ABOUT_CONTENT_FIELDS = [
   { key: "aboutCtaSubtitle", labelKey: "branding.fieldAboutCtaSubtitle", fallback: "About page CTA subtitle" },
 ];
 
-const SOCIAL_PLATFORMS = ["facebook", "instagram", "x", "whatsapp", "tiktok", "youtube", "other"];
+const SOCIAL_PLATFORMS = ["facebook", "instagram", "x", "whatsapp", "tiktok", "youtube", "linkedin", "other"];
 
 let heroInput;
 let logoInput;
@@ -174,11 +174,12 @@ function render() {
       <h3 class="card-title" style="font-size:0.95rem">${t("branding.socialTitle", "Social Media")}</h3>
       <div style="margin-top:0.5rem">
         <div id="social-list" style="display:flex;flex-direction:column;gap:0.5rem"></div>
-        <div style="display:grid;grid-template-columns:auto 1fr auto;gap:0.5rem;margin-top:0.75rem;align-items:center">
+        <div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-top:0.75rem;align-items:center">
           <select class="select" id="social-platform">
             ${SOCIAL_PLATFORMS.map((p) => `<option value="${p}">${t(`branding.platform${p[0].toUpperCase()}${p.slice(1)}`, p)}</option>`).join("")}
           </select>
-          <input class="input force-ltr" id="social-url" dir="ltr" maxlength="300" placeholder="https://...">
+          <input class="input force-ltr" id="social-label" dir="ltr" maxlength="40" placeholder="${t("branding.customLabelPlaceholder", "Platform name")}" style="display:none;max-width:10rem">
+          <input class="input force-ltr" id="social-url" dir="ltr" maxlength="300" placeholder="https://..." style="flex:1;min-width:10rem">
           <button type="button" class="${btnClass("outline", "sm")}" id="social-add-btn">${t("branding.socialAdd", "Add")}</button>
         </div>
       </div>
@@ -400,7 +401,7 @@ function render() {
         <div class="list-row">
           <span class="btn btn-ghost btn-icon" style="pointer-events:none">${icon(l.platform === "x" ? "x" : l.platform === "other" ? "link" : l.platform)}</span>
           <div class="list-row-main">
-            <div style="font-weight:600">${escapeHtml(t(`branding.platform${l.platform[0].toUpperCase()}${l.platform.slice(1)}`, l.platform))}</div>
+            <div style="font-weight:600">${l.platform === "other" && l.label ? escapeHtml(l.label) : escapeHtml(t(`branding.platform${l.platform[0].toUpperCase()}${l.platform.slice(1)}`, l.platform))}</div>
             <div class="text-muted force-ltr" style="font-size:0.8rem;display:block">${escapeHtml(l.url)}</div>
           </div>
           <button type="button" class="${btnClass("destructive", "icon-sm")}" data-remove-social="${i}">${icon("trash")}</button>
@@ -416,11 +417,18 @@ function render() {
     });
   });
 
+  const platformSelect = contentEl.querySelector("#social-platform");
+  const labelInput = contentEl.querySelector("#social-label");
+  platformSelect.addEventListener("change", () => {
+    labelInput.style.display = platformSelect.value === "other" ? "" : "none";
+  });
+
   contentEl.querySelector("#social-add-btn").addEventListener("click", async () => {
-    const platform = contentEl.querySelector("#social-platform").value;
+    const platform = platformSelect.value;
+    const label = labelInput.value.trim();
     const url = contentEl.querySelector("#social-url").value.trim();
     if (!url) return;
-    await SiteSettings.updateSocialLinks([...links, { platform, url }]);
+    await SiteSettings.updateSocialLinks([...links, platform === "other" && label ? { platform, url, label } : { platform, url }]);
   });
 
   // Hero images
