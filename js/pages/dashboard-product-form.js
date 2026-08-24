@@ -52,6 +52,22 @@ export function renderProductForm(mountEl, profile, existingProduct, options = {
         </div>
       </div>
       <div class="field">
+        <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer">
+          <input type="checkbox" id="pf-wholesale-enable" ${existingProduct?.wholesalePrice ? "checked" : ""}>
+          <span data-i18n="products.enableWholesaleLabel">Add a wholesale price</span>
+        </label>
+      </div>
+      <div class="grid-2" id="pf-wholesale-fields" style="display:${existingProduct?.wholesalePrice ? "grid" : "none"}">
+        <div class="field">
+          <label class="label" data-i18n="products.wholesalePriceLabel">Wholesale Price</label>
+          <input class="input" id="pf-wholesale-price" type="number" min="0" step="0.01" value="${escapeHtml(existingProduct?.wholesalePrice ?? "")}">
+        </div>
+        <div class="field">
+          <label class="label" data-i18n="products.wholesaleMinOrderLabel">Minimum Quantity for Wholesale</label>
+          <input class="input" id="pf-wholesale-min-order" type="number" min="0" value="${escapeHtml(existingProduct?.wholesaleMinOrderQuantity ?? "")}">
+        </div>
+      </div>
+      <div class="field">
         <label class="label" data-i18n="products.qualityLabel">Quality Rating (self-declared)</label>
         <div class="star-input" id="pf-quality">${renderStarButtons(quality)}</div>
       </div>
@@ -126,6 +142,12 @@ export function renderProductForm(mountEl, profile, existingProduct, options = {
   });
   onCategoriesChange(renderCategoryOptions);
 
+  const wholesaleEnableEl = mountEl.querySelector("#pf-wholesale-enable");
+  const wholesaleFieldsEl = mountEl.querySelector("#pf-wholesale-fields");
+  wholesaleEnableEl.addEventListener("change", () => {
+    wholesaleFieldsEl.style.display = wholesaleEnableEl.checked ? "grid" : "none";
+  });
+
   const qualityEl = mountEl.querySelector("#pf-quality");
   qualityEl.addEventListener("click", (e) => {
     const btn = e.target.closest("[data-star]");
@@ -189,9 +211,20 @@ export function renderProductForm(mountEl, profile, existingProduct, options = {
     const minOrderQuantity = Number(mountEl.querySelector("#pf-min-order").value);
     const harvestDateValue = mountEl.querySelector("#pf-harvest-date").value;
     const videoUrl = videoInput.getValue() || null;
+    const wholesaleEnabled = wholesaleEnableEl.checked;
+    const wholesalePrice = wholesaleEnabled ? Number(mountEl.querySelector("#pf-wholesale-price").value) : null;
+    const wholesaleMinOrderQuantity = wholesaleEnabled ? Number(mountEl.querySelector("#pf-wholesale-min-order").value) : null;
 
     if (!title || !category || !governorate || !price || !quantity || !minOrderQuantity || !harvestDateValue) {
       showMessage(errorEl, t("products.required"));
+      return;
+    }
+    if (wholesaleEnabled && (!wholesalePrice || !wholesaleMinOrderQuantity)) {
+      showMessage(errorEl, t("products.required"));
+      return;
+    }
+    if (wholesaleEnabled && wholesaleMinOrderQuantity <= minOrderQuantity) {
+      showMessage(errorEl, t("products.wholesaleMinOrderTooLow"));
       return;
     }
     if (containsPhoneNumber(title)) {
@@ -233,6 +266,8 @@ export function renderProductForm(mountEl, profile, existingProduct, options = {
         videoUrl,
         quantity,
         minOrderQuantity,
+        wholesalePrice,
+        wholesaleMinOrderQuantity,
         harvestDate: new Date(harvestDateValue),
       };
       if (existingProduct) {

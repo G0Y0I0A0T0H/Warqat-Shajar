@@ -338,6 +338,7 @@ async function acceptOffer(messageId) {
         quantity: offerMsg.offer.quantity,
         unit: offerMsg.offer.unit,
         pricePerUnit: offerMsg.offer.pricePerUnit,
+        pricingTier: offerMsg.offer.pricingTier || "retail",
         deliveryMethod: offerMsg.offer.deliveryMethod,
         deliveryLocation: offerMsg.offer.deliveryLocation,
       });

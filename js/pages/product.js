@@ -12,6 +12,17 @@ const detailEl = document.getElementById("product-detail");
 let product = null;
 let starting = false;
 let activePhotoIndex = 0;
+// "retail" or "wholesale" -- only switchable when the product actually has
+// a wholesale tier (product.wholesalePrice set). Reset to "retail" on every
+// new product load in main() below.
+let selectedTier = "retail";
+
+function currentPrice() {
+  return selectedTier === "wholesale" && product.wholesalePrice ? product.wholesalePrice : product.price;
+}
+function currentMinOrder() {
+  return selectedTier === "wholesale" && product.wholesaleMinOrderQuantity ? product.wholesaleMinOrderQuantity : product.minOrderQuantity;
+}
 // Owner-only sitewide switch (see admin-admins.js / settings/chatDisabled) --
 // while active, the "contact the farmer" button (the only one that opens
 // chat) hides entirely, and "Order Now" confirms the request without ever
@@ -216,7 +227,16 @@ function render() {
         ${shareButtonsHTML(buildShareData(product))}
         ${product.sharesCount ? `<span class="text-muted" style="font-size:0.8rem">${interpolate(t("share.timesShared"), { count: product.sharesCount })}</span>` : ""}
       </div>
-      <p class="product-detail-price" style="margin-top:1rem">${escapeHtml(product.price)} ${t("products.currency")}/${unitLabel}</p>
+      <p class="product-detail-price" style="margin-top:1rem">${escapeHtml(currentPrice())} ${t("products.currency")}/${unitLabel}</p>
+      ${
+        product.wholesalePrice
+          ? `<div id="tier-toggle" style="display:flex;gap:0.5rem;margin-top:0.5rem;flex-wrap:wrap">
+              <button type="button" class="btn btn-sm ${selectedTier === "retail" ? "btn-default" : "btn-outline"}" data-tier="retail">${t("products.retailTierLabel")} · ${escapeHtml(product.price)} ${t("products.currency")}/${unitLabel}</button>
+              <button type="button" class="btn btn-sm ${selectedTier === "wholesale" ? "btn-default" : "btn-outline"}" data-tier="wholesale">${t("products.wholesaleTierLabel")} · ${escapeHtml(product.wholesalePrice)} ${t("products.currency")}/${unitLabel}</button>
+            </div>
+            <p class="text-muted" style="font-size:0.78rem;margin-top:0.3rem">${interpolate(t("products.wholesaleTierHint"), { qty: product.wholesaleMinOrderQuantity, unit: unitLabel })}</p>`
+          : ""
+      }
       <div class="product-detail-stats" style="margin-top:1rem">
         <div>
           <div class="product-detail-stat-label">${t("products.quantityLabel")}</div>
@@ -224,14 +244,14 @@ function render() {
         </div>
         <div>
           <div class="product-detail-stat-label">${t("products.minOrderLabel")}</div>
-          <div class="product-detail-stat-value">${escapeHtml(product.minOrderQuantity)} ${unitLabel}</div>
+          <div class="product-detail-stat-value">${escapeHtml(currentMinOrder())} ${unitLabel}</div>
         </div>
       </div>
       ${renderFreshnessBadge(product)}
       <div class="card product-qty-calc" style="margin-top:1rem;padding:1rem">
         <label class="label" for="qty-calc-input">${t("products.calcQuantityLabel")}</label>
         <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-top:0.5rem">
-          <input class="input" id="qty-calc-input" type="number" min="${escapeHtml(product.minOrderQuantity)}" max="${escapeHtml(product.quantity)}" step="1" value="${escapeHtml(product.minOrderQuantity)}" style="max-width:8rem">
+          <input class="input" id="qty-calc-input" type="number" min="${escapeHtml(currentMinOrder())}" max="${escapeHtml(product.quantity)}" step="1" value="${escapeHtml(currentMinOrder())}" style="max-width:8rem">
           <span class="text-muted">${unitLabel}</span>
           <span class="product-qty-calc-total" id="qty-calc-total"></span>
         </div>
@@ -266,10 +286,17 @@ function render() {
   const qtyTotalEl = document.getElementById("qty-calc-total");
   function updateQtyTotal() {
     const qty = Number(qtyInput.value) || 0;
-    qtyTotalEl.textContent = `${t("products.calcTotalLabel")}: ${(qty * product.price).toLocaleString(getLocale())} ${t("products.currency")}`;
+    qtyTotalEl.textContent = `${t("products.calcTotalLabel")}: ${(qty * currentPrice()).toLocaleString(getLocale())} ${t("products.currency")}`;
   }
   qtyInput.addEventListener("input", updateQtyTotal);
   updateQtyTotal();
+
+  document.querySelectorAll("#tier-toggle [data-tier]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      selectedTier = btn.dataset.tier;
+      render();
+    });
+  });
 
   initGalleryZoom();
   wireGallery();
@@ -359,8 +386,8 @@ async function handleOrderNow(quantity) {
   if (starting) return;
   starting = true;
   try {
-    const qty = quantity || product.minOrderQuantity;
-    await addToCart(product.id, qty);
+    const qty = quantity || currentMinOrder();
+    await addToCart(product.id, qty, selectedTier);
     location.href = "cart.html";
   } finally {
     starting = false;
@@ -374,9 +401,9 @@ async function handleAddToCart(quantity) {
   }
   const errorEl = document.getElementById("cart-error");
   showMessage(errorEl, "");
-  const qty = quantity || product.minOrderQuantity;
+  const qty = quantity || currentMinOrder();
   try {
-    await addToCart(product.id, qty);
+    await addToCart(product.id, qty, selectedTier);
     const productLabel = product.title || categoryLabelById(product.category, getLocale());
     // Confirmation notification for the buyer themselves (separate from the
     // seller-facing one below) -- so "add to cart" shows up in your own
@@ -418,6 +445,7 @@ async function main() {
   // product, close enough for a rare network hiccup.
   product = await Products.getProduct(productId).catch(() => null);
   activePhotoIndex = 0;
+  selectedTier = "retail";
   render();
   // A stale link (favorites, cart, an old share, a cached search result) to
   // a since-deleted product used to crash here -- render() already shows

@@ -402,6 +402,15 @@ service cloud.firestore {
         return request.resource.data.price is number && request.resource.data.price > 0 &&
           request.resource.data.quantity is number && request.resource.data.quantity >= 0 &&
           request.resource.data.minOrderQuantity is number && request.resource.data.minOrderQuantity > 0 &&
+          // Both wholesale fields are optional (null when a farmer hasn't
+          // opted into a wholesale tier for this product) -- only their
+          // shape is validated here when present; the "wholesale min must
+          // exceed the regular min" business rule is enforced client-side
+          // in the product form, not here.
+          (request.resource.data.get('wholesalePrice', null) == null ||
+            (request.resource.data.wholesalePrice is number && request.resource.data.wholesalePrice > 0)) &&
+          (request.resource.data.get('wholesaleMinOrderQuantity', null) == null ||
+            (request.resource.data.wholesaleMinOrderQuantity is number && request.resource.data.wholesaleMinOrderQuantity > 0)) &&
           request.resource.data.qualityRating is number &&
           request.resource.data.qualityRating >= 1 && request.resource.data.qualityRating <= 10 &&
           // category/governorate were never constrained at all -- category
@@ -642,6 +651,7 @@ service cloud.firestore {
         request.resource.data.status == 'awaiting_payment' &&
         request.resource.data.quantity > 0 &&
         request.resource.data.totalAmount == request.resource.data.quantity * request.resource.data.pricePerUnit &&
+        request.resource.data.get('pricingTier', 'retail') in ['retail', 'wholesale'] &&
         // Flat placeholder delivery fee (js/firebase.js's Escrow.createOrder
         // computes it, never trusted from the client's own claim) -- kept
         // OUT of totalAmount on purpose, since totalAmount is what the
@@ -672,7 +682,20 @@ service cloud.firestore {
             request.auth.uid == request.resource.data.buyerId &&
             get(/databases/$(database)/documents/settings/chatDisabled).data.get('active', false) == true &&
             get(/databases/$(database)/documents/products/$(request.resource.data.productId)).data.ownerId == request.resource.data.sellerId &&
-            get(/databases/$(database)/documents/products/$(request.resource.data.productId)).data.price == request.resource.data.pricePerUnit
+            (
+              (
+                request.resource.data.get('pricingTier', 'retail') == 'retail' &&
+                get(/databases/$(database)/documents/products/$(request.resource.data.productId)).data.price == request.resource.data.pricePerUnit
+              )
+              ||
+              (
+                request.resource.data.get('pricingTier', 'retail') == 'wholesale' &&
+                get(/databases/$(database)/documents/products/$(request.resource.data.productId)).data.get('wholesalePrice', null) != null &&
+                get(/databases/$(database)/documents/products/$(request.resource.data.productId)).data.wholesalePrice == request.resource.data.pricePerUnit &&
+                request.resource.data.quantity >=
+                  get(/databases/$(database)/documents/products/$(request.resource.data.productId)).data.get('wholesaleMinOrderQuantity', 0)
+              )
+            )
           )
         );
 
@@ -904,10 +927,12 @@ service cloud.firestore {
     match /cartItems/{itemId} {
       allow read: if isSignedIn() &&
         (resource == null || resource.data.uid == request.auth.uid || isAdmin());
-      allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid &&
+        request.resource.data.get('pricingTier', 'retail') in ['retail', 'wholesale'];
       allow update: if isSignedIn() && resource.data.uid == request.auth.uid &&
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['quantity']) &&
-        request.resource.data.quantity is number && request.resource.data.quantity > 0;
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['quantity', 'pricingTier']) &&
+        request.resource.data.quantity is number && request.resource.data.quantity > 0 &&
+        request.resource.data.get('pricingTier', 'retail') in ['retail', 'wholesale'];
       allow delete: if isSignedIn() && resource.data.uid == request.auth.uid;
     }
 

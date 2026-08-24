@@ -1007,6 +1007,7 @@ export const Escrow = {
     quantity,
     unit,
     pricePerUnit,
+    pricingTier = "retail",
     deliveryMethod,
     deliveryLocation,
   }) {
@@ -1027,6 +1028,7 @@ export const Escrow = {
       quantity,
       unit,
       pricePerUnit,
+      pricingTier,
       totalAmount: quantity * pricePerUnit,
       // "pickup" (free, from the seller's own sellerProfiles.pickupPoint) or
       // "delivery" (deliveryLocation is the buyer's own {lat,lng}), in which
@@ -1523,16 +1525,20 @@ function cartItemId(uid, productId) {
 }
 
 export const Cart = {
-  async addToCart(uid, productId, quantity) {
+  async addToCart(uid, productId, quantity, pricingTier = "retail") {
     const ref = doc(cartItemsCol, cartItemId(uid, productId));
     const existing = await getDoc(ref);
     if (existing.exists()) {
-      await updateDoc(ref, { quantity });
+      // Re-adding (e.g. "Order Now" after switching the tier toggle on
+      // product.js) must also update the stored tier, not just quantity --
+      // otherwise the cart row would keep charging the old tier's price.
+      await updateDoc(ref, { quantity, pricingTier });
     } else {
       await setDoc(ref, {
         uid,
         productId,
         quantity,
+        pricingTier,
         addedAt: serverTimestamp(),
       });
     }

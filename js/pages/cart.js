@@ -137,10 +137,13 @@ async function render() {
   const rows = productIds
     .map((productId) => {
       const product = productCache.get(productId);
-      const quantity = cartState.items.get(productId);
+      const { quantity, pricingTier } = cartState.items.get(productId);
       if (!product) return "";
       const unitLabel = t(unitLabelKey(product.unit));
-      const subtotal = quantity * product.price;
+      const isWholesale = pricingTier === "wholesale" && product.wholesalePrice;
+      const unitPrice = isWholesale ? product.wholesalePrice : product.price;
+      const minQtyForTier = isWholesale ? product.wholesaleMinOrderQuantity : product.minOrderQuantity;
+      const subtotal = quantity * unitPrice;
       const photo = product.photoUrls?.[0];
 
       const escrowOrder = myEscrowByProduct[productId];
@@ -161,6 +164,7 @@ async function render() {
           </a>
           <div class="cart-row-main">
             <a href="product.html?id=${productId}" style="font-weight:600;color:var(--foreground)">${product.title ? escapeHtml(product.title) : categoryLabelById(product.category, getLocale())}</a>
+            ${isWholesale ? `<span class="${btnClass("outline", "sm")}" style="pointer-events:none;padding:0.1rem 0.5rem;font-size:0.7rem">${t("products.wholesaleTierLabel")}</span>` : ""}
             <div class="text-muted" style="font-size:0.8rem">${escapeHtml(product.ownerName)}</div>
             ${
               !orderStateLoaded
@@ -174,7 +178,7 @@ async function render() {
                   : isPending
                     ? `<div style="margin-top:0.5rem"><span class="${btnClass("outline", "sm")}" style="pointer-events:none">${icon("headset")} ${t("cart.awaitingFarmerResponse", "Waiting for the farmer's response")}</span></div>`
                     : `<div style="display:flex;align-items:center;gap:0.5rem;margin-top:0.5rem;flex-wrap:wrap">
-                        <input class="input" type="number" min="${escapeHtml(product.minOrderQuantity)}" max="${escapeHtml(product.quantity)}" value="${quantity}" data-qty-input="${productId}" style="max-width:6rem">
+                        <input class="input" type="number" min="${escapeHtml(minQtyForTier)}" max="${escapeHtml(product.quantity)}" value="${quantity}" data-qty-input="${productId}" style="max-width:6rem">
                         <span class="text-muted" style="font-size:0.8rem">${unitLabel}</span>
                         <span class="cart-row-subtotal" data-subtotal="${productId}">${subtotal.toLocaleString(getLocale())} ${t("products.currency")}</span>
                       </div>
@@ -205,7 +209,8 @@ async function render() {
     input.addEventListener("change", async () => {
       const productId = input.dataset.qtyInput;
       const cachedProduct = productCache.get(productId);
-      const minQty = cachedProduct?.minOrderQuantity || 1;
+      const cachedTier = cartState.items.get(productId)?.pricingTier;
+      const minQty = (cachedTier === "wholesale" && cachedProduct?.wholesaleMinOrderQuantity) || cachedProduct?.minOrderQuantity || 1;
       const maxQty = cachedProduct?.quantity ?? Infinity;
       // Number(input.value) || 1 only caught 0/NaN -- a typed negative or
       // over-stock value passed straight through (the <input min/max>
@@ -253,7 +258,10 @@ async function handleOrderNow(productId) {
   starting = true;
   try {
     const product = productCache.get(productId);
-    const quantity = cartState.items.get(productId) || product.minOrderQuantity;
+    const cartItem = cartState.items.get(productId);
+    const quantity = cartItem?.quantity || product.minOrderQuantity;
+    const pricingTier = cartItem?.pricingTier === "wholesale" && product.wholesalePrice ? "wholesale" : "retail";
+    const pricePerUnit = pricingTier === "wholesale" ? product.wholesalePrice : product.price;
     const productLabel = product.title || categoryLabelById(product.category, getLocale());
     const deliveryMethod = contentEl.querySelector(`input[name="delivery-method-${productId}"]:checked`)?.value || "pickup";
     const deliveryLocation = deliveryMethod === "delivery" ? authState.profile.deliveryAddress : null;
@@ -278,7 +286,8 @@ async function handleOrderNow(productId) {
         sellerName: product.ownerName,
         quantity,
         unit: product.unit,
-        pricePerUnit: product.price,
+        pricePerUnit,
+        pricingTier,
         deliveryMethod,
         deliveryLocation,
       });
@@ -311,8 +320,9 @@ async function handleOrderNow(productId) {
     await Chat.sendOfferMessage(chatId, authState.user.uid, {
       quantity,
       unit: product.unit,
-      pricePerUnit: product.price,
-      totalPrice: quantity * product.price,
+      pricePerUnit,
+      pricingTier,
+      totalPrice: quantity * pricePerUnit,
       deliveryMethod,
       deliveryLocation,
       buyerAccountType: authState.profile.accountType,
