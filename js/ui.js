@@ -1414,6 +1414,7 @@ export function productCardHTML(product, categoryLabel, governorateLabel) {
         ${product.title ? `<span class="${badgeClass("outline")}" style="font-size:0.7rem">${categoryLabel}</span>` : ""}
         <p class="product-card-gov">${governorateLabel}</p>
         <p class="product-card-price">${escapeHtml(product.price)} ${priceUnitLabel}</p>
+        ${product.wholesalePrice ? `<span class="${badgeClass("secondary")}" style="font-size:0.68rem">${t("products.wholesaleAvailableBadge")}</span>` : ""}
         ${freshness ? `<span class="product-card-freshness" style="color:${freshness.color}">${t("freshness.label")}: ${freshness.score}/10</span>` : ""}
       </div>
     </a>

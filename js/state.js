@@ -23,7 +23,7 @@ export const favoritesState = {
 };
 
 export const cartState = {
-  items: new Map(), // productId -> quantity
+  items: new Map(), // productId -> { quantity, pricingTier }
   loading: false,
 };
 
@@ -192,7 +192,7 @@ Auth.onChange((nextUser) => {
 
   cartState.loading = true;
   unsubCart = Cart.subscribeCart(nextUser.uid, (items) => {
-    cartState.items = new Map(items.map((i) => [i.productId, i.quantity]));
+    cartState.items = new Map(items.map((i) => [i.productId, { quantity: i.quantity, pricingTier: i.pricingTier || "retail" }]));
     cartState.loading = false;
     notify();
   });
@@ -256,9 +256,9 @@ export async function toggleFavorite(productId) {
   }
 }
 
-export async function addToCart(productId, quantity) {
+export async function addToCart(productId, quantity, pricingTier = "retail") {
   if (!authState.user) return;
-  await Cart.addToCart(authState.user.uid, productId, quantity);
+  await Cart.addToCart(authState.user.uid, productId, quantity, pricingTier);
 }
 
 export async function updateCartQuantity(productId, quantity) {
