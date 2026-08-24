@@ -416,6 +416,35 @@ export const SellerProfiles = {
     });
   },
 
+  // Admin-only repair for farmers whose public directory entry never got
+  // created -- see the matching firestore.rules create branch's own doc
+  // comment for the full story (pre-dates sellerProfiles, or a silently-failed
+  // upsertOnRegister, never healed since because that only happens when the
+  // farmer themselves visits their own dashboard). `farmers` is the caller's
+  // own already-fetched list of users/{uid} docs with accountType=="farmer"
+  // (see Admin.listAllUsers) -- every written field is that same doc's real
+  // data, never anything authored here, matching what the rules require.
+  async backfillMissing(farmers) {
+    const existing = await this.listAll();
+    const existingUids = new Set(existing.map((p) => p.uid));
+    const missing = farmers.filter((f) => !existingUids.has(f.uid));
+    await Promise.all(
+      missing.map((f) =>
+        setDoc(doc(sellerProfilesCol, f.uid), {
+          uid: f.uid,
+          fullName: f.fullName,
+          photoURL: f.photoURL ?? null,
+          governorate: f.governorate ?? null,
+          crops: f.crops ?? [],
+          bio: "",
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        }).catch(() => {}),
+      ),
+    );
+    return missing.length;
+  },
+
   async syncPhoto(uid, photoURL) {
     const ref = doc(sellerProfilesCol, uid);
     const snap = await getDoc(ref);
@@ -1759,6 +1788,27 @@ export const Admin = {
           ? Timestamp.fromDate(new Date(Date.now() + suspendedDays * 24 * 60 * 60 * 1000))
           : null,
     });
+  },
+
+  // Owner-only in practice (see Supreme Mode's own gating, and firestore.rules'
+  // isOwner() branch on users/{uid} update, which is the only one unrestricted
+  // enough to write an arbitrary new field like this one) -- not exposed to a
+  // payments/listings-granted admin the way suspend/ban are. Reuses the same
+  // verified badge already shown on team members (js/ui.js's
+  // verifiedBadgeHTML()) rather than a bespoke one.
+  async setUserVerified(uid, verified) {
+    await updateDoc(doc(db, "users", uid), { verified });
+    // Best-effort mirror onto the public sellerProfiles doc too (only
+    // farmers have one) -- that's the one seller-profile.html actually
+    // reads, since it's the only "profile" collection a random visitor is
+    // allowed to read at all (users/{uid} is private). A trader/factory/
+    // consumer has no sellerProfiles doc, so this is just a silent no-op
+    // for them -- their verified flag still lives on users/{uid} for their
+    // own profile.js view.
+    const sellerSnap = await getDoc(doc(db, "sellerProfiles", uid)).catch(() => null);
+    if (sellerSnap?.exists()) {
+      await updateDoc(doc(db, "sellerProfiles", uid), { verified }).catch(() => {});
+    }
   },
 
   async listAllProductsForAdmin() {

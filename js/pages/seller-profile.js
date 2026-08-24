@@ -2,7 +2,7 @@ import { initLayout } from "../layout.js";
 import { t, getLocale, onLocaleChange } from "../i18n.js";
 import { SellerProfiles, Follows, Products } from "../firebase.js";
 import { governorateLabel, categoryLabelById } from "../constants.js";
-import { renderAvatar, escapeHtml, btnClass, icon, wireFavoriteButtons, productCardHTML } from "../ui.js";
+import { renderAvatar, escapeHtml, btnClass, icon, wireFavoriteButtons, productCardHTML, verifiedBadgeHTML } from "../ui.js";
 import { authState, subscribe } from "../state.js";
 
 const headerEl = document.getElementById("seller-profile-header");
@@ -33,7 +33,7 @@ function renderHeader() {
     <div class="card" style="padding:1.5rem;display:flex;gap:1.25rem;align-items:flex-start;flex-wrap:wrap">
       ${renderAvatar(profile.fullName, profile.photoURL, "avatar-lg")}
       <div style="flex:1;min-width:12rem">
-        <h1 class="heading" style="font-size:1.4rem">${escapeHtml(profile.fullName)}</h1>
+        <h1 class="heading" style="font-size:1.4rem;display:flex;align-items:center;gap:0.35rem">${escapeHtml(profile.fullName)}${profile.verified ? verifiedBadgeHTML() : ""}</h1>
         <p class="text-muted" style="display:flex;align-items:center;gap:0.25rem;font-size:0.875rem;margin-top:0.25rem">
           ${icon("map-pin")} ${governorateLabel(profile.governorate, getLocale())}
         </p>

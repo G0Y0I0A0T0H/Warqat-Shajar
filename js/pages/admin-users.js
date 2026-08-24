@@ -3,7 +3,7 @@ import { guardAdmin, hasSection } from "../admin-shell.js";
 import { t, onLocaleChange } from "../i18n.js";
 import { Admin, OWNER_EMAIL, Notifications, IdentityVerification, SellerProfiles, AuditLog } from "../firebase.js";
 import { authState } from "../state.js";
-import { badgeClass, btnClass, icon, escapeHtml, renderLocationPicker, showMessage } from "../ui.js";
+import { badgeClass, btnClass, icon, escapeHtml, renderLocationPicker, showMessage, renderZoomableImage, wireZoomableImages } from "../ui.js";
 import { isValidNationalId } from "./auth-shared.js";
 
 let contentEl;
@@ -87,7 +87,7 @@ function identityPanelHTML(uid) {
               </div>
               ${
                 entry.photoObjectUrl
-                  ? `<img src="${entry.photoObjectUrl}" alt="${t("admin.idCardPhotoLabel")}" style="max-width:14rem;max-height:10rem;border-radius:0.5rem;object-fit:contain">`
+                  ? renderZoomableImage(entry.photoObjectUrl, t("admin.idCardPhotoLabel"), { width: "14rem", height: "10rem" })
                   : `<span class="text-muted">${t("admin.decryptingPhoto")}</span>`
               }
             </div>`
@@ -129,7 +129,10 @@ function render() {
   const list = visibleUsers();
   contentEl.innerHTML = `
     <h1 class="heading" style="font-size:1.5rem">${t("admin.users")}</h1>
-    <input class="input" id="user-search" placeholder="${t("header.searchPlaceholder")}" style="margin-top:1rem;max-width:20rem" value="${escapeHtml(searchTerm)}">
+    <div style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap;margin-top:1rem">
+      <input class="input" id="user-search" placeholder="${t("header.searchPlaceholder")}" style="max-width:20rem" value="${escapeHtml(searchTerm)}">
+      <button type="button" class="${btnClass("outline", "sm")}" id="repair-farmer-directory-btn">${t("admin.repairFarmerDirectoryBtn", "Repair farmer directory")}</button>
+    </div>
     <div class="card" style="margin-top:1rem;padding:0 1rem">
       ${
         list.length === 0
@@ -181,9 +184,27 @@ function render() {
     </div>
   `;
 
+  wireZoomableImages(contentEl);
+
   contentEl.querySelector("#user-search").addEventListener("input", (e) => {
     searchTerm = e.target.value;
     render();
+  });
+
+  // One-click repair for farmers whose public directory entry (sellerProfiles)
+  // never got created -- see SellerProfiles.backfillMissing's own doc comment
+  // in firebase.js. Safe to run repeatedly (a no-op once nothing's missing).
+  contentEl.querySelector("#repair-farmer-directory-btn").addEventListener("click", async (e) => {
+    e.target.disabled = true;
+    try {
+      const farmers = users.filter((u) => u.accountType === "farmer");
+      const count = await SellerProfiles.backfillMissing(farmers);
+      alert(count > 0 ? t("admin.repairFarmerDirectoryDone", "Added {count} missing farmer(s) to the directory.").replace("{count}", count) : t("admin.repairFarmerDirectoryNoneMissing", "Nothing was missing -- the directory is already complete."));
+    } catch {
+      alert(t("admin.actionFailed", "Something went wrong -- please try again."));
+    } finally {
+      e.target.disabled = false;
+    }
   });
 
   contentEl.querySelectorAll("[data-suspend]").forEach((btn) => {

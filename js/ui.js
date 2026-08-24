@@ -829,9 +829,14 @@ export function verifiedBadgeHTML() {
 // survive being torn down/rebuilt via innerHTML on every re-render, unlike
 // product.js's initGalleryZoom() which is hardcoded to one fixed set of ids.
 // ---------------------------------------------------------------------------
-export function renderZoomableImage(url, altText = "") {
+// size overrides the default 5rem/5rem thumbnail (see .zoomable-image in
+// styles.css) for a context that needs a bigger at-a-glance preview before
+// the hover-zoom kicks in -- e.g. an ID card photo, where the payment-proof
+// callers' small default would be too cropped to be useful on its own.
+export function renderZoomableImage(url, altText = "", size = null) {
+  const sizeStyle = size ? ` style="width:${size.width};height:${size.height}"` : "";
   return `
-    <div class="zoomable-image" data-zoomable>
+    <div class="zoomable-image" data-zoomable${sizeStyle}>
       <img class="zoomable-image-img" src="${optimizedImageUrl(url)}" alt="${escapeHtml(altText)}">
       <div class="zoomable-image-lens"></div>
       <div class="zoomable-image-result"></div>
