@@ -12,6 +12,10 @@
     "policy": "سياسة المنصة",
     "team": "فريق العمل"
   },
+  "socialCard": {
+    "pageTitle": "كل روابطنا",
+    "visitWebsite": "زوروا موقعنا"
+  },
   "about": {
     "heroBadge": "قصتنا",
     "heroHeadline": "من غير وسيط، بسعر عادل، من قلب الأرض المصرية",
@@ -1168,7 +1172,9 @@
     "platformWhatsapp": "واتساب",
     "platformTiktok": "تيك توك",
     "platformYoutube": "يوتيوب",
+    "platformLinkedin": "لينكدإن",
     "platformOther": "غير كده",
+    "customLabelPlaceholder": "اسم المنصة",
     "categoriesTitle": "الأصناف",
     "categoriesHint": "تعطيل الصنف بيشيله بس من التصفح — المنتجات اللي فيه هتفضل فيه.",
     "hiddenLabel": "معطّل",

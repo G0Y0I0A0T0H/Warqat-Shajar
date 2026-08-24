@@ -16,6 +16,7 @@ const SOCIAL_ICON_KEY = {
   whatsapp: "whatsapp",
   tiktok: "tiktok",
   youtube: "youtube",
+  linkedin: "linkedin",
 };
 
 const SPLASH_KEY = "wsj-splash-shown";
@@ -324,7 +325,7 @@ function renderFooterSocial() {
         : links
             .map(
               (l) =>
-                `<a class="footer-social-link" href="${safeUrl(l.url)}" target="_blank" rel="noopener noreferrer" aria-label="${escapeHtml(l.platform)}">${icon(SOCIAL_ICON_KEY[l.platform?.toLowerCase()] || "link")}</a>`,
+                `<a class="footer-social-link" href="${safeUrl(l.url)}" target="_blank" rel="noopener noreferrer" aria-label="${escapeHtml(l.platform === "other" && l.label ? l.label : l.platform)}">${icon(SOCIAL_ICON_KEY[l.platform?.toLowerCase()] || "link")}</a>`,
             )
             .join("");
 

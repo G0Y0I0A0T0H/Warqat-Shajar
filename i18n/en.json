@@ -12,6 +12,10 @@
     "policy": "Platform Policy",
     "team": "Our Team"
   },
+  "socialCard": {
+    "pageTitle": "All Our Links",
+    "visitWebsite": "Visit Our Website"
+  },
   "about": {
     "heroBadge": "Our Story",
     "heroHeadline": "No Middleman, A Fair Price, From the Heart of Egypt's Land",
@@ -1168,7 +1172,9 @@
     "platformWhatsapp": "WhatsApp",
     "platformTiktok": "TikTok",
     "platformYoutube": "YouTube",
+    "platformLinkedin": "LinkedIn",
     "platformOther": "Other",
+    "customLabelPlaceholder": "Platform name",
     "categoriesTitle": "Categories",
     "categoriesHint": "Hiding a category only removes it from browsing — existing products keep their category.",
     "hiddenLabel": "Hidden",
