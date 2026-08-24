@@ -14,7 +14,25 @@
   },
   "socialCard": {
     "pageTitle": "All Our Links",
-    "visitWebsite": "Visit Our Website"
+    "visitWebsite": "Visit Our Website",
+    "subtitleWebsite": "Discover the Waraqat Shajar marketplace",
+    "subtitleWhatsapp": "Chat with us directly",
+    "subtitleFacebook": "Follow us on Facebook",
+    "subtitleInstagram": "See our photos and news",
+    "subtitleEmail": "Reach us by email",
+    "subtitlePhone": "Call us directly",
+    "subtitleYoutube": "Watch our videos",
+    "subtitleTiktok": "Follow us on TikTok",
+    "subtitleLinkedin": "Connect with us professionally",
+    "subtitleX": "Follow us on X",
+    "subtitleGeneric": "Follow us here",
+    "trustSecureTitle": "Trusted & Secure",
+    "trustSecureSubtitle": "100% trusted platform",
+    "trustLocalTitle": "Local Agriculture",
+    "trustLocalSubtitle": "Supporting Egyptian farmers",
+    "trustCommunityTitle": "Everyone in Agriculture",
+    "trustCommunitySubtitle": "From farmer to consumer",
+    "rightsReserved": "All rights reserved"
   },
   "about": {
     "heroBadge": "Our Story",

@@ -14,7 +14,25 @@
   },
   "socialCard": {
     "pageTitle": "كل روابطنا",
-    "visitWebsite": "زوروا موقعنا"
+    "visitWebsite": "زوروا موقعنا",
+    "subtitleWebsite": "اكتشفوا سوق ورقة شجر",
+    "subtitleWhatsapp": "تواصلوا معنا مباشرة",
+    "subtitleFacebook": "تابعونا على فيسبوك",
+    "subtitleInstagram": "شاهدوا صورنا وأخبارنا",
+    "subtitleEmail": "راسلونا عبر الإيميل",
+    "subtitlePhone": "اتصلوا فينا مباشرة",
+    "subtitleYoutube": "شاهدوا فيديوهاتنا",
+    "subtitleTiktok": "تابعونا على تيك توك",
+    "subtitleLinkedin": "تواصلوا معنا باحترافية",
+    "subtitleX": "تابعونا على إكس",
+    "subtitleGeneric": "تابعونا من هون",
+    "trustSecureTitle": "موثوق وآمن",
+    "trustSecureSubtitle": "منصة موثوقة 100%",
+    "trustLocalTitle": "زراعي محلي",
+    "trustLocalSubtitle": "بندعم المزارع المصري",
+    "trustCommunityTitle": "جميع الزراعيين",
+    "trustCommunitySubtitle": "من المزارع للمستهلك",
+    "rightsReserved": "جميع الحقوق محفوظة"
   },
   "about": {
     "heroBadge": "قصتنا",
