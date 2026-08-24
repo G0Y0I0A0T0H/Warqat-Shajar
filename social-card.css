@@ -4,6 +4,17 @@
    light/dark toggle -- it's a fixed, always-dark branded card, closer to a
    digital business card than a regular site page. */
 
+/* styles.css sets html,body { height: 100% } sitewide (needed for other
+   pages' own layouts) -- on this page that caps <html> at exactly one
+   viewport tall, so once the card's real content (taller than one screen
+   on any phone) overflows body, there's nothing left to scroll into: the
+   page silently stops at 100vh with the rest of the content invisible.
+   html needs to be free to grow with body's real height here. */
+html {
+  height: auto;
+  min-height: 100%;
+}
+
 .social-card-body {
   min-height: 100vh;
   display: flex;
