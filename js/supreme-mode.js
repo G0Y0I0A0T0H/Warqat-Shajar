@@ -19,7 +19,7 @@
 import { Admin, Auth, OWNER_EMAIL, Notifications, AuditLog, Activity } from "./firebase.js";
 import { NAV_ITEMS, SENSITIVE_KEYS } from "./admin-shell.js";
 import { t, getLocale } from "./i18n.js";
-import { escapeHtml, btnClass, badgeClass, icon } from "./ui.js";
+import { escapeHtml, btnClass, badgeClass, icon, verifiedBadgeHTML } from "./ui.js";
 import { authState } from "./state.js";
 import { startViewAs } from "./view-as.js";
 
@@ -131,6 +131,8 @@ const AUDIT_ACTION_KEYS = {
   user_suspended: "auditLog.action.userSuspended",
   user_banned: "auditLog.action.userBanned",
   user_reactivated: "auditLog.action.userReactivated",
+  user_verified: "auditLog.action.userVerified",
+  user_unverified: "auditLog.action.userUnverified",
   user_deleted: "auditLog.action.userDeleted",
   identity_edited: "auditLog.action.identityEdited",
   pickup_point_edited: "auditLog.action.pickupPointEdited",
@@ -318,6 +320,7 @@ function userRowHTML(u) {
       <div class="sm-row-main">
         <div class="sm-row-title">
           <span>${escapeHtml(u.fullName || "")}</span>
+          ${u.verified ? verifiedBadgeHTML() : ""}
           <span class="${badgeClass("outline")}">${t(`roles.${u.accountType}`, u.accountType || "")}</span>
           <span class="${badgeClass(status === "active" ? "default" : status === "banned" ? "destructive" : "secondary")}">${t(`admin.status${status.charAt(0).toUpperCase()}${status.slice(1)}`, status)}</span>
         </div>
@@ -330,6 +333,7 @@ function userRowHTML(u) {
                <button type="button" class="${btnClass("destructive", "sm")}" data-sm-ban="${u.uid}">${t("admin.ban")}</button>`
             : `<button type="button" class="${btnClass("outline", "sm")}" data-sm-reactivate="${u.uid}">${t("admin.reactivate")}</button>`
         }
+        <button type="button" class="${btnClass("outline", "sm")}" data-sm-toggle-verified="${u.uid}" data-sm-verified="${u.verified ? "true" : "false"}">${u.verified ? t("supreme.unverifyBtn", "Remove verification") : t("supreme.verifyBtn", "Verify account")}</button>
         <button type="button" class="${btnClass("outline", "sm")}" data-sm-reset-pw="${u.uid}" data-sm-email="${escapeHtml(u.email || "")}">${t("supreme.sendResetEmail", "Send password reset")}</button>
         <button type="button" class="${btnClass("outline", "sm")}" data-sm-view-as="${u.uid}">${t("supreme.viewAsButton", "View As this user")}</button>
         <button type="button" class="${btnClass("destructive", "icon-sm")}" data-sm-delete="${u.uid}" aria-label="${t("admin.deleteUser")}">${icon("trash")}</button>
@@ -642,6 +646,16 @@ function render() {
         Notifications.create({ uid: btn.dataset.smReactivate, key: "accountReactivated" }).catch(() => {});
         const target = users.find((u) => u.uid === btn.dataset.smReactivate);
         auditRecord("user_reactivated", btn.dataset.smReactivate, target?.fullName || target?.email);
+        await reload();
+      });
+    });
+    overlay.querySelectorAll("[data-sm-toggle-verified]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const nextVerified = btn.dataset.smVerified !== "true";
+        const target = users.find((u) => u.uid === btn.dataset.smToggleVerified);
+        if (!confirm(nextVerified ? t("supreme.confirmVerify", "Verify this account? A verified badge will show on their profile.") : t("supreme.confirmUnverify", "Remove the verified badge from this account?"))) return;
+        await Admin.setUserVerified(btn.dataset.smToggleVerified, nextVerified);
+        auditRecord(nextVerified ? "user_verified" : "user_unverified", btn.dataset.smToggleVerified, target?.fullName || target?.email);
         await reload();
       });
     });

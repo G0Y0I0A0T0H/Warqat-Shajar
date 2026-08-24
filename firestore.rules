@@ -246,6 +246,34 @@ service cloud.firestore {
       allow update: if isAdmin() &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['pickupPoint']) &&
         request.resource.data.pickupPoint.lat is number && request.resource.data.pickupPoint.lng is number;
+
+      // Mirrors the owner-only users/{uid}.verified toggle (Admin.setUserVerified)
+      // onto this public doc too -- the whole point of a verified badge is for
+      // OTHER users to see it on seller-profile.html, which reads only this
+      // public collection, never the private users/{uid} doc. isOwner() only,
+      // same as the private field, not any granted admin section.
+      allow update: if isOwner() &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['verified']);
+
+      // Lets an admin backfill the public directory entry for a farmer who
+      // registered before sellerProfiles existed (or whose own
+      // upsertOnRegister write silently failed) and never happened to visit
+      // their own dashboard since (the client self-heal in
+      // js/dashboard-shell.js only fires for that farmer's own session) --
+      // see js/pages/farmers.js, which reads only this collection and so
+      // silently omitted them. Every written field must exactly mirror that
+      // farmer's own real users/{uid} document -- an admin can only ever
+      // reproduce a profile the farmer already legitimately has, never
+      // author new name/photo/governorate/crops data for them.
+      allow create: if isAdmin() &&
+        get(/databases/$(database)/documents/users/$(uid)).data.accountType == 'farmer' &&
+        request.resource.data.uid == uid &&
+        request.resource.data.fullName == get(/databases/$(database)/documents/users/$(uid)).data.fullName &&
+        request.resource.data.get('photoURL', null) == get(/databases/$(database)/documents/users/$(uid)).data.get('photoURL', null) &&
+        request.resource.data.governorate == get(/databases/$(database)/documents/users/$(uid)).data.get('governorate', null) &&
+        request.resource.data.get('crops', []) == get(/databases/$(database)/documents/users/$(uid)).data.get('crops', []) &&
+        request.resource.data.get('bio', '') == '' &&
+        request.resource.data.keys().hasOnly(['uid', 'fullName', 'photoURL', 'governorate', 'crops', 'bio', 'createdAt', 'updatedAt']);
     }
 
     match /ads/{adId} {

@@ -2,7 +2,7 @@ import { initLayout } from "../layout.js";
 import { t, getLocale, onLocaleChange } from "../i18n.js";
 import { Reviews, Profile, SellerProfiles, PhoneAttempts } from "../firebase.js";
 import { governorateLabel, categoryLabelById, onCategoriesChange } from "../constants.js";
-import { renderAvatar, renderStars, badgeClass, icon, escapeHtml, renderImageInput, containsPhoneNumber, showMessage, renderLocationPicker } from "../ui.js";
+import { renderAvatar, renderStars, badgeClass, icon, escapeHtml, renderImageInput, containsPhoneNumber, showMessage, renderLocationPicker, verifiedBadgeHTML } from "../ui.js";
 import { authState, subscribe } from "../state.js";
 import { getEffectiveProfile, isViewingAs } from "../view-as.js";
 
@@ -29,9 +29,11 @@ async function render() {
   // The target's data while a Supreme Mode "View As" session is active (see
   // js/view-as.js), the real signed-in user's own otherwise.
   const profile = getEffectiveProfile();
-  // Owner-only privileges (verified badge, self photo-upload) stay tied to
-  // the REAL owner looking at their OWN profile -- never granted onto
-  // whichever target is currently being viewed-as.
+  // Owner-only privilege (self photo-upload) stays tied to the REAL owner
+  // looking at their OWN profile -- never granted onto whichever target is
+  // currently being viewed-as. The verified badge below is unrelated to this
+  // -- it's a real per-profile flag now (Admin.setUserVerified, Supreme Mode
+  // only), so it shows for ANY verified profile, not just the owner's own.
   const showOwnerPrivileges = authState.isOwner && !isViewingAs();
   if (ratingLoadedFor !== profile.uid) {
     ratingLoadedFor = profile.uid;
@@ -56,7 +58,7 @@ async function render() {
       <div>
         <h1 class="heading" style="font-size:1.25rem;display:flex;align-items:center;gap:0.35rem">
           ${escapeHtml(profile.fullName)}
-          ${showOwnerPrivileges ? `<span title="${t("profile.verifiedBadge", "Verified")}" style="color:var(--primary)">${icon("verified")}</span>` : ""}
+          ${profile.verified ? verifiedBadgeHTML() : ""}
         </h1>
         <span class="${badgeClass("secondary")}">${t(`roles.${profile.accountType}`)}</span>
       </div>
