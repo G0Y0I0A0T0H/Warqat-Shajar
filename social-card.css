@@ -17,13 +17,25 @@
   overflow-x: hidden;
 }
 
+/* The site has no dark, photographic leaf imagery -- the closest existing
+   asset is the light illustrated images/leaf-pattern-bg.jpg used elsewhere
+   on a cream background, so it's darkened/green-tinted here via filters
+   into subtle backdrop texture rather than left at its native light look. */
+.social-card-body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: url("images/leaf-pattern-bg.jpg") center/cover;
+  filter: brightness(0.4) saturate(1.5) sepia(0.3) hue-rotate(55deg) contrast(0.9) blur(3px);
+  opacity: 0.45;
+}
+
 .social-card-orb {
   position: fixed;
   border-radius: 50%;
   filter: blur(60px);
   opacity: 0.35;
   pointer-events: none;
-  z-index: 0;
 }
 .social-card-orb-1 { width: 22rem; height: 22rem; background: #2e7d32; top: -6rem; inset-inline-start: -6rem; }
 .social-card-orb-2 { width: 18rem; height: 18rem; background: #66bb6a; bottom: -5rem; inset-inline-end: -5rem; }
@@ -40,6 +52,7 @@
 }
 
 .social-card-logo-ring {
+  position: relative;
   width: 6.5rem;
   height: 6.5rem;
   border-radius: 50%;
@@ -58,6 +71,17 @@
   display: block;
   background: #0f1b10;
 }
+.social-card-logo-sparkle {
+  position: absolute;
+  top: 0.1rem;
+  inset-inline-end: 0.1rem;
+  width: 0.9rem;
+  height: 0.9rem;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff 0%, rgba(255, 255, 255, 0.7) 40%, transparent 72%);
+  box-shadow: 0 0 12px 3px rgba(255, 255, 255, 0.55);
+  animation: social-card-sparkle 2.6s ease-in-out infinite;
+}
 
 .social-card-name {
   margin-top: 1.25rem;
@@ -75,8 +99,22 @@
   animation: social-card-in 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.14s forwards;
 }
 
+.social-card-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  max-width: 12rem;
+  margin-top: 1.1rem;
+  color: #4f7a53;
+  opacity: 0;
+  animation: social-card-in 0.6s ease 0.18s forwards;
+}
+.social-card-divider span { flex: 1; height: 1px; background: linear-gradient(90deg, transparent, currentColor, transparent); }
+.social-card-divider svg { width: 1rem; height: 1rem; flex: none; }
+
 .social-card-links {
-  margin-top: 2.25rem;
+  margin-top: 1.75rem;
   width: 100%;
   display: flex;
   flex-direction: column;
@@ -89,19 +127,17 @@
   align-items: center;
   gap: 0.75rem;
   width: 100%;
-  padding: 0.85rem 1.1rem;
+  padding: 0.7rem 1.1rem;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.12);
   backdrop-filter: blur(10px);
   color: #eef2ec;
   text-decoration: none;
-  font-weight: 600;
-  font-size: 0.95rem;
   opacity: 0;
   transform: translateY(10px);
   animation: social-card-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-  animation-delay: calc(0.2s + var(--item-delay));
+  animation-delay: calc(0.24s + var(--item-delay));
   transition: background 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
 }
 .social-card-link:hover {
@@ -113,17 +149,20 @@
 
 .social-card-link-icon {
   flex: none;
-  width: 2.25rem;
-  height: 2.25rem;
+  width: 2.5rem;
+  height: 2.5rem;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
 }
-.social-card-link-icon svg { width: 1.1rem; height: 1.1rem; }
-.social-card-link-label { flex: 1; text-align: start; }
-.social-card-link-chevron { flex: none; opacity: 0.55; }
+.social-card-link-icon svg { width: 1.15rem; height: 1.15rem; }
+.social-card-link-text { flex: 1; display: flex; flex-direction: column; text-align: start; min-width: 0; }
+.social-card-link-title { font-weight: 700; font-size: 0.95rem; }
+.social-card-link-subtitle { font-size: 0.76rem; color: #9fb8a2; margin-top: 0.1rem; }
+.social-card-link-chevron { flex: none; opacity: 0.5; }
 .social-card-link-chevron svg { width: 1rem; height: 1rem; transform: rotate(-90deg); }
 [dir="rtl"] .social-card-link-chevron svg { transform: rotate(90deg); }
 
@@ -133,25 +172,69 @@
   box-shadow: 0 12px 28px -12px rgba(46, 125, 50, 0.8);
 }
 .social-card-link.is-primary:hover { background: linear-gradient(135deg, #348a38, #1f6b23); }
-.social-card-link.is-primary .social-card-link-icon { background: rgba(255, 255, 255, 0.18); }
+.social-card-link.is-primary .social-card-link-icon { background: rgba(255, 255, 255, 0.2); }
+.social-card-link.is-primary .social-card-link-subtitle { color: rgba(255, 255, 255, 0.75); }
 
-.social-card-link.is-whatsapp { border-color: rgba(37, 211, 102, 0.4); }
-.social-card-link.is-whatsapp .social-card-link-icon { background: rgba(37, 211, 102, 0.22); color: #25d366; }
+.social-card-trust {
+  margin-top: 1.75rem;
+  width: 100%;
+  display: flex;
+  gap: 0.5rem;
+  opacity: 0;
+  animation: social-card-in 0.6s ease 0.55s forwards;
+}
+.social-card-trust-item {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.85rem 0.5rem;
+  border-radius: var(--radius-lg, 0.75rem);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  text-align: center;
+}
+.social-card-trust-icon {
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(102, 187, 106, 0.18);
+  color: #81c784;
+}
+.social-card-trust-icon svg { width: 1rem; height: 1rem; }
+.social-card-trust-title { font-size: 0.72rem; font-weight: 700; }
+.social-card-trust-subtitle { font-size: 0.62rem; color: #9fb8a2; line-height: 1.3; }
 
 .social-card-footer {
-  margin-top: 2.5rem;
+  margin-top: 2.25rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
   font-size: 0.75rem;
   color: #6b8a6d;
   opacity: 0;
-  animation: social-card-in 0.6s ease 0.5s forwards;
+  animation: social-card-in 0.6s ease 0.65s forwards;
 }
+.social-card-footer-brand { display: flex; align-items: center; gap: 0.35rem; }
+.social-card-footer-brand svg { width: 0.85rem; height: 0.85rem; }
 
 @keyframes social-card-in {
   to { opacity: 1; transform: none; }
 }
+@keyframes social-card-sparkle {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.7); }
+}
 
 @media (prefers-reduced-motion: reduce) {
-  .social-card-logo-ring, .social-card-name, .social-card-tagline, .social-card-link, .social-card-footer {
+  .social-card-logo-ring, .social-card-name, .social-card-tagline, .social-card-divider,
+  .social-card-link, .social-card-trust, .social-card-footer, .social-card-logo-sparkle {
     animation: none;
     opacity: 1;
     transform: none;
