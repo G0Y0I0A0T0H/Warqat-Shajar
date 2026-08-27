@@ -3,7 +3,7 @@ import { t } from "../i18n.js";
 import { Auth, Profile, IdentityVerification, Notifications } from "../firebase.js";
 import { showMessage, openDialog, closeDialog, interpolate } from "../ui.js";
 import { ACCOUNT_TYPES } from "../constants.js";
-import { renderRoleSelector, populateGovernorateSelect, renderCategoryCheckboxGrid, updateCategoriesVisibility, wireIdCardPhotoPreview, isValidNationalId, isValidPhone } from "./auth-shared.js";
+import { renderRoleSelector, populateGovernorateSelect, renderCategoryCheckboxGrid, updateCategoriesVisibility, updateIdVerificationVisibility, wireIdCardPhotoPreview, isValidNationalId, isValidPhone } from "./auth-shared.js";
 import { generateVerificationCode, sendVerificationCode, CODE_VALID_MINUTES } from "../email-verification.js";
 
 const RESEND_COOLDOWN_SECONDS = 60;
@@ -20,6 +20,7 @@ async function main() {
   const categoriesLabel = document.getElementById("categories-label");
   const categoriesGrid = document.getElementById("categories-grid");
   const governorateSelect = document.getElementById("governorate");
+  const idVerificationField = document.getElementById("id-verification-field");
 
   renderRoleSelector(
     document.getElementById("role-selector"),
@@ -27,9 +28,11 @@ async function main() {
     (v) => {
       accountType = v;
       updateCategoriesVisibility(categoriesField, categoriesLabel, accountType);
+      updateIdVerificationVisibility(idVerificationField, accountType);
     },
   );
   updateCategoriesVisibility(categoriesField, categoriesLabel, accountType);
+  updateIdVerificationVisibility(idVerificationField, accountType);
   populateGovernorateSelect(governorateSelect);
   renderCategoryCheckboxGrid(categoriesGrid, categories, (v) => (categories = v));
   wireIdCardPhotoPreview(document.getElementById("idCardPhoto"), document.getElementById("idCardPhotoPreview"));
@@ -109,28 +112,49 @@ async function main() {
   async function finishRegistration(data) {
     const user = await Auth.registerWithEmail(data.fullName, data.email, data.password);
     Auth.sendVerificationEmail(user).catch(() => {});
-    await Profile.createUserProfile({
-      uid: user.uid,
-      fullName: data.fullName,
-      phone: data.phone,
-      governorate: data.governorate,
-      accountType: data.accountType,
-      crops: data.accountType === "farmer" ? data.categories : [],
-      sourcingCategories: data.accountType === "trader" || data.accountType === "factory" ? data.categories : [],
-      email: user.email,
-      photoURL: user.photoURL,
-      authProvider: "password",
-    });
     try {
-      await IdentityVerification.submit(user.uid, { nationalId: data.nationalId, file: data.idCardPhoto });
+      await Profile.createUserProfile({
+        uid: user.uid,
+        fullName: data.fullName,
+        phone: data.phone,
+        governorate: data.governorate,
+        accountType: data.accountType,
+        crops: data.accountType === "farmer" ? data.categories : [],
+        sourcingCategories: data.accountType === "trader" || data.accountType === "factory" ? data.categories : [],
+        email: user.email,
+        photoURL: user.photoURL,
+        authProvider: "password",
+      });
     } catch {
-      // showMessage alone is invisible here -- the very next line navigates
-      // away before the user could ever read it, leaving them permanently
-      // unverified with no idea anything went wrong. A persistent
-      // notification survives the redirect; contact.html is the only
-      // self-service path today (an admin can also re-enter it manually
-      // from admin-users.js's identity panel).
-      Notifications.create({ uid: user.uid, key: "identityVerificationFailed", link: "contact.html" }).catch(() => {});
+      // The Auth account above already exists at this point -- if the
+      // profile write itself fails (a network blip, a transient Firestore
+      // error), the old behavior let this whole function's rejection
+      // bubble up to the submit handler's catch, which just re-showed the
+      // form with a generic error while the user stayed stuck on
+      // register.html -- but a *retry* of the same form would then fail
+      // with auth/email-already-in-use forever, since the Auth account is
+      // real and already taken. complete-profile.html already exists
+      // specifically to handle "signed in, no profile doc yet" -- sending
+      // them there instead gives a real, working recovery path (re-submit
+      // the same info) instead of a dead end.
+      location.href = "complete-profile.html";
+      return;
+    }
+    // Identity verification (national ID + card photo) is farmer-only now --
+    // traders/factories/consumers never had a real use for it, it was just
+    // being collected from everyone regardless.
+    if (data.accountType === "farmer") {
+      try {
+        await IdentityVerification.submit(user.uid, { nationalId: data.nationalId, file: data.idCardPhoto });
+      } catch {
+        // showMessage alone is invisible here -- the very next line navigates
+        // away before the user could ever read it, leaving them permanently
+        // unverified with no idea anything went wrong. A persistent
+        // notification survives the redirect; contact.html is the only
+        // self-service path today (an admin can also re-enter it manually
+        // from admin-users.js's identity panel).
+        Notifications.create({ uid: user.uid, key: "identityVerificationFailed", link: "contact.html" }).catch(() => {});
+      }
     }
     location.href = "index.html";
   }
@@ -235,13 +259,15 @@ async function main() {
       showMessage(formError, t("auth.register.governoratePlaceholder"));
       return;
     }
-    if (!isValidNationalId(nationalId)) {
-      showMessage(formError, t("auth.errors.nationalIdInvalid"));
-      return;
-    }
-    if (!idCardPhoto) {
-      showMessage(formError, t("auth.errors.idCardPhotoRequired"));
-      return;
+    if (accountType === "farmer") {
+      if (!isValidNationalId(nationalId)) {
+        showMessage(formError, t("auth.errors.nationalIdInvalid"));
+        return;
+      }
+      if (!idCardPhoto) {
+        showMessage(formError, t("auth.errors.idCardPhotoRequired"));
+        return;
+      }
     }
     if (!termsAccepted) {
       showMessage(formError, t("auth.errors.termsRequired"));

@@ -124,6 +124,19 @@ let bootstrapAttempted = false;
 
 Auth.onChange((nextUser) => {
   authState.user = nextUser;
+  // Only ever cleared to false below (once the falsy-user branch runs, or
+  // once the new user's profile snapshot actually delivers) -- never reset
+  // to true here before this fix meant a SECOND Auth.onChange firing (a new
+  // sign-in on a page where a previous transition had already cleared
+  // `loading`, or the null-then-real double-fire this app's own Google
+  // redirect flow is known to do, per commit f6010ce) broadcast a stale
+  // `loading:false` the instant it happened, before the new profile doc had
+  // even been fetched. Every "signed in required" guard sitewide shares the
+  // shape `if (loading) return; if (!user) redirect-to-login` (dashboard-
+  // shell.js, admin-shell.js, complete-profile.js), so that stale moment
+  // could read as "definitely not signed in yet" and bounce a genuinely
+  // just-registered user back to login/register.
+  authState.loading = true;
 
   if (unsubProfile) unsubProfile();
   if (unsubAdmin) unsubAdmin();

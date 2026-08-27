@@ -553,6 +553,10 @@
     "message": "Something went wrong on our end, it will be fixed soon",
     "contactSupport": "Contact support"
   },
+  "pageDisabled": {
+    "message": "This page is temporarily unavailable, please check back soon",
+    "homeLink": "Back to the homepage"
+  },
   "killSwitch": {
     "title": "SITE LOCKED",
     "hint": "This site has been temporarily disabled. Only the site owner can unlock it.",
@@ -738,7 +742,9 @@
       "paymentMethodRemoved": "Removed a payment method",
       "dataWiped": "Bulk-deleted data",
       "viewAsStarted": "Started viewing as another user (View As)",
-      "viewAsStopped": "Ended a View As session"
+      "viewAsStopped": "Ended a View As session",
+      "pageDisabled": "Took a page offline",
+      "pageEnabled": "Turned a page back on"
     }
   },
   "chats": {
@@ -1070,6 +1076,28 @@
     "activityEvent": {
       "pageView": "Viewed a page"
     },
+    "pageControl": {
+      "tabTitle": "Pages",
+      "hint": "Owner-only. Temporarily takes a single page offline for everyone except signed-in admins -- a visitor lands on a plain \"come back soon\" screen instead. Turn it back on the same way.",
+      "disabledBadge": "Disabled",
+      "enableBtn": "Turn back on",
+      "disableBtn": "Take offline",
+      "confirmDisable": "Take this page offline for everyone except signed-in admins?",
+      "page": {
+        "home": "Homepage",
+        "products": "Browse Products",
+        "productDetail": "Product Detail",
+        "cart": "Cart",
+        "favorites": "Favorites",
+        "farmers": "Farmers Directory",
+        "team": "Team",
+        "about": "About the Platform",
+        "contact": "Contact Us",
+        "dashboard": "Dashboard",
+        "profile": "Profile",
+        "sellerProfile": "Public Farmer Profile"
+      }
+    },
     "danger": {
       "tabTitle": "Danger Zone",
       "hint": "Owner-only. Permanently deletes real data -- meant for clearing test/dummy data before real users arrive, not routine use.",
@@ -1153,8 +1181,8 @@
     "groupImages": "Homepage Images",
     "colorTitle": "Brand Color",
     "cursorSizeTitle": "Cursor Size",
-    "cursorEffectDisableLabel": "Disable the cursor effect for regular visitors",
-    "cursorEffectDisableHint": "Admins always keep the effect in their own browsing, regardless of this setting.",
+    "cursorEffectDisableLabel": "Disable the cursor effect for everyone except the owner",
+    "cursorEffectDisableHint": "Only the platform owner always keeps the effect in their own browsing, regardless of this setting -- other admins follow it like everyone else.",
     "defaultThemeTitle": "Default lighting mode",
     "defaultThemeHint": "Applies to first-time visitors only -- anyone who has already used the sun/moon toggle keeps their own choice.",
     "defaultThemeLight": "Always light",

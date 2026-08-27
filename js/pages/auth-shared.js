@@ -84,6 +84,14 @@ export function wireIdCardPhotoPreview(fileInputEl, previewImgEl) {
   });
 }
 
+// National ID + ID card photo are only ever used to verify a FARMER's
+// identity (see js/firebase.js's IdentityVerification module and
+// admin-users.js's own verification panel) -- traders/factories/consumers
+// never needed it, it was just being collected from everyone regardless.
+export function updateIdVerificationVisibility(fieldEl, accountType) {
+  fieldEl.style.display = accountType === "farmer" ? "" : "none";
+}
+
 export function updateCategoriesVisibility(fieldEl, labelEl, accountType) {
   if (accountType === "consumer") {
     fieldEl.style.display = "none";

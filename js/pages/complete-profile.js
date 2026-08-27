@@ -3,7 +3,7 @@ import { t } from "../i18n.js";
 import { Auth, Profile, IdentityVerification, Notifications } from "../firebase.js";
 import { showMessage } from "../ui.js";
 import { authState, subscribe } from "../state.js";
-import { renderRoleSelector, populateGovernorateSelect, renderCategoryCheckboxGrid, updateCategoriesVisibility, wireIdCardPhotoPreview, isValidNationalId, isValidPhone } from "./auth-shared.js";
+import { renderRoleSelector, populateGovernorateSelect, renderCategoryCheckboxGrid, updateCategoriesVisibility, updateIdVerificationVisibility, wireIdCardPhotoPreview, isValidNationalId, isValidPhone } from "./auth-shared.js";
 
 async function main() {
   await initLayout();
@@ -16,6 +16,7 @@ async function main() {
   const categoriesLabel = document.getElementById("categories-label");
   const categoriesGrid = document.getElementById("categories-grid");
   const governorateSelect = document.getElementById("governorate");
+  const idVerificationField = document.getElementById("id-verification-field");
 
   renderRoleSelector(
     document.getElementById("role-selector"),
@@ -23,9 +24,11 @@ async function main() {
     (v) => {
       accountType = v;
       updateCategoriesVisibility(categoriesField, categoriesLabel, accountType);
+      updateIdVerificationVisibility(idVerificationField, accountType);
     },
   );
   updateCategoriesVisibility(categoriesField, categoriesLabel, accountType);
+  updateIdVerificationVisibility(idVerificationField, accountType);
   populateGovernorateSelect(governorateSelect);
   renderCategoryCheckboxGrid(categoriesGrid, categories, (v) => (categories = v));
   wireIdCardPhotoPreview(document.getElementById("idCardPhoto"), document.getElementById("idCardPhotoPreview"));
@@ -75,13 +78,15 @@ async function main() {
       showMessage(formError, t("auth.errors.phoneInvalid", "Enter a valid Egyptian mobile number (e.g. 01xxxxxxxxx)."));
       return;
     }
-    if (!isValidNationalId(nationalId)) {
-      showMessage(formError, t("auth.errors.nationalIdInvalid"));
-      return;
-    }
-    if (!idCardPhoto) {
-      showMessage(formError, t("auth.errors.idCardPhotoRequired"));
-      return;
+    if (accountType === "farmer") {
+      if (!isValidNationalId(nationalId)) {
+        showMessage(formError, t("auth.errors.nationalIdInvalid"));
+        return;
+      }
+      if (!idCardPhoto) {
+        showMessage(formError, t("auth.errors.idCardPhotoRequired"));
+        return;
+      }
     }
     if (!termsAccepted) {
       showMessage(formError, t("auth.errors.termsRequired"));
@@ -102,12 +107,14 @@ async function main() {
         photoURL: authState.user.photoURL,
         authProvider: "google.com",
       });
-      try {
-        await IdentityVerification.submit(authState.user.uid, { nationalId, file: idCardPhoto });
-      } catch {
-        // Same reasoning as register.js: showMessage alone is invisible
-        // since the redirect right below fires immediately after.
-        Notifications.create({ uid: authState.user.uid, key: "identityVerificationFailed", link: "contact.html" }).catch(() => {});
+      if (accountType === "farmer") {
+        try {
+          await IdentityVerification.submit(authState.user.uid, { nationalId, file: idCardPhoto });
+        } catch {
+          // Same reasoning as register.js: showMessage alone is invisible
+          // since the redirect right below fires immediately after.
+          Notifications.create({ uid: authState.user.uid, key: "identityVerificationFailed", link: "contact.html" }).catch(() => {});
+        }
       }
       location.href = "index.html";
     } catch (error) {
