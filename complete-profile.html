@@ -7,6 +7,8 @@
   <link rel="icon" href="images/favicon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://www.gstatic.com">
+  <link rel="preconnect" href="https://res.cloudinary.com">
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@200..1000&family=Inter:wght@100..900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="cursor/cursor.css">
@@ -76,17 +78,19 @@
           <div class="checkbox-grid" id="categories-grid"></div>
         </div>
 
-        <div class="field">
-          <label class="label" for="nationalId" data-i18n="auth.register.nationalIdLabel">National ID Number</label>
-          <input class="input force-ltr" id="nationalId" name="nationalId" type="text" inputmode="numeric" required minlength="14" maxlength="14" dir="ltr">
-          <p class="text-muted" style="font-size:0.75rem" data-i18n="auth.register.nationalIdHint">14 digits, exactly as printed on your ID card</p>
-        </div>
+        <div id="id-verification-field">
+          <div class="field">
+            <label class="label" for="nationalId" data-i18n="auth.register.nationalIdLabel">National ID Number</label>
+            <input class="input force-ltr" id="nationalId" name="nationalId" type="text" inputmode="numeric" minlength="14" maxlength="14" dir="ltr">
+            <p class="text-muted" style="font-size:0.75rem" data-i18n="auth.register.nationalIdHint">14 digits, exactly as printed on your ID card</p>
+          </div>
 
-        <div class="field">
-          <label class="label" for="idCardPhoto" data-i18n="auth.register.idCardPhotoLabel">National ID Card Photo</label>
-          <p class="text-muted" style="font-size:0.75rem" data-i18n="auth.register.idCardPhotoHint">Used only to verify your identity — encrypted before it's uploaded, and only the platform owner can ever view it</p>
-          <input type="file" class="input" id="idCardPhoto" name="idCardPhoto" accept="image/*" required>
-          <img id="idCardPhotoPreview" alt="" style="display:none;margin-top:0.5rem;max-width:100%;max-height:12rem;border-radius:0.5rem;object-fit:contain">
+          <div class="field">
+            <label class="label" for="idCardPhoto" data-i18n="auth.register.idCardPhotoLabel">National ID Card Photo</label>
+            <p class="text-muted" style="font-size:0.75rem" data-i18n="auth.register.idCardPhotoHint">Used only to verify your identity — encrypted before it's uploaded, and only the platform owner can ever view it</p>
+            <input type="file" class="input" id="idCardPhoto" name="idCardPhoto" accept="image/*">
+            <img id="idCardPhotoPreview" alt="" style="display:none;margin-top:0.5rem;max-width:100%;max-height:12rem;border-radius:0.5rem;object-fit:contain">
+          </div>
         </div>
 
         <label class="checkbox-row" style="align-items:flex-start">
