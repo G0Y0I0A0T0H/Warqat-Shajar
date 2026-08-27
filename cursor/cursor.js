@@ -175,6 +175,8 @@
   var windHistory = [];
   var WIND_HISTORY_LEN = 6;
   var lastFrameTime = 0;
+  var pendingTarget = null;
+  var lastDetectedTarget = null;
 
   function detectState(target) {
     var node = target;
@@ -376,6 +378,18 @@
       updateParticles(dt);
     }
 
+    // detectState() walks the DOM calling getComputedStyle() at each
+    // ancestor -- forces a synchronous style recalc. Used to run inline in
+    // onPointerMove on every raw pointer event (which can fire far faster
+    // than the display refresh rate on a high-poll-rate mouse/trackpad),
+    // effectively thrashing layout on every pixel of movement over content.
+    // Deferred here to run at most once per animation frame, and only when
+    // the hovered element actually changed, not on every frame regardless.
+    if (pendingTarget !== lastDetectedTarget) {
+      lastDetectedTarget = pendingTarget;
+      setState(detectState(pendingTarget));
+    }
+
     requestAnimationFrame(tick);
   }
 
@@ -385,7 +399,7 @@
   function onPointerMove(e) {
     mouseX = e.clientX;
     mouseY = e.clientY;
-    setState(detectState(e.target));
+    pendingTarget = e.target;
   }
 
   function onPointerDown(e) {
