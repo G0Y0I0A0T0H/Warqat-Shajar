@@ -210,8 +210,10 @@ async function main() {
   await initLayout();
   renderTrustBadges();
   wireHeroArrows();
-  await loadSiteImages();
-  await renderFeaturedProducts();
+  // Independent reads (hero/category images vs. the featured product list,
+  // different DOM sections) -- were awaited one after another, costing a
+  // full extra network round-trip before featured products appeared.
+  await Promise.all([loadSiteImages(), renderFeaturedProducts()]);
   renderAdSlot(document.getElementById("ad-home-top"), "home-top", Ads);
   renderAdSlot(document.getElementById("ad-home-mid"), "home-mid", Ads);
   renderAdSlot(document.getElementById("ad-home-bottom"), "home-bottom", Ads);

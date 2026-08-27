@@ -160,7 +160,7 @@ async function render() {
       return `
         <div class="cart-row" data-product="${productId}" ${escrowOrder ? `data-order-id="${escrowOrder.id}"` : ""}>
           <a href="product.html?id=${productId}" class="cart-row-media">
-            ${photo ? `<img src="${optimizedImageUrl(photo, 160)}" alt="">` : ""}
+            ${photo ? `<img src="${optimizedImageUrl(photo, 160)}" alt="" loading="lazy">` : ""}
           </a>
           <div class="cart-row-main">
             <a href="product.html?id=${productId}" style="font-weight:600;color:var(--foreground)">${product.title ? escapeHtml(product.title) : categoryLabelById(product.category, getLocale())}</a>
