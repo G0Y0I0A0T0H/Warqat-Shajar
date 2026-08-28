@@ -16,7 +16,7 @@
 // action below still goes through firestore.rules' isOwner() check on the
 // server side, so discovering the trigger alone lets nobody actually do
 // anything unless they're also authenticated as the real owner account.
-import { Admin, Auth, OWNER_EMAIL, Notifications, AuditLog, Activity } from "./firebase.js";
+import { Admin, Auth, OWNER_EMAIL, Notifications, AuditLog, Activity, SiteSettings } from "./firebase.js";
 import { NAV_ITEMS, SENSITIVE_KEYS } from "./admin-shell.js";
 import { t, getLocale } from "./i18n.js";
 import { escapeHtml, btnClass, badgeClass, icon, verifiedBadgeHTML } from "./ui.js";
@@ -58,6 +58,8 @@ let auditFilterAdmin = "";
 let auditFilterAction = "";
 let activityEntries = [];
 let activityUnsub = null;
+let disabledPagesMap = {};
+let disabledPagesUnsub = null;
 
 export async function openSupremeMode() {
   if (overlay) return;
@@ -94,6 +96,7 @@ function closeSupremeMode() {
   auditFilterAdmin = "";
   auditFilterAction = "";
   stopActivityFeed();
+  stopPageControlFeed();
 }
 
 // The live feed is only ever subscribed while the "activity" tab is
@@ -112,6 +115,66 @@ function startActivityFeed() {
 function stopActivityFeed() {
   activityUnsub?.();
   activityUnsub = null;
+}
+
+// The pages an owner might realistically want to take offline temporarily
+// (a bug, content that needs fixing, etc.) -- deliberately does NOT include
+// login.html/register.html/complete-profile.html (disabling those could
+// lock people, including admins signed out at the time, out of ever
+// signing back in) or any admin-*.html page (would risk locking the owner
+// out of the very toggle that turns it back off).
+const PAGE_CONTROL_PAGES = [
+  { file: "index.html", labelKey: "supreme.pageControl.page.home" },
+  { file: "products.html", labelKey: "supreme.pageControl.page.products" },
+  { file: "product.html", labelKey: "supreme.pageControl.page.productDetail" },
+  { file: "cart.html", labelKey: "supreme.pageControl.page.cart" },
+  { file: "favorites.html", labelKey: "supreme.pageControl.page.favorites" },
+  { file: "farmers.html", labelKey: "supreme.pageControl.page.farmers" },
+  { file: "team.html", labelKey: "supreme.pageControl.page.team" },
+  { file: "about.html", labelKey: "supreme.pageControl.page.about" },
+  { file: "contact.html", labelKey: "supreme.pageControl.page.contact" },
+  { file: "dashboard.html", labelKey: "supreme.pageControl.page.dashboard" },
+  { file: "profile.html", labelKey: "supreme.pageControl.page.profile" },
+  { file: "seller-profile.html", labelKey: "supreme.pageControl.page.sellerProfile" },
+];
+
+// Live while the "pages" tab is open, same discipline as startActivityFeed.
+function startPageControlFeed() {
+  if (disabledPagesUnsub) return;
+  disabledPagesUnsub = SiteSettings.subscribeDisabledPages((pages) => {
+    disabledPagesMap = pages;
+    if (activeTab === "pages") render();
+  });
+}
+
+function stopPageControlFeed() {
+  disabledPagesUnsub?.();
+  disabledPagesUnsub = null;
+}
+
+function pageControlHTML() {
+  return `
+    <p class="sm-row-sub" style="margin-bottom:1rem">${t("supreme.pageControl.hint", "Owner-only. Temporarily takes a single page offline for everyone except signed-in admins -- a visitor lands on a plain \"come back soon\" screen instead. Turn it back on the same way.")}</p>
+    ${PAGE_CONTROL_PAGES.map((p) => {
+      const isDisabled = Boolean(disabledPagesMap[p.file]);
+      return `
+        <div class="sm-row">
+          <div class="sm-row-main">
+            <div class="sm-row-title">
+              <span>${t(p.labelKey)}</span>
+              <span class="force-ltr ${badgeClass("outline")}" dir="ltr" style="font-size:0.7rem">${p.file}</span>
+              ${isDisabled ? `<span class="${badgeClass("destructive")}">${t("supreme.pageControl.disabledBadge", "Disabled")}</span>` : ""}
+            </div>
+          </div>
+          <div class="sm-row-actions">
+            <button type="button" class="${btnClass(isDisabled ? "default" : "destructive", "sm")}" data-sm-toggle-page="${p.file}" data-sm-page-disabled="${isDisabled ? "true" : "false"}">
+              ${isDisabled ? t("supreme.pageControl.enableBtn", "Turn back on") : t("supreme.pageControl.disableBtn", "Take offline")}
+            </button>
+          </div>
+        </div>
+      `;
+    }).join("")}
+  `;
 }
 
 async function reload() {
@@ -142,6 +205,8 @@ const AUDIT_ACTION_KEYS = {
   data_wiped: "auditLog.action.dataWiped",
   view_as_started: "auditLog.action.viewAsStarted",
   view_as_stopped: "auditLog.action.viewAsStopped",
+  page_disabled: "auditLog.action.pageDisabled",
+  page_enabled: "auditLog.action.pageEnabled",
 };
 
 function auditActionLabel(action) {
@@ -561,6 +626,7 @@ function render() {
     <button type="button" class="sm-tab ${activeTab === "quick" ? "is-active" : ""}" data-sm-tab="quick">${t("supreme.quickAccess", "Quick Access")}</button>
     <button type="button" class="sm-tab ${activeTab === "audit" ? "is-active" : ""}" data-sm-tab="audit">${icon("clipboard-list")} ${t("supreme.auditTabTitle", "Audit Log")}</button>
     <button type="button" class="sm-tab ${activeTab === "activity" ? "is-active" : ""}" data-sm-tab="activity">${icon("eye")} ${t("supreme.activityTabTitle", "Live Activity")}</button>
+    <button type="button" class="sm-tab ${activeTab === "pages" ? "is-active" : ""}" data-sm-tab="pages">${icon("globe")} ${t("supreme.pageControl.tabTitle", "Pages")}</button>
     <button type="button" class="sm-tab ${activeTab === "danger" ? "is-active" : ""}" data-sm-tab="danger">${icon("alert-triangle")} ${t("supreme.danger.tabTitle", "Danger Zone")}</button>
   `;
   bodyEl.innerHTML =
@@ -575,27 +641,49 @@ function render() {
           ? auditLogHTML()
           : activeTab === "activity"
             ? activityFeedHTML()
-            : activeTab === "danger"
-              ? dangerZoneHTML()
-              : quickAccessHTML();
+            : activeTab === "pages"
+              ? pageControlHTML()
+              : activeTab === "danger"
+                ? dangerZoneHTML()
+                : quickAccessHTML();
 
   tabsEl.querySelectorAll("[data-sm-tab]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const wasDanger = activeTab === "danger";
       const wasActivity = activeTab === "activity";
+      const wasPages = activeTab === "pages";
       activeTab = btn.dataset.smTab;
       editingPermsUid = null;
       viewingPinUid = null;
       if (wasActivity && activeTab !== "activity") stopActivityFeed();
+      if (wasPages && activeTab !== "pages") stopPageControlFeed();
       render();
       if (activeTab === "danger" && !wasDanger) reloadFakeDataCounts();
       if (activeTab === "activity" && !wasActivity) startActivityFeed();
+      if (activeTab === "pages" && !wasPages) startPageControlFeed();
     });
   });
 
   if (activeTab === "danger") {
     overlay.querySelectorAll("[data-sm-wipe]").forEach((btn) => {
       btn.addEventListener("click", () => wipeCategory(btn.dataset.smWipe));
+    });
+  }
+
+  if (activeTab === "pages") {
+    overlay.querySelectorAll("[data-sm-toggle-page]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const page = btn.dataset.smTogglePage;
+        const willDisable = btn.dataset.smPageDisabled !== "true";
+        if (willDisable && !confirm(t("supreme.pageControl.confirmDisable", "Take this page offline for everyone except signed-in admins?"))) return;
+        btn.disabled = true;
+        try {
+          await SiteSettings.setPageDisabled(page, willDisable);
+          auditRecord(willDisable ? "page_disabled" : "page_enabled", page, page, undefined, "page");
+        } finally {
+          btn.disabled = false;
+        }
+      });
     });
   }
 

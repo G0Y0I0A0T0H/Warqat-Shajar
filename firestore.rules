@@ -300,10 +300,11 @@ service cloud.firestore {
       // here (unlike every other settings doc) and given their own
       // owner/payments-admin-only rules below.
       allow read: if docId != 'paymentInfo' && docId != 'whatsappConfig';
-      // killSwitch, maintenanceMode, chatDisabled, paymentInfo, and
-      // whatsappConfig are all excluded here and given their own rules
-      // below -- Firestore ORs every matching block together, so without
-      // this exclusion a regular admin would still be able to write
+      // killSwitch, maintenanceMode, chatDisabled, disabledPages,
+      // paymentInfo, and whatsappConfig are all excluded here and given
+      // their own rules below -- Firestore ORs every matching block
+      // together, so without this exclusion a regular admin would still be
+      // able to write
       // through this generic rule regardless of the narrower ones.
       // adPlacements is managed from admin-ads.html ("ads" section); every
       // other doc left in this generic rule (siteImages, siteContent,
@@ -311,8 +312,19 @@ service cloud.firestore {
       // admin-branding.html ("branding" section) -- each needs its own
       // section grant, not just bare isAdmin(), so a section-restricted
       // admin can't reach either one via a direct SDK call.
-      allow write: if docId != 'killSwitch' && docId != 'maintenanceMode' && docId != 'chatDisabled' && docId != 'paymentInfo' && docId != 'whatsappConfig' &&
+      allow write: if docId != 'killSwitch' && docId != 'maintenanceMode' && docId != 'chatDisabled' && docId != 'disabledPages' && docId != 'paymentInfo' && docId != 'whatsappConfig' &&
         (docId == 'adPlacements' ? isAdminWithSection('ads') : isAdminWithSection('branding'));
+    }
+
+    // Per-page maintenance toggle, Supreme Mode only -- unlike
+    // maintenanceMode/chatDisabled above (delegatable to a "systemControls"
+    // admin), this one is deliberately owner-only, matching killSwitch,
+    // since the user asked for this specifically as a Supreme Mode
+    // (owner-exclusive) control. Read stays public since every visitor's
+    // page load needs to check it.
+    match /settings/disabledPages {
+      allow read: if true;
+      allow write: if isOwner();
     }
 
     // Emergency kill switch: owner-only, on purpose -- this is a

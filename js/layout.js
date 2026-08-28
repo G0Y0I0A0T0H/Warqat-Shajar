@@ -280,16 +280,15 @@ async function applyLogo() {
   }
 }
 
-// The owner can turn off the leaf-cursor effect sitewide, but that decision
-// only ever applies to regular visitors -- an admin's own browsing always
-// keeps it, regardless of this setting (see the spec: "القرار يلي بيتم
-// اتخاذه بشأن الزر بيكون تطبيقه بس على المستخدمين العاديين، أما الادمن
-// دايمًا موجود"). The two independent Firestore subscriptions involved
-// (site theme, admin status) can resolve in either order, so this is
-// recomputed from both a theme update and any authState change.
+// The leaf-cursor effect is owner-only now -- every other account (regular
+// visitors AND any admin who isn't the platform owner) follows this
+// sitewide on/off setting; only OWNER_EMAIL's own browsing always keeps it
+// regardless. The two independent Firestore subscriptions involved (site
+// theme, admin status) can resolve in either order, so this is recomputed
+// from both a theme update and any authState change.
 let cursorEffectDisabledSetting = false;
 function applyCursorDisabledClass() {
-  document.documentElement.classList.toggle("leaf-cursor-disabled", cursorEffectDisabledSetting && !authState.isAdmin);
+  document.documentElement.classList.toggle("leaf-cursor-disabled", cursorEffectDisabledSetting && !authState.isOwner);
 }
 
 function applyBrandColor() {
@@ -437,6 +436,8 @@ let killSwitchOverlay = null;
 let maintenanceOverlay = null;
 let maintenanceModeActive = false;
 let supportContactHref = null;
+let pageDisabledOverlay = null;
+let disabledPages = {};
 
 function renderKillSwitchOverlay() {
   if (killSwitchOverlay) return;
@@ -661,6 +662,78 @@ function guardMaintenanceMode() {
   subscribe(updateMaintenanceOverlay);
 }
 
+// Per-page sibling of the maintenance overlay above -- Supreme Mode's
+// "Pages" tab (js/supreme-mode.js) lets the owner take a single page
+// offline instead of the whole site. Same visual treatment and the same
+// signed-in-admin exemption (so admins can still reach the toggle that
+// turns it back off), just scoped to whichever page's filename is
+// currently flagged in settings/disabledPages instead of a single sitewide
+// switch.
+function currentPageFile() {
+  return location.pathname.split("/").pop() || "index.html";
+}
+
+function renderPageDisabledOverlay() {
+  if (pageDisabledOverlay) return;
+  pageDisabledOverlay = document.createElement("div");
+  pageDisabledOverlay.id = "page-disabled-overlay";
+  pageDisabledOverlay.innerHTML = `
+    <style>
+      #page-disabled-overlay {
+        position: fixed; inset: 0; z-index: 2147483646;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        gap: 1.5rem; text-align: center; padding: 2rem;
+        background:
+          radial-gradient(circle at 50% 35%, rgba(46,125,50,0.12), transparent 60%),
+          var(--background, #fbfbf9);
+        color: var(--foreground, #1a1a1a);
+        font-family: inherit;
+      }
+      #page-disabled-overlay img {
+        width: min(40vw, 9rem); height: min(40vw, 9rem); object-fit: contain;
+        filter: drop-shadow(0 4px 24px rgba(46,125,50,0.25));
+        animation: maint-breathe 3s ease-in-out infinite;
+      }
+      #page-disabled-overlay h1 {
+        font-size: 1.15rem; font-weight: 700; margin: 0; max-width: 26rem;
+      }
+      #page-disabled-overlay a.pd-home-btn {
+        padding: 0.65rem 1.1rem; border-radius: 999px; border: none;
+        background: var(--primary, #2e7d32); color: #fff; font-weight: 600;
+        font-size: 0.85rem; text-decoration: none;
+      }
+    </style>
+    <img src="images/logo-icon.png" alt="">
+    <h1>${t("pageDisabled.message", "This page is temporarily unavailable. Please check back soon.")}</h1>
+    <a class="pd-home-btn" href="index.html">${t("pageDisabled.homeLink", "Back to the homepage")}</a>
+  `;
+  document.body.appendChild(pageDisabledOverlay);
+}
+
+function removePageDisabledOverlay() {
+  if (pageDisabledOverlay) {
+    pageDisabledOverlay.remove();
+    pageDisabledOverlay = null;
+  }
+}
+
+function updatePageDisabledOverlay() {
+  const isDisabled = Boolean(disabledPages[currentPageFile()]);
+  if (isDisabled && !authState.isAdmin) {
+    renderPageDisabledOverlay();
+  } else {
+    removePageDisabledOverlay();
+  }
+}
+
+function guardDisabledPage() {
+  SiteSettings.subscribeDisabledPages((pages) => {
+    disabledPages = pages;
+    updatePageDisabledOverlay();
+  });
+  subscribe(updatePageDisabledOverlay);
+}
+
 function guardKillSwitch() {
   // Picks up the result if the Google sign-in on the lock screen had to
   // fall back to a full-page redirect (popup blocked) -- the page reloads
@@ -849,6 +922,7 @@ export async function initLayout() {
   wireKillSwitchShortcut();
   wireSupremeModeShortcut();
   guardMaintenanceMode();
+  guardDisabledPage();
   wireHeaderSearch();
   maybeLogPageView();
   renderViewAsBanner();
