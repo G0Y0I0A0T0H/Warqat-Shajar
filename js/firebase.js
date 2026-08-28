@@ -2012,6 +2012,14 @@ const killSwitchRef = doc(db, "settings", "killSwitch");
 // toggle. See js/layout.js for the overlay UI.
 const maintenanceModeRef = doc(db, "settings", "maintenanceMode");
 
+// Per-page version of the same idea -- Supreme Mode's "Pages" tab lets the
+// owner temporarily take a single page offline (a map, not a list, so
+// toggling one page is a one-key merge write, same pattern as
+// siteImages.categoryImages/paymentInfo.methods elsewhere in this file) --
+// keyed by filename, e.g. { "products.html": true }. See js/layout.js for
+// the overlay UI and js/supreme-mode.js for the "Pages" tab.
+const disabledPagesRef = doc(db, "settings", "disabledPages");
+
 // Owner-only sitewide switch that blocks new messages in every regular
 // (user-to-user/support) chat -- enforced in firestore.rules, not just the
 // UI. Deliberately does NOT touch adminChats (the admin team-chat room),
@@ -2290,6 +2298,19 @@ export const SiteSettings = {
 
   async setMaintenanceMode(active) {
     await setDoc(maintenanceModeRef, { active }, { merge: true });
+  },
+
+  // Owner-only in firestore.rules regardless of who calls this client-side.
+  subscribeDisabledPages(callback) {
+    return onSnapshot(
+      disabledPagesRef,
+      (snap) => callback(snap.exists() ? snap.data().pages || {} : {}),
+      () => callback({}),
+    );
+  },
+
+  async setPageDisabled(page, disabled) {
+    await setDoc(disabledPagesRef, { pages: { [page]: disabled } }, { merge: true });
   },
 
   // Owner-only in firestore.rules regardless of who calls this client-side.
