@@ -48,27 +48,96 @@ function populateFilters() {
   governorateSelect.value = governorate;
 }
 
-async function loadProducts() {
-  listEl.innerHTML = "";
-  const rawProducts = await Products.listActiveProducts({
+const PAGE_SIZE = 24;
+// Free-text search (matchesSearch below) scans owner name/description across
+// every result, so it needs the real full set to be correct -- a cursor
+// page could easily miss matches that exist past whatever page happened to
+// load first. Only the plain browse case (no search query) gets real
+// cursor pagination; a search still fetches in one shot, just capped at a
+// much higher safety ceiling instead of fully unbounded.
+const SEARCH_SAFETY_LIMIT = 500;
+
+let lastDoc = null;
+let hasMore = false;
+let loadingMore = false;
+let currentGridEl = null;
+
+function renderGrid(products, { append = false } = {}) {
+  const cardsHtml = products
+    .map((p) => productCardHTML(p, categoryLabelById(p.category, getLocale()), governorateLabel(p.governorate, getLocale())))
+    .join("");
+  if (append && currentGridEl) {
+    currentGridEl.insertAdjacentHTML("beforeend", cardsHtml);
+  } else {
+    listEl.innerHTML = `<div class="product-grid" id="products-grid">${cardsHtml}</div><div id="products-load-more"></div>`;
+    currentGridEl = listEl.querySelector("#products-grid");
+  }
+  wireFavoriteButtons(currentGridEl);
+  renderLoadMoreControl();
+}
+
+function renderLoadMoreControl() {
+  const mount = listEl.querySelector("#products-load-more");
+  if (!mount) return;
+  if (!hasMore) {
+    mount.innerHTML = "";
+    return;
+  }
+  mount.innerHTML = `
+    <div style="display:flex;justify-content:center;margin-top:1.25rem">
+      <button type="button" class="btn btn-outline" id="products-load-more-btn" ${loadingMore ? "disabled" : ""}>
+        ${loadingMore ? t("products.loadingMore", "Loading...") : t("products.loadMore", "Load more")}
+      </button>
+    </div>
+  `;
+  mount.querySelector("#products-load-more-btn")?.addEventListener("click", loadMore);
+}
+
+async function loadMore() {
+  if (loadingMore || !hasMore) return;
+  loadingMore = true;
+  renderLoadMoreControl();
+  const page = await Products.listActiveProductsPage({
     category: categorySelect.value || undefined,
     governorate: governorateSelect.value || undefined,
-  }).catch(() => []);
+    startAfterDoc: lastDoc,
+    limitCount: PAGE_SIZE,
+  }).catch(() => ({ items: [], lastDoc: null, hasMore: false }));
+  lastDoc = page.lastDoc;
+  hasMore = page.hasMore;
+  loadingMore = false;
+  renderGrid(page.items, { append: true });
+}
+
+async function loadProducts() {
+  listEl.innerHTML = "";
+  currentGridEl = null;
+  lastDoc = null;
+  hasMore = false;
 
   const query = normalizeSearchText(new URLSearchParams(location.search).get("q"));
-  const products = rawProducts.filter((p) =>
-    matchesSearch(p, categoryLabelById(p.category, getLocale()), governorateLabel(p.governorate, getLocale()), query),
-  );
+  const filters = { category: categorySelect.value || undefined, governorate: governorateSelect.value || undefined };
+
+  let products;
+  if (query) {
+    // Full scan, capped at a safety ceiling -- see SEARCH_SAFETY_LIMIT above.
+    const rawProducts = await Products.listActiveProducts({ ...filters, limitCount: SEARCH_SAFETY_LIMIT }).catch(() => []);
+    products = rawProducts.filter((p) =>
+      matchesSearch(p, categoryLabelById(p.category, getLocale()), governorateLabel(p.governorate, getLocale()), query),
+    );
+  } else {
+    const page = await Products.listActiveProductsPage({ ...filters, limitCount: PAGE_SIZE }).catch(() => ({ items: [], lastDoc: null, hasMore: false }));
+    products = page.items;
+    lastDoc = page.lastDoc;
+    hasMore = page.hasMore;
+  }
 
   if (products.length === 0) {
     listEl.innerHTML = `<p class="empty-state">${getLocale() === "ar" ? "مفيش منتجات مطابقة" : "No matching products"}</p>`;
     return;
   }
 
-  listEl.innerHTML = `<div class="product-grid">${products
-    .map((p) => productCardHTML(p, categoryLabelById(p.category, getLocale()), governorateLabel(p.governorate, getLocale())))
-    .join("")}</div>`;
-  wireFavoriteButtons(listEl);
+  renderGrid(products);
 }
 
 async function main() {
