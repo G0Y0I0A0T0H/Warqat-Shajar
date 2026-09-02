@@ -455,6 +455,8 @@
     "currency": "EGP",
     "orderNow": "Order Now",
     "orderConfirmed": "Order confirmed",
+    "loadMore": "Load more",
+    "loadingMore": "Loading...",
     "harvestDateLabel": "Harvest Start Date",
     "governorateLabel": "Governorate",
     "photosLabel": "Photos (up to 3)",

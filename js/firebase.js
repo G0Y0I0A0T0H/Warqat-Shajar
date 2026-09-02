@@ -35,6 +35,7 @@ import {
   where,
   orderBy,
   limit,
+  startAfter,
   increment,
   serverTimestamp,
   getCountFromServer,
@@ -659,6 +660,30 @@ export const Products = {
   async countActive() {
     const snap = await getCountFromServer(query(productsCol, where("status", "==", "active")));
     return snap.data().count;
+  },
+
+  // Cursor-paginated sibling of listActiveProducts, for products.js's
+  // "Load more" -- kept separate rather than changing that function's
+  // return shape (a plain array), which js/pages/home.js also depends on.
+  // Returns the raw last doc snapshot (not just its id) since
+  // Firestore's startAfter() needs the actual DocumentSnapshot to resume
+  // an orderBy("createdAt", ...) cursor correctly.
+  async listActiveProductsPage(filters = {}) {
+    const constraints = [where("status", "==", "active")];
+    if (filters.category) {
+      const members = CATEGORY_GROUP_MEMBERS[filters.category];
+      constraints.push(members ? where("category", "in", members) : where("category", "==", filters.category));
+    }
+    if (filters.governorate) constraints.push(where("governorate", "==", filters.governorate));
+    constraints.push(orderBy("createdAt", "desc"));
+    if (filters.startAfterDoc) constraints.push(startAfter(filters.startAfterDoc));
+    constraints.push(limit(filters.limitCount || 24));
+    const snap = await getDocs(query(productsCol, ...constraints));
+    return {
+      items: snap.docs.map((d) => ({ id: d.id, ...d.data() })),
+      lastDoc: snap.docs.length ? snap.docs[snap.docs.length - 1] : null,
+      hasMore: snap.docs.length === (filters.limitCount || 24),
+    };
   },
 };
 
