@@ -17,10 +17,11 @@
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 </head>
 <body>
-  <div id="splash-screen" class="splash-screen is-hidden">
+  <div id="splash-screen" class="splash-screen">
     <img src="images/logo-icon.png" class="splash-logo" alt="">
     <span class="splash-wordmark" data-i18n="brand.name">Waraqat Shajar</span>
   </div>
+  <script>if(sessionStorage.getItem("wsj-splash-shown")){document.getElementById("splash-screen").classList.add("is-hidden")}</script>
 
   <header class="site-header">
     <div class="container site-header-row">
