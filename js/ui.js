@@ -60,7 +60,7 @@ export function renderAvatar(name, photoURL, sizeClass = "") {
     // .avatar is 2rem, .avatar-lg 2.5rem (see styles.css) -- requesting ~2x
     // the CSS size keeps it crisp on retina screens without the full original.
     const width = sizeClass.includes("avatar-lg") ? 80 : 64;
-    return `<span class="avatar ${sizeClass}"><img src="${optimizedImageUrl(photoURL, width)}" alt="${escapeHtml(name || "")}"></span>`;
+    return `<span class="avatar ${sizeClass}"><img src="${optimizedImageUrl(photoURL, width)}" alt="${escapeHtml(name || "")}" loading="lazy"></span>`;
   }
   return `<span class="avatar ${sizeClass}">${escapeHtml(initials(name))}</span>`;
 }
@@ -696,7 +696,7 @@ export async function renderAdSlot(containerEl, placement, AdsApi, width = 500, 
   containerEl.style.maxWidth = width + "px";
   containerEl.style.minHeight = height + "px";
   if (ad) {
-    containerEl.innerHTML = `<a class="ad-slot" href="${safeUrl(ad.linkUrl) || "#"}" target="_blank" rel="noopener noreferrer sponsored"><img src="${optimizedImageUrl(ad.imageUrl, width * 2)}" alt="" style="width:100%;height:100%;object-fit:cover"></a>`;
+    containerEl.innerHTML = `<a class="ad-slot" href="${safeUrl(ad.linkUrl) || "#"}" target="_blank" rel="noopener noreferrer sponsored"><img src="${optimizedImageUrl(ad.imageUrl, width * 2)}" alt="" style="width:100%;height:100%;object-fit:cover" loading="lazy"></a>`;
   } else {
     containerEl.innerHTML = `<div class="ad-slot ad-slot-placeholder" style="min-height:${height}px" data-ad-slot>${t("ad.label", "Advertisement")} · ${width}&times;${height}</div>`;
   }

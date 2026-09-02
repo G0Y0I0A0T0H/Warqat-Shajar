@@ -2999,6 +2999,14 @@ main {
 .escrow-stepper-steps {
   display: flex;
   align-items: flex-start;
+  /* 5 fixed-width steps + their connector lines need ~330px minimum --
+     narrower than that (most phones in portrait) they used to spill
+     straight out past the card's own edge instead of stopping at it. Scoped
+     to just this row (not the whole card) so it scrolls in place instead. */
+  overflow-x: auto;
+  padding-bottom: 0.25rem;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
 }
 
 .escrow-step {
@@ -3059,6 +3067,26 @@ main {
 
 .escrow-step-line.is-done {
   background: #2e7d32;
+}
+
+@media (max-width: 420px) {
+  .escrow-stepper {
+    padding: 1.25rem 0.85rem;
+  }
+  .escrow-step {
+    width: 2.85rem;
+  }
+  .escrow-step-icon {
+    width: 1.9rem;
+    height: 1.9rem;
+  }
+  .escrow-step-icon svg {
+    width: 0.9rem;
+    height: 0.9rem;
+  }
+  .escrow-step-label {
+    font-size: 0.58rem;
+  }
 }
 
 .escrow-stepper-banner {

@@ -38,12 +38,17 @@ const FADE_MS = 400;
 export function initSplashScreen() {
   const splash = document.getElementById("splash-screen");
   if (!splash) return;
-  if (sessionStorage.getItem(SPLASH_KEY)) {
-    splash.classList.add("is-hidden");
-    return;
-  }
+  // The splash is visible-by-default in the static markup now (no "is-hidden"
+  // class), so it's already covering the screen from first paint -- masking
+  // the untranslated English placeholder text / empty sections underneath
+  // while initI18n()'s fetch and the Firestore listeners resolve, instead of
+  // only appearing (too late) once this module got around to running. A tiny
+  // inline <script> right after the splash markup in every page's HTML
+  // already re-added "is-hidden" synchronously, before that first paint, if
+  // this session has seen it before -- this only needs to handle the fresh
+  // case: mark it seen, then time the fade-out.
+  if (splash.classList.contains("is-hidden")) return;
   sessionStorage.setItem(SPLASH_KEY, "1");
-  splash.classList.remove("is-hidden");
   setTimeout(() => splash.classList.add("is-fading"), VISIBLE_MS);
   setTimeout(() => splash.classList.add("is-hidden"), VISIBLE_MS + FADE_MS);
 }
@@ -900,10 +905,14 @@ function renderViewAsBanner() {
 }
 
 export async function initLayout() {
+  // Start the splash's visible-timer at t=0 (it's already painted from the
+  // static HTML, before any JS ran) instead of only after the i18n fetch
+  // below resolves -- otherwise the fetch wait gets tacked on top of the
+  // full VISIBLE_MS instead of being absorbed by it.
+  initSplashScreen();
   await initI18n();
   renderIcons(document);
   initCustomSelects();
-  initSplashScreen();
   wireThemeToggle();
   wireLanguageSwitch();
   renderFooterYear();
