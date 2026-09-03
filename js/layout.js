@@ -376,7 +376,6 @@ function renderContactWidgetPanel() {
     data.phone && { icon: "phone", label: t("contactWidget.call"), href: `tel:${data.phone}` },
     data.email && { icon: "mail", label: t("contactWidget.email"), href: `mailto:${data.email}` },
     { icon: "book-open", label: t("contactWidget.policy"), href: data.policyLink || "terms.html" },
-    { icon: "users", label: t("contactWidget.team"), href: "team.html" },
   ].filter(Boolean);
 
   panel.innerHTML = `

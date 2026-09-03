@@ -130,7 +130,6 @@ const PAGE_CONTROL_PAGES = [
   { file: "cart.html", labelKey: "supreme.pageControl.page.cart" },
   { file: "favorites.html", labelKey: "supreme.pageControl.page.favorites" },
   { file: "farmers.html", labelKey: "supreme.pageControl.page.farmers" },
-  { file: "team.html", labelKey: "supreme.pageControl.page.team" },
   { file: "about.html", labelKey: "supreme.pageControl.page.about" },
   { file: "contact.html", labelKey: "supreme.pageControl.page.contact" },
   { file: "dashboard.html", labelKey: "supreme.pageControl.page.dashboard" },

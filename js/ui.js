@@ -115,7 +115,6 @@ const ICON_PATHS = {
   youtube: '<rect x="2" y="6" width="20" height="12" rx="3"/><path d="M10 9l5 3-5 3z" fill="currentColor" stroke="none"/>',
   linkedin: '<path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/>',
   leaf: '<path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/>',
-  github: '<path d="M9 19c-4.3 1.4-4.3-2.5-6-3m12 5v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6a4.6 4.6 0 0 0-1.3-3.2 4.2 4.2 0 0 0-.1-3.2s-1.1-.3-3.5 1.3a12.3 12.3 0 0 0-6.2 0C6.5 2.8 5.4 3.1 5.4 3.1a4.2 4.2 0 0 0-.1 3.2A4.6 4.6 0 0 0 4 9.5c0 4.6 2.7 5.7 5.5 6-.6.6-.6 1.2-.5 2V21"/>',
   globe: '<circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>',
   moon: '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
   eye: '<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>',
@@ -785,66 +784,12 @@ export function renderImageInput(mountEl, { value = "", uploadPathPrefix, accept
   };
 }
 
-// A free-text tag list -- type a value, press Enter or the add button, it
-// becomes a removable pill. Used for a team member's skills[]/projects[] in
-// admin-team.js; no fixed vocabulary exists for either (unlike
-// auth-shared.js's renderCategoryCheckboxGrid, which is for a closed set of
-// categories), so this is a real add-any-text-you-want editor instead.
-export function renderTagListInput(mountEl, { values = [], placeholder = "" } = {}) {
-  let tags = [...values];
-
-  function paint() {
-    mountEl.innerHTML = `
-      <div style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-bottom:0.5rem">
-        ${tags
-          .map(
-            (tag, i) => `
-          <span class="${badgeClass("outline")}" style="display:inline-flex;align-items:center;gap:0.3rem">
-            ${escapeHtml(tag)}
-            <button type="button" data-remove-tag="${i}" aria-label="${t("team.removeTagBtn", "Remove")}" style="display:inline-flex;line-height:0;cursor:pointer;background:none;border:none;color:inherit;padding:0">${icon("x")}</button>
-          </span>
-        `,
-          )
-          .join("")}
-      </div>
-      <div style="display:flex;gap:0.4rem">
-        <input class="input" type="text" placeholder="${escapeHtml(placeholder)}" data-tag-input style="flex:1">
-        <button type="button" class="${btnClass("outline", "sm")}" data-add-tag>${icon("plus")}</button>
-      </div>
-    `;
-    const input = mountEl.querySelector("[data-tag-input]");
-    const add = () => {
-      const v = input.value.trim();
-      if (!v) return;
-      tags.push(v);
-      input.value = "";
-      paint();
-      input.focus();
-    };
-    mountEl.querySelector("[data-add-tag]").addEventListener("click", add);
-    input.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        add();
-      }
-    });
-    mountEl.querySelectorAll("[data-remove-tag]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        tags.splice(Number(btn.dataset.removeTag), 1);
-        paint();
-      });
-    });
-  }
-  paint();
-
-  return { getValues: () => [...tags] };
-}
-
 // Same icon("verified") + tooltip pattern already used for a verified user
-// profile (js/pages/profile.js) -- shared here so team members use the
-// exact same visual language instead of a second bespoke badge.
+// profile (js/pages/profile.js) -- shared here so every other verified badge
+// (seller profile, admin user list, Supreme Mode) uses the exact same visual
+// language instead of a second bespoke one.
 export function verifiedBadgeHTML() {
-  return `<span title="${t("team.verifiedTooltip", "Verified by the platform's admin")}" style="color:var(--primary);display:inline-flex">${icon("verified")}</span>`;
+  return `<span title="${t("profile.verifiedTooltip", "Verified by the platform's admin")}" style="color:var(--primary);display:inline-flex">${icon("verified")}</span>`;
 }
 
 // ---------------------------------------------------------------------------
