@@ -667,7 +667,7 @@ service cloud.firestore {
         // farmer actually gets paid (Escrow.release() -> Wallets.credit),
         // and the delivery fee isn't the farmer's money.
         request.resource.data.get('deliveryFee', 0) ==
-          (request.resource.data.get('deliveryMethod', 'pickup') == 'delivery' ? 100 : 0) &&
+          (request.resource.data.get('deliveryMethod', 'pickup') == 'delivery' ? 50 : 0) &&
         request.resource.data.get('deliveryMethod', 'pickup') in ['pickup', 'delivery'] &&
         // Same shape check as sellerProfiles.pickupPoint / users.deliveryAddress --
         // an unvalidated non-number lat/lng here crashes every order-list render
