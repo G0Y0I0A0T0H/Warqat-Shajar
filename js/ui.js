@@ -393,7 +393,7 @@ function closeSelectPopup() {
   selectEl.removeAttribute("aria-expanded");
   selectEl.removeAttribute("aria-activedescendant");
   document.removeEventListener("mousedown", onSelectPopupOutsideMouseDown, true);
-  window.removeEventListener("scroll", closeSelectPopup, true);
+  window.removeEventListener("scroll", onWindowScrollWhilePopupOpen, true);
   window.removeEventListener("resize", closeSelectPopup);
   openSelectPopup = null;
 }
@@ -402,6 +402,21 @@ function onSelectPopupOutsideMouseDown(e) {
   if (!openSelectPopup) return;
   const { popupEl, selectEl } = openSelectPopup;
   if (!popupEl.contains(e.target) && e.target !== selectEl) closeSelectPopup();
+}
+
+// "scroll" doesn't bubble, but a capture-phase listener on window still
+// fires for it regardless -- capture runs top-down before the event ever
+// reaches its real target, including a scrollable descendant like the
+// popup's own option list. Long lists (e.g. the 28 governorates) rely on
+// that list's own overflow-y:auto to show the rest, so without this guard
+// every attempt to scroll *inside* the popup was misread as "the page
+// scrolled, close the popup" and slammed it shut before the second row
+// ever came into view -- reads exactly like the list "freezing" instead of
+// scrolling. Only close for a scroll that's actually outside the popup.
+function onWindowScrollWhilePopupOpen(e) {
+  if (!openSelectPopup) return;
+  if (openSelectPopup.popupEl.contains(e.target)) return;
+  closeSelectPopup();
 }
 
 function openSelectPopupFor(selectEl) {
@@ -511,7 +526,7 @@ function openSelectPopupFor(selectEl) {
     },
   };
   document.addEventListener("mousedown", onSelectPopupOutsideMouseDown, true);
-  window.addEventListener("scroll", closeSelectPopup, true);
+  window.addEventListener("scroll", onWindowScrollWhilePopupOpen, true);
   window.addEventListener("resize", closeSelectPopup);
 }
 
