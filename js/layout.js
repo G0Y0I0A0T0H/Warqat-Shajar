@@ -302,17 +302,6 @@ async function applyLogo() {
   }
 }
 
-// The leaf-cursor effect is owner-only now -- every other account (regular
-// visitors AND any admin who isn't the platform owner) follows this
-// sitewide on/off setting; only OWNER_EMAIL's own browsing always keeps it
-// regardless. The two independent Firestore subscriptions involved (site
-// theme, admin status) can resolve in either order, so this is recomputed
-// from both a theme update and any authState change.
-let cursorEffectDisabledSetting = false;
-function applyCursorDisabledClass() {
-  document.documentElement.classList.toggle("leaf-cursor-disabled", cursorEffectDisabledSetting && !authState.isOwner);
-}
-
 function applyBrandColor() {
   SiteSettings.subscribeSiteTheme((theme) => {
     if (theme.primaryColor) {
@@ -320,16 +309,8 @@ function applyBrandColor() {
       document.documentElement.style.setProperty("--brand", theme.primaryColor);
       document.documentElement.style.setProperty("--ring", theme.primaryColor);
     }
-    if (theme.cursorSize) {
-      document.documentElement.style.setProperty("--leaf-cursor-size", theme.cursorSize + "px");
-      document.documentElement.style.setProperty("--leaf-trail-size", theme.cursorSize * 0.55 + "px");
-      document.documentElement.style.setProperty("--leaf-particle-size", theme.cursorSize * 0.125 + "px");
-    }
-    cursorEffectDisabledSetting = Boolean(theme.cursorEffectDisabled);
-    applyCursorDisabledClass();
     applySiteDefaultDarkMode(theme.defaultDarkMode);
   });
-  subscribe(applyCursorDisabledClass);
 }
 
 function renderFooterSocial() {
@@ -467,9 +448,8 @@ function renderKillSwitchOverlay() {
   killSwitchOverlay.innerHTML = `
     <style>
       #kill-switch-overlay {
-        /* One less than the cursor layer's z-index (2147483647 in cursor.css)
-           so the leaf cursor always stays visible on top of this lock
-           screen too, instead of being painted under it. */
+        /* Effectively the max practical z-index, so this lock screen always
+           paints above literally everything else on the page. */
         position: fixed; inset: 0; z-index: 2147483646;
         display: flex; align-items: center; justify-content: center;
         background:
