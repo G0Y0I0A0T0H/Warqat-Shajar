@@ -302,7 +302,7 @@ function render() {
     const uid = mount.id.replace("pickup-map-mount-", "");
     const record = pickupCache.get(uid);
     const point = record?.pickupPoint;
-    const picker = renderLocationPicker(mount, { lat: point?.lat, lng: point?.lng });
+    const picker = renderLocationPicker(mount, { lat: point?.lat, lng: point?.lng, address: point?.address });
     mount.dataset.pickerRef = "";
     mount._locationPicker = picker;
   });

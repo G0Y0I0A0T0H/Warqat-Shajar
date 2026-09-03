@@ -218,7 +218,13 @@
     "deliveryAddressLabel": "عنوان التوصيل",
     "deliveryAddressHint": "بيتحفظ مرة واحدة، وبيبقى العنوان الافتراضي وقت الطلب -- تقدر تعدّله في كل طلب برضو.",
     "setAddressLink": "حدد عنوان التوصيل بتاعك",
-    "viewOnMap": "افتح الموقع على الخريطة"
+    "viewOnMap": "افتح الموقع على الخريطة",
+    "searchPlaceholder": "دور عن عنوان أو مكان...",
+    "searching": "عم يدوّر...",
+    "searchNoResults": "ما لقينا نتايج مطابقة",
+    "searchError": "تعذّر البحث، حاول كمان مرة",
+    "resolvingAddress": "عم يحدد العنوان...",
+    "dragHint": "اسحب الدبوس لتظبيط الموقع بالضبط"
   },
   "deliveryMethod": {
     "title": "طريقة الاستلام",

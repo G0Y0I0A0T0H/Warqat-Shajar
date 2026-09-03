@@ -240,19 +240,20 @@ export function optimizedVideoUrl(value) {
 export function deliveryMethodLineHTML(order) {
   if (!order.deliveryMethod) return "";
   if (order.deliveryMethod !== "delivery") return `<div>${t("deliveryMethod.pickupLabel", "Pickup")}</div>`;
-  const { lat, lng } = order.deliveryLocation || {};
+  const { lat, lng, address } = order.deliveryLocation || {};
   // Defensive: firestore.rules validates lat/lng are numbers on new writes,
   // but this guards against any order written before that check existed.
   if (typeof lat !== "number" || typeof lng !== "number") {
     return `<div>${t("deliveryMethod.deliveryLabel", "Delivery to")}: ${t("map.noLocationSet", "No location set yet -- click the map to drop a pin")}</div>`;
   }
   const mapUrl = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=16/${lat}/${lng}`;
-  // Raw coordinates used to be the link's own visible text -- meaningless
-  // to read at a glance for a farmer deciding where to deliver. A plain
-  // labeled "view on map" link (with the coordinates only as a title
-  // tooltip, for anyone who does want the exact numbers) is what's
-  // actually useful here.
-  return `<div>${t("deliveryMethod.deliveryLabel", "Delivery to")}: <a href="${mapUrl}" target="_blank" rel="noopener noreferrer" title="${lat.toFixed(4)}, ${lng.toFixed(4)}" style="display:inline-flex;align-items:center;gap:0.3rem">${icon("map-pin")} ${t("map.viewOnMap", "View location on map")}</a></div>`;
+  // The picker (js/ui.js's renderLocationPicker) reverse-geocodes every pick
+  // to a real address now, so that's the link's visible text when a saved
+  // location actually has one -- meaningless to read raw coordinates at a
+  // glance for a farmer deciding where to deliver. An order written before
+  // that existed just falls back to the old generic "view on map" wording;
+  // the exact coordinates stay available either way as a tooltip.
+  return `<div>${t("deliveryMethod.deliveryLabel", "Delivery to")}: <a href="${mapUrl}" target="_blank" rel="noopener noreferrer" title="${lat.toFixed(4)}, ${lng.toFixed(4)}" style="display:inline-flex;align-items:center;gap:0.3rem">${icon("map-pin")} ${address ? escapeHtml(address) : t("map.viewOnMap", "View location on map")}</a></div>`;
 }
 
 export function interpolate(str, params) {
@@ -856,8 +857,15 @@ export function wireZoomableImages(root) {
 
 // ---------------------------------------------------------------------------
 // Location picker (pickup points, delivery addresses) — Leaflet + OpenStreetMap,
-// not Google Maps: no API key, no billing account, same "drop a pin, get
-// {lat,lng}" result. Leaflet itself is only fetched once, on first actual use.
+// not Google Maps: no API key, no billing account. Two ways in, kept in sync
+// with each other: search-as-you-type (Nominatim /search, the same free OSM
+// geocoder behind the map tiles already used here) with a keyboard-navigable
+// suggestions dropdown, or drop/drag a real pin on the map -- either one
+// reverse-geocodes (Nominatim /reverse) to a human-readable address so
+// getValue() returns {lat, lng, address}, not just raw numbers. Both
+// Nominatim calls are best-effort: a network hiccup falls back to raw
+// coordinates rather than blocking the picker, same spirit as this file's
+// other fire-and-forget calls.
 // ---------------------------------------------------------------------------
 let leafletLoadPromise = null;
 function ensureLeafletLoaded() {
@@ -881,51 +889,104 @@ function ensureLeafletLoaded() {
 const MAP_DEFAULT_LAT = 30.0444;
 const MAP_DEFAULT_LNG = 31.2357;
 
-export function renderLocationPicker(mountEl, { lat, lng, onChange } = {}) {
+const NOMINATIM_BASE = "https://nominatim.openstreetmap.org";
+
+async function nominatimSearch(queryText) {
+  const url = `${NOMINATIM_BASE}/search?format=json&limit=6&accept-language=${getLocale()}&q=${encodeURIComponent(queryText)}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`nominatim search: ${res.status}`);
+  return res.json();
+}
+
+async function nominatimReverse(lat, lng) {
+  const url = `${NOMINATIM_BASE}/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=${getLocale()}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`nominatim reverse: ${res.status}`);
+  const data = await res.json();
+  return data.display_name || null;
+}
+
+export function renderLocationPicker(mountEl, { lat, lng, address, onChange } = {}) {
   const mapId = `map-picker-${Math.random().toString(36).slice(2)}`;
   mountEl.innerHTML = `
     <div class="location-picker">
+      <div class="location-picker-search">
+        <span class="location-picker-search-icon">${icon("search")}</span>
+        <input type="text" class="input location-picker-search-input" placeholder="${escapeHtml(t("map.searchPlaceholder", "Search for an address or place..."))}" autocomplete="off">
+        <div class="location-picker-suggestions" role="listbox" hidden></div>
+      </div>
       <div id="${mapId}" class="location-picker-map"></div>
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;margin-top:0.5rem;flex-wrap:wrap">
-        <span class="text-muted location-picker-coords" style="font-size:0.8rem"></span>
+      <div class="location-picker-footer">
+        <span class="location-picker-address">
+          <span class="location-picker-address-icon">${icon("map-pin")}</span>
+          <span class="location-picker-address-text"></span>
+        </span>
         <button type="button" class="btn btn-outline btn-sm location-picker-locate">${icon("map-pin")} ${t("map.useMyLocation", "Use my location")}</button>
       </div>
     </div>
   `;
-  const coordsEl = mountEl.querySelector(".location-picker-coords");
+  const searchInput = mountEl.querySelector(".location-picker-search-input");
+  const suggestionsEl = mountEl.querySelector(".location-picker-suggestions");
+  const addressTextEl = mountEl.querySelector(".location-picker-address-text");
   let map = null;
   let marker = null;
   // Defensive: only accept real numeric coordinates -- a malformed saved
   // value (see firestore.rules' lat/lng validation, added after some
   // orders/addresses may already have been written) would otherwise crash
-  // updateCoordsLabel()'s .toFixed() call below.
-  let current = typeof lat === "number" && typeof lng === "number" ? { lat, lng } : null;
+  // the .toFixed() fallback in updateAddressLabel below.
+  let current = typeof lat === "number" && typeof lng === "number" ? { lat, lng, address: address || null } : null;
 
-  function updateCoordsLabel() {
-    coordsEl.textContent = current
-      ? `${current.lat.toFixed(5)}, ${current.lng.toFixed(5)}`
+  function updateAddressLabel() {
+    addressTextEl.classList.remove("is-loading");
+    addressTextEl.textContent = current
+      ? current.address || `${current.lat.toFixed(5)}, ${current.lng.toFixed(5)}`
       : t("map.noLocationSet", "No location set yet -- click the map to drop a pin");
   }
-  updateCoordsLabel();
+  updateAddressLabel();
 
-  function setPoint(newLat, newLng) {
-    current = { lat: newLat, lng: newLng };
-    updateCoordsLabel();
+  // Guards against a slower, now-stale request resolving after a newer pick
+  // already moved the pin -- only the latest request's result is ever applied.
+  let reverseToken = 0;
+  async function reverseGeocode(pickedLat, pickedLng) {
+    const myToken = ++reverseToken;
+    addressTextEl.classList.add("is-loading");
+    addressTextEl.textContent = t("map.resolvingAddress", "Resolving address...");
+    try {
+      const resolved = await nominatimReverse(pickedLat, pickedLng);
+      if (myToken !== reverseToken || !current || current.lat !== pickedLat || current.lng !== pickedLng) return;
+      current.address = resolved;
+      onChange?.(current);
+    } catch {
+      // Best-effort -- updateAddressLabel below falls back to raw coordinates.
+    }
+    if (myToken === reverseToken) updateAddressLabel();
+  }
+
+  function setPoint(newLat, newLng, knownAddress) {
+    current = { lat: newLat, lng: newLng, address: knownAddress ?? null };
+    updateAddressLabel();
     if (marker) marker.setLatLng([newLat, newLng]);
-    else marker = window.L.marker([newLat, newLng]).addTo(map);
+    else if (map) marker = window.L.marker([newLat, newLng], { draggable: true }).addTo(map).on("dragend", () => onMarkerDragEnd());
     onChange?.(current);
+    if (!knownAddress) reverseGeocode(newLat, newLng);
+  }
+
+  function onMarkerDragEnd() {
+    const { lat: draggedLat, lng: draggedLng } = marker.getLatLng();
+    setPoint(draggedLat, draggedLng);
+    map?.panTo([draggedLat, draggedLng]);
   }
 
   ensureLeafletLoaded().then(() => {
     const L = window.L;
     const startLat = current?.lat ?? MAP_DEFAULT_LAT;
     const startLng = current?.lng ?? MAP_DEFAULT_LNG;
-    map = L.map(mapId).setView([startLat, startLng], current ? 13 : 6);
+    map = L.map(mapId).setView([startLat, startLng], current ? 15 : 6);
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution: "&copy; OpenStreetMap contributors",
       maxZoom: 19,
     }).addTo(map);
-    if (current) marker = L.marker([current.lat, current.lng]).addTo(map);
+    if (current) marker = L.marker([current.lat, current.lng], { draggable: true }).addTo(map).on("dragend", () => onMarkerDragEnd());
     map.on("click", (e) => setPoint(e.latlng.lat, e.latlng.lng));
   });
 
@@ -935,6 +996,130 @@ export function renderLocationPicker(mountEl, { lat, lng, onChange } = {}) {
       setPoint(pos.coords.latitude, pos.coords.longitude);
       map?.setView([pos.coords.latitude, pos.coords.longitude], 15);
     });
+  });
+
+  // ---- Search-as-you-type -------------------------------------------------
+  let searchResults = [];
+  let activeSuggestionIndex = -1;
+  let searchDebounceTimer = null;
+  let searchToken = 0;
+
+  function closeSuggestions() {
+    suggestionsEl.hidden = true;
+    suggestionsEl.innerHTML = "";
+    activeSuggestionIndex = -1;
+  }
+
+  function renderSuggestions() {
+    if (searchResults.length === 0) {
+      suggestionsEl.innerHTML = "";
+      suggestionsEl.hidden = true;
+      return;
+    }
+    suggestionsEl.hidden = false;
+    suggestionsEl.innerHTML = searchResults
+      .map(
+        (r, i) => `
+        <div class="location-picker-suggestion" role="option" data-index="${i}">
+          ${icon("map-pin")}
+          <span>${escapeHtml(r.display_name)}</span>
+        </div>
+      `,
+      )
+      .join("");
+    suggestionsEl.querySelectorAll("[data-index]").forEach((el) => {
+      // Prevents the input from blurring (and this dropdown closing via
+      // that blur) before the click below ever gets to fire.
+      el.addEventListener("mousedown", (e) => e.preventDefault());
+      el.addEventListener("click", () => chooseSuggestion(Number(el.dataset.index)));
+      // Just the highlight class, not a full renderSuggestions() -- that
+      // would innerHTML-replace the very element this mouseenter just fired
+      // on, detaching it from the DOM mid-hover and silently swallowing the
+      // click that was about to land on it.
+      el.addEventListener("mouseenter", () => {
+        activeSuggestionIndex = Number(el.dataset.index);
+        updateActiveSuggestionHighlight();
+      });
+    });
+    updateActiveSuggestionHighlight();
+  }
+
+  function updateActiveSuggestionHighlight() {
+    suggestionsEl.querySelectorAll("[data-index]").forEach((el) => {
+      const isActive = Number(el.dataset.index) === activeSuggestionIndex;
+      el.classList.toggle("is-active", isActive);
+      if (isActive) el.scrollIntoView({ block: "nearest" });
+    });
+  }
+
+  function chooseSuggestion(index) {
+    const result = searchResults[index];
+    if (!result) return;
+    searchInput.value = result.display_name;
+    searchResults = [];
+    closeSuggestions();
+    const pickedLat = Number(result.lat);
+    const pickedLng = Number(result.lon);
+    setPoint(pickedLat, pickedLng, result.display_name);
+    map?.setView([pickedLat, pickedLng], 16);
+  }
+
+  async function runSearch(queryText) {
+    const myToken = ++searchToken;
+    try {
+      const results = await nominatimSearch(queryText);
+      if (myToken !== searchToken) return; // superseded by a newer keystroke
+      searchResults = results;
+      activeSuggestionIndex = -1;
+      if (results.length === 0) {
+        suggestionsEl.hidden = false;
+        suggestionsEl.innerHTML = `<div class="location-picker-suggestion is-empty">${escapeHtml(t("map.searchNoResults", "No matching results"))}</div>`;
+      } else {
+        renderSuggestions();
+      }
+    } catch {
+      if (myToken !== searchToken) return;
+      suggestionsEl.hidden = false;
+      suggestionsEl.innerHTML = `<div class="location-picker-suggestion is-empty">${escapeHtml(t("map.searchError", "Couldn't search, try again"))}</div>`;
+    }
+  }
+
+  searchInput.addEventListener("input", () => {
+    clearTimeout(searchDebounceTimer);
+    const queryText = searchInput.value.trim();
+    if (queryText.length < 3) {
+      searchToken++; // invalidate any in-flight request
+      closeSuggestions();
+      return;
+    }
+    suggestionsEl.hidden = false;
+    suggestionsEl.innerHTML = `<div class="location-picker-suggestion is-empty">${escapeHtml(t("map.searching", "Searching..."))}</div>`;
+    searchDebounceTimer = setTimeout(() => runSearch(queryText), 400);
+  });
+
+  searchInput.addEventListener("keydown", (e) => {
+    if (suggestionsEl.hidden || searchResults.length === 0) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      activeSuggestionIndex = Math.min(searchResults.length - 1, activeSuggestionIndex + 1);
+      updateActiveSuggestionHighlight();
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      activeSuggestionIndex = Math.max(0, activeSuggestionIndex - 1);
+      updateActiveSuggestionHighlight();
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (activeSuggestionIndex >= 0) chooseSuggestion(activeSuggestionIndex);
+    } else if (e.key === "Escape") {
+      closeSuggestions();
+    }
+  });
+
+  searchInput.addEventListener("blur", () => {
+    // A tick after blur, not immediately -- a suggestion's own mousedown
+    // handler above already preventDefault()s to stop this blur firing
+    // before its click lands, but this timeout is a second safety net.
+    setTimeout(closeSuggestions, 150);
   });
 
   return { getValue: () => current };

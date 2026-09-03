@@ -218,7 +218,13 @@
     "deliveryAddressLabel": "Delivery address",
     "deliveryAddressHint": "Saved once, used as your default address at order time -- still editable per order.",
     "setAddressLink": "Set your delivery address",
-    "viewOnMap": "View location on map"
+    "viewOnMap": "View location on map",
+    "searchPlaceholder": "Search for an address or place...",
+    "searching": "Searching...",
+    "searchNoResults": "No matching results",
+    "searchError": "Couldn't search, try again",
+    "resolvingAddress": "Resolving address...",
+    "dragHint": "Drag the pin to fine-tune the exact spot"
   },
   "deliveryMethod": {
     "title": "Delivery method",

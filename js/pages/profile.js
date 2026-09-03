@@ -158,6 +158,7 @@ async function render() {
     pickupPicker = renderLocationPicker(viewEl.querySelector("#pickup-point-mount"), {
       lat: sellerPickupPoint?.lat,
       lng: sellerPickupPoint?.lng,
+      address: sellerPickupPoint?.address,
     });
     viewEl.querySelector("#pickup-point-save").addEventListener("click", async (e) => {
       const value = pickupPicker?.getValue();
@@ -175,6 +176,7 @@ async function render() {
   deliveryAddressPicker = renderLocationPicker(viewEl.querySelector("#delivery-address-mount"), {
     lat: profile.deliveryAddress?.lat,
     lng: profile.deliveryAddress?.lng,
+    address: profile.deliveryAddress?.address,
   });
   viewEl.querySelector("#delivery-address-save").addEventListener("click", async (e) => {
     const value = deliveryAddressPicker?.getValue();

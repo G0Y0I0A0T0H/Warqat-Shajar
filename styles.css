@@ -3627,11 +3627,152 @@ main {
   gap: 0.5rem;
 }
 
+.location-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.location-picker-search {
+  position: relative;
+}
+
+.location-picker-search-icon {
+  position: absolute;
+  inset-inline-start: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted-foreground);
+  display: flex;
+  pointer-events: none;
+}
+
+.location-picker-search-icon svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.location-picker-search-input {
+  padding-inline-start: 2.25rem;
+}
+
+.location-picker-suggestions {
+  position: absolute;
+  z-index: 500;
+  top: calc(100% + 0.35rem);
+  inset-inline: 0;
+  max-height: 16rem;
+  overflow-y: auto;
+  background: var(--popover);
+  color: var(--popover-foreground);
+  border-radius: var(--radius-lg);
+  padding: 0.25rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15), inset 0 0 0 1px color-mix(in srgb, var(--foreground) 10%, transparent);
+}
+
+.location-picker-suggestion {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem 0.65rem;
+  border-radius: var(--radius-md);
+  font-size: 0.85rem;
+  cursor: pointer;
+  line-height: 1.35;
+}
+
+.location-picker-suggestion svg {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  color: var(--muted-foreground);
+}
+
+.location-picker-suggestion:hover,
+.location-picker-suggestion.is-active {
+  background: var(--muted);
+}
+
+.location-picker-suggestion.is-empty {
+  color: var(--muted-foreground);
+  cursor: default;
+}
+
+.location-picker-suggestion.is-empty:hover {
+  background: none;
+}
+
 .location-picker-map {
   height: 260px;
   border-radius: var(--radius);
   overflow: hidden;
   border: 1px solid var(--border);
+}
+
+/* A picked pin drops in rather than just appearing -- purely cosmetic,
+   matches the small-polish bar the rest of this picker is held to now. */
+.leaflet-marker-icon {
+  animation: location-pin-drop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes location-pin-drop {
+  0% {
+    transform: translateY(-14px) scale(0.6);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+.location-picker-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.location-picker-address {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--foreground);
+  min-width: 0;
+}
+
+.location-picker-address-icon {
+  display: flex;
+  color: var(--primary);
+  flex-shrink: 0;
+}
+
+.location-picker-address-icon svg {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.location-picker-address-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.location-picker-address-text.is-loading {
+  color: var(--muted-foreground);
+  animation: location-address-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes location-address-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 .image-input-url {
