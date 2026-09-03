@@ -148,16 +148,6 @@ function render() {
       }),
     );
   }
-  items.push(
-    linkItemHTML({
-      href: "team.html",
-      iconKey: "users",
-      title: escapeHtml(t("contactWidget.team")),
-      subtitle: escapeHtml(t("socialCard.subtitleTeam")),
-      delay: (delay += 60),
-    }),
-  );
-
   const trustItems = [
     trustItemHTML("shield-check", escapeHtml(t("socialCard.trustSecureTitle")), escapeHtml(t("socialCard.trustSecureSubtitle"))),
     trustItemHTML("leaf", escapeHtml(t("socialCard.trustLocalTitle")), escapeHtml(t("socialCard.trustLocalSubtitle"))),

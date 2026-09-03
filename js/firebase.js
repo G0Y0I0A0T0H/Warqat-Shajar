@@ -763,53 +763,6 @@ export const Ads = {
 };
 
 // ===========================================================================
-// Team page (team.html / admin-team.html) -- admin-managed member bios and
-// "our journey" timeline milestones. Same shape as Ads above (public read,
-// admin-with-section write, listAll used for both the admin CRUD list and
-// the public page's own fetch since this collection stays small).
-// ===========================================================================
-const teamMembersCol = collection(db, "teamMembers");
-const teamMilestonesCol = collection(db, "teamMilestones");
-
-export const TeamMembers = {
-  async create(input) {
-    await addDoc(teamMembersCol, { ...input, createdAt: serverTimestamp() });
-  },
-
-  async update(id, patch) {
-    await updateDoc(doc(db, "teamMembers", id), patch);
-  },
-
-  async remove(id) {
-    await deleteDoc(doc(db, "teamMembers", id));
-  },
-
-  async listAll() {
-    const snap = await getDocs(query(teamMembersCol, orderBy("order", "asc")));
-    return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-  },
-};
-
-export const TeamMilestones = {
-  async create(input) {
-    await addDoc(teamMilestonesCol, { ...input, createdAt: serverTimestamp() });
-  },
-
-  async update(id, patch) {
-    await updateDoc(doc(db, "teamMilestones", id), patch);
-  },
-
-  async remove(id) {
-    await deleteDoc(doc(db, "teamMilestones", id));
-  },
-
-  async listAll() {
-    const snap = await getDocs(query(teamMilestonesCol, orderBy("order", "asc")));
-    return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-  },
-};
-
-// ===========================================================================
 // Chat
 // ===========================================================================
 const chatsCol = collection(db, "chats");
@@ -1825,8 +1778,8 @@ export const Admin = {
   // isOwner() branch on users/{uid} update, which is the only one unrestricted
   // enough to write an arbitrary new field like this one) -- not exposed to a
   // payments/listings-granted admin the way suspend/ban are. Reuses the same
-  // verified badge already shown on team members (js/ui.js's
-  // verifiedBadgeHTML()) rather than a bespoke one.
+  // verified badge already shown elsewhere (js/ui.js's verifiedBadgeHTML())
+  // rather than a bespoke one.
   async setUserVerified(uid, verified) {
     await updateDoc(doc(db, "users", uid), { verified });
     // Best-effort mirror onto the public sellerProfiles doc too (only
