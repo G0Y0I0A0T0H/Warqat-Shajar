@@ -75,20 +75,6 @@ function render() {
       </div>
     </div>
     <div>
-      <h3 class="card-title" style="font-size:0.95rem">${t("branding.cursorSizeTitle", "Cursor Size")}</h3>
-      <div style="display:flex;align-items:center;gap:1rem;margin-top:0.5rem">
-        <input type="range" id="cursor-size-input" min="24" max="72" step="2" value="${siteTheme.cursorSize || 40}" style="flex:1;max-width:16rem">
-        <span id="cursor-size-value" class="text-muted" style="min-width:3rem">${siteTheme.cursorSize || 40}px</span>
-        <button type="button" class="${btnClass("default", "sm")}" id="save-cursor-size-btn">${t("branding.saveChanges", "Save")}</button>
-        <span id="cursor-size-saved" class="success-text" style="display:none">${t("branding.saved")}</span>
-      </div>
-      <label class="checkbox-row" style="margin-top:0.75rem">
-        <input type="checkbox" id="cursor-effect-disabled-input" ${siteTheme.cursorEffectDisabled ? "checked" : ""}>
-        <span>${t("branding.cursorEffectDisableLabel", "Disable the cursor effect for regular visitors")}</span>
-      </label>
-      <p class="text-muted" style="font-size:0.8rem;margin-top:0.15rem">${t("branding.cursorEffectDisableHint", "Admins always keep the effect in their own browsing, regardless of this setting.")}</p>
-    </div>
-    <div>
       <h3 class="card-title" style="font-size:0.95rem">${t("branding.defaultThemeTitle", "Default lighting mode")}</h3>
       <p class="text-muted" style="font-size:0.8rem;margin-top:0.15rem">${t("branding.defaultThemeHint", "Applies to first-time visitors only -- anyone who has already used the sun/moon toggle keeps their own choice.")}</p>
       <div style="display:flex;align-items:center;gap:0.5rem;margin-top:0.5rem">
@@ -319,22 +305,6 @@ function render() {
     const saved = contentEl.querySelector("#color-saved");
     saved.style.display = "inline";
     setTimeout(() => (saved.style.display = "none"), 2500);
-  });
-
-  // Cursor size
-  const cursorSizeInput = contentEl.querySelector("#cursor-size-input");
-  const cursorSizeValue = contentEl.querySelector("#cursor-size-value");
-  cursorSizeInput.addEventListener("input", () => {
-    cursorSizeValue.textContent = cursorSizeInput.value + "px";
-  });
-  contentEl.querySelector("#save-cursor-size-btn").addEventListener("click", async () => {
-    await SiteSettings.updateCursorSize(Number(cursorSizeInput.value));
-    const saved = contentEl.querySelector("#cursor-size-saved");
-    saved.style.display = "inline";
-    setTimeout(() => (saved.style.display = "none"), 2500);
-  });
-  contentEl.querySelector("#cursor-effect-disabled-input").addEventListener("change", (e) => {
-    SiteSettings.updateCursorEffectDisabled(e.target.checked);
   });
 
   // Default lighting mode
