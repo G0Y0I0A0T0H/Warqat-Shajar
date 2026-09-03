@@ -3071,21 +3071,32 @@ main {
 
 @media (max-width: 420px) {
   .escrow-stepper {
-    padding: 1.25rem 0.85rem;
+    padding: 1rem 0.65rem;
+  }
+  /* Title + price pill on one row used to force the title to wrap
+     mid-phrase once the pill ate into its space -- stacking them removes
+     that squeeze entirely. */
+  .escrow-stepper-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
   }
   .escrow-step {
-    width: 2.85rem;
+    width: 2.6rem;
   }
   .escrow-step-icon {
-    width: 1.9rem;
-    height: 1.9rem;
+    width: 1.75rem;
+    height: 1.75rem;
   }
   .escrow-step-icon svg {
-    width: 0.9rem;
-    height: 0.9rem;
+    width: 0.85rem;
+    height: 0.85rem;
   }
   .escrow-step-label {
-    font-size: 0.58rem;
+    font-size: 0.56rem;
+  }
+  .escrow-step-line {
+    min-width: 0.3rem;
   }
 }
 
