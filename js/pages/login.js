@@ -2,9 +2,13 @@ import { initLayout } from "../layout.js";
 import { t } from "../i18n.js";
 import { Auth, Profile } from "../firebase.js";
 import { showMessage } from "../ui.js";
+import { subscribe } from "../state.js";
+import { redirectIfAlreadySignedIn } from "./auth-shared.js";
 
 async function main() {
   await initLayout();
+  redirectIfAlreadySignedIn();
+  subscribe(redirectIfAlreadySignedIn);
 
   const form = document.getElementById("login-form");
   const emailInput = document.getElementById("email");

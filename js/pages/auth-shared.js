@@ -2,6 +2,24 @@
 // governorate select, category checkbox grid. Ported from src/components/auth.tsx.
 import { ACCOUNT_TYPES, GOVERNORATES, mergeCategories, categoryLabel, onCategoriesChange } from "../constants.js";
 import { t, getLocale, onLocaleChange } from "../i18n.js";
+import { authState, subscribe } from "../state.js";
+
+// Bounces an already-signed-in visitor off login.html/register.html instead
+// of showing them the form again -- lands on the exact same destination
+// every sign-in/sign-up path on those two pages already uses once it knows
+// whether a profile doc exists (existingProfile ? index.html :
+// complete-profile.html), so a signed-in-but-incomplete visitor still ends
+// up finishing registration rather than being bounced to a blank home page.
+// Auth resolves asynchronously, sometime after initLayout() returns, so
+// callers use the same "call it eagerly, then again once auth actually
+// resolves" shape as layout.js's guardProfileCompletion: call this once
+// right after initLayout(), then again via subscribe(). location.replace
+// (not .href) so the login/register page it bounced from doesn't linger in
+// browser history.
+export function redirectIfAlreadySignedIn() {
+  if (authState.loading || !authState.user) return;
+  location.replace(authState.profile ? "index.html" : "complete-profile.html");
+}
 
 export function renderRoleSelector(container, value, onChange) {
   function render() {
