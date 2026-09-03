@@ -368,8 +368,8 @@ export const Profile = {
   // once and reused as the default at order/offer time instead of dropping
   // a fresh pin every order -- see the delivery-method flows in cart.js,
   // product.js, and dashboard-chat.js's renderOfferForm.
-  async updateDeliveryAddress(uid, { lat, lng }) {
-    await updateDoc(userDocRef(uid), { deliveryAddress: { lat, lng } });
+  async updateDeliveryAddress(uid, { lat, lng, address }) {
+    await updateDoc(userDocRef(uid), { deliveryAddress: { lat, lng, address: address ?? null } });
   },
 
   // Called every time a user's own client blocks a phone-number-sharing
@@ -471,8 +471,8 @@ export const SellerProfiles = {
   // exact same call satisfy either the farmer's own self-update rule or an
   // admin's deliberately narrower pickupPoint-only branch (see
   // firestore.rules), whichever one actually applies to the caller.
-  async updatePickupPoint(uid, { lat, lng }) {
-    await updateDoc(doc(sellerProfilesCol, uid), { pickupPoint: { lat, lng } });
+  async updatePickupPoint(uid, { lat, lng, address }) {
+    await updateDoc(doc(sellerProfilesCol, uid), { pickupPoint: { lat, lng, address: address ?? null } });
   },
 
   async getOnce(uid) {

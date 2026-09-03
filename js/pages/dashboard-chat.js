@@ -382,6 +382,7 @@ async function renderDeliveryDetail() {
     deliveryLocationPicker = renderLocationPicker(detailEl.querySelector("#of-delivery-map"), {
       lat: offerDeliveryLocation?.lat,
       lng: offerDeliveryLocation?.lng,
+      address: offerDeliveryLocation?.address,
       onChange: (v) => (offerDeliveryLocation = v),
     });
     return;
