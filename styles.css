@@ -327,6 +327,19 @@ main {
   padding: 0;
 }
 
+/* Hidden by default (no flash of a button that most visitors never get to
+   use) -- js/layout.js's wireThemeToggle only adds .is-visible once
+   authState.isAdmin is confirmed true. Regular visitors are locked to
+   light mode sitewide (see js/state.js's applyDarkMode); only an admin
+   account keeps any control over it at all. */
+#theme-toggle {
+  display: none;
+}
+
+#theme-toggle.is-visible {
+  display: inline-flex;
+}
+
 .btn-icon-sm {
   width: 1.75rem;
   height: 1.75rem;
