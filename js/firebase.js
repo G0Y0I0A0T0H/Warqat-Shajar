@@ -1028,7 +1028,7 @@ export const Escrow = {
       // the firestore.rules escrowOrders create-rule's own hardcoded check.
       deliveryMethod: deliveryMethod || null,
       deliveryLocation: deliveryLocation || null,
-      deliveryFee: deliveryMethod === "delivery" ? 100 : 0,
+      deliveryFee: deliveryMethod === "delivery" ? 50 : 0,
       status: "awaiting_payment",
       paymentClaimedAt: null,
       paymentConfirmedAt: null,
