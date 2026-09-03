@@ -9,6 +9,19 @@ import { initHelpTour } from "../help-tour.js";
 const categorySelect = document.getElementById("filter-category");
 const governorateSelect = document.getElementById("filter-governorate");
 const listEl = document.getElementById("products-list");
+const pageTitleEl = document.getElementById("page-title");
+
+// The page heading defaults to the generic "Featured Offers", but a visitor
+// who got here by clicking an actual category (the URL's ?category=, or the
+// filter dropdown itself) should see that category's own name instead --
+// "فاكهة" reads as a real category page, not a generic offers list. Re-run
+// on every loadProducts() call so it stays right across a category-filter
+// change, a locale switch, or the admin renaming a category live.
+function updatePageTitle() {
+  if (!pageTitleEl) return;
+  const categoryId = categorySelect.value;
+  pageTitleEl.textContent = categoryId ? categoryLabelById(categoryId, getLocale()) : t("featured.title", "Featured Offers");
+}
 
 // Light Arabic-aware normalization so "احمد"/"أحمد" or "قريه"/"قرية" still
 // match each other -- collapses alef variants, hamza seats, ta-marbuta, and
@@ -110,6 +123,7 @@ async function loadMore() {
 }
 
 async function loadProducts() {
+  updatePageTitle();
   listEl.innerHTML = "";
   currentGridEl = null;
   lastDoc = null;
