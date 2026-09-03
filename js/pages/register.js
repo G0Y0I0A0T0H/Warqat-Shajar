@@ -3,13 +3,26 @@ import { t } from "../i18n.js";
 import { Auth, Profile, IdentityVerification, Notifications } from "../firebase.js";
 import { showMessage, openDialog, closeDialog, interpolate } from "../ui.js";
 import { ACCOUNT_TYPES } from "../constants.js";
-import { renderRoleSelector, populateGovernorateSelect, renderCategoryCheckboxGrid, updateCategoriesVisibility, updateIdVerificationVisibility, wireIdCardPhotoPreview, isValidNationalId, isValidPhone } from "./auth-shared.js";
+import {
+  renderRoleSelector,
+  populateGovernorateSelect,
+  renderCategoryCheckboxGrid,
+  updateCategoriesVisibility,
+  updateIdVerificationVisibility,
+  wireIdCardPhotoPreview,
+  isValidNationalId,
+  isValidPhone,
+  redirectIfAlreadySignedIn,
+} from "./auth-shared.js";
 import { generateVerificationCode, sendVerificationCode, CODE_VALID_MINUTES } from "../email-verification.js";
+import { subscribe } from "../state.js";
 
 const RESEND_COOLDOWN_SECONDS = 60;
 
 async function main() {
   await initLayout();
+  redirectIfAlreadySignedIn();
+  subscribe(redirectIfAlreadySignedIn);
 
   const params = new URLSearchParams(location.search);
   const requestedType = params.get("type");
