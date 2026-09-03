@@ -651,6 +651,7 @@
     "ads": "Ads",
     "branding": "Visual Identity",
     "payments": "Payments",
+    "testMode": "Test Mode",
     "comments": "Comments",
     "viewProduct": "View Product",
     "totalComments": "Total Comments",
@@ -849,6 +850,14 @@
     "descProductDetail": "Product detail page, below the description.",
     "enablePlacement": "Enable",
     "disablePlacement": "Disable"
+  },
+  "testMode": {
+    "pageTitle": "Switch your account type",
+    "hint": "For testing only -- changes YOUR OWN account's type so you can exercise every role's flows. Category/crop data isn't adjusted automatically; edit that from your profile page if a specific test needs it.",
+    "currentTypeLabel": "Current type",
+    "confirmSwitch": "Switch your account to {type}? This changes what you can do on the site immediately.",
+    "switchSuccess": "Account type switched.",
+    "switchFailed": "Couldn't switch account type, try again."
   },
   "payments": {
     "title": "Payment Receiving System",

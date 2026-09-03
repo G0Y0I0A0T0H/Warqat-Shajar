@@ -20,6 +20,7 @@ export const NAV_ITEMS = [
   { href: "admin-ads.html", key: "ads", icon: "megaphone" },
   { href: "admin-branding.html", key: "branding", icon: "image" },
   { href: "admin-payments.html", key: "payments", icon: "credit-card" },
+  { href: "admin-test-mode.html", key: "testMode", icon: "repeat" },
 ];
 
 // Keys that require an EXPLICIT grant in an admin's allowedSections --
@@ -43,7 +44,11 @@ export const NAV_ITEMS = [
 // entry here -- they stay inside the hidden, owner-only Supreme Mode
 // overlay instead of a delegable admin nav section, since they're
 // visibility into every OTHER admin's (or every user's) actions.
-export const SENSITIVE_KEYS = ["payments", "systemControls", "admins", "identity"];
+// "testMode" (js/pages/admin-test-mode.js) lets a granted admin flip their
+// OWN accountType on the fly to exercise every role's flows for QA --
+// explicit-grant only for the same reason as the others: it's a real
+// identity/role change on a real account, not a cosmetic setting.
+export const SENSITIVE_KEYS = ["payments", "systemControls", "admins", "identity", "testMode"];
 
 // Owner always has every section. A sensitive key (see SENSITIVE_KEYS)
 // requires explicit inclusion in allowedSections, full stop. Every other

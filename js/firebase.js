@@ -392,6 +392,17 @@ export const Profile = {
   async clearExpiredSuspension(uid) {
     await updateDoc(userDocRef(uid), { status: "active", suspendedUntil: null });
   },
+
+  // Test Mode (js/pages/admin-test-mode.js) -- lets a 'testMode'-granted
+  // admin flip their OWN accountType to exercise every role's flows for QA.
+  // firestore.rules independently enforces "own uid, this one field only,
+  // one of the 4 real values" regardless of what's passed here. Deliberately
+  // does NOT touch crops/sourcingCategories or re-run the identity
+  // verification flow -- this is a role-label switch for exercising each
+  // role's UI/permissions, not a full profile rebuild.
+  async switchOwnAccountType(uid, accountType) {
+    await updateDoc(userDocRef(uid), { accountType });
+  },
 };
 
 // ===========================================================================

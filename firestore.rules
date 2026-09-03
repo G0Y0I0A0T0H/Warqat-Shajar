@@ -188,6 +188,17 @@ service cloud.firestore {
            request.time > resource.data.suspendedUntil &&
            request.resource.data.status == 'active' && request.resource.data.suspendedUntil == null)
         )
+      ) || (
+        // Test Mode (js/pages/admin-test-mode.js) -- an admin explicitly
+        // granted 'testMode' in allowedSections may flip their OWN
+        // accountType between the 4 real values, nothing else, so the team
+        // can exercise every role's flows end-to-end without a pile of
+        // throwaway test accounts. isOwnerOrGranted, not isAdminWithSection
+        // -- this is a real identity/role change on a real account, same
+        // sensitivity tier as payments/systemControls, never grandfathered.
+        isOwnerOrGranted('testMode') && request.auth.uid == uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['accountType']) &&
+        request.resource.data.accountType in ['farmer', 'trader', 'factory', 'consumer']
       );
       allow delete: if isOwner() ||
         (isAdmin() && resource.data.email != 'sgyiath@gmail.com');
