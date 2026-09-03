@@ -244,13 +244,30 @@ function updateThemeToggleIcon() {
   if (btn) btn.innerHTML = icon(isUserThemeDark() ? "sun" : "moon");
 }
 
+// Regular visitors are locked to light mode sitewide (see state.js's
+// applyDarkMode) -- the toggle exists only for an admin account, so it's
+// hidden rather than left visible-but-inert for everyone else. CSS hides it
+// by default (#theme-toggle in styles.css) so there's no flash of it before
+// auth resolves; this only ever adds .is-visible once authState.isAdmin is
+// confirmed true.
+function updateThemeToggleVisibility() {
+  const btn = document.getElementById("theme-toggle");
+  if (btn) btn.classList.toggle("is-visible", authState.isAdmin);
+}
+
 function wireThemeToggle() {
   const btn = document.getElementById("theme-toggle");
   if (!btn) return;
   updateThemeToggleIcon();
+  updateThemeToggleVisibility();
   // Re-run once admin mode activates/deactivates -- that's when which
-  // stored preference is "current" switches out from under the icon.
-  subscribe(updateThemeToggleIcon);
+  // stored preference is "current" switches out from under the icon -- and
+  // once authState.isAdmin itself resolves, which is when the button
+  // should actually appear at all.
+  subscribe(() => {
+    updateThemeToggleIcon();
+    updateThemeToggleVisibility();
+  });
   btn.addEventListener("click", () => {
     setUserThemeDark(!isUserThemeDark());
     updateThemeToggleIcon();

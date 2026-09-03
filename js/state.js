@@ -72,22 +72,33 @@ function isOnAdminPage() {
   return page === "admin.html" || page.startsWith("admin-");
 }
 
+// Regular (non-admin) visitors are locked to light mode sitewide -- no
+// toggle, no stored preference, no site-wide dark default reaching them --
+// only an admin account keeps any say over which theme they see. This is
+// why the branch below checks authState.isAdmin at all: userPrefersDark
+// still gets read/written further down (an admin's own regular-site
+// preference), it's just never consulted for anyone who isn't one.
 function applyDarkMode() {
-  const dark = authState.isAdminModeActive && isOnAdminPage() ? adminPrefersDark : userPrefersDark;
+  const dark = authState.isAdminModeActive && isOnAdminPage() ? adminPrefersDark : authState.isAdmin ? userPrefersDark : false;
   document.documentElement.classList.toggle("dark", dark);
 }
 applyDarkMode();
 
 // Whichever preference is actually relevant right now -- the admin one on
 // an admin page while admin mode is active, the regular site one
-// everywhere else. This is what the theme toggle button reads and writes,
-// so the same button naturally controls "whichever context you're
-// currently in" and its icon always matches what's really on screen.
+// everywhere else (for an admin only -- always light for anyone else). This
+// is what the theme toggle button reads and writes, so the same button
+// naturally controls "whichever context you're currently in" and its icon
+// always matches what's really on screen.
 export function isUserThemeDark() {
-  return authState.isAdminModeActive && isOnAdminPage() ? adminPrefersDark : userPrefersDark;
+  return authState.isAdminModeActive && isOnAdminPage() ? adminPrefersDark : authState.isAdmin ? userPrefersDark : false;
 }
 
 export function setUserThemeDark(isDark) {
+  // The toggle button is hidden entirely for a non-admin (see layout.js's
+  // wireThemeToggle) -- this is just defense in depth against some other
+  // path calling it directly.
+  if (!authState.isAdmin) return;
   if (authState.isAdminModeActive && isOnAdminPage()) {
     adminPrefersDark = isDark;
     localStorage.setItem(ADMIN_THEME_KEY, isDark ? "dark" : "light");
@@ -101,7 +112,9 @@ export function setUserThemeDark(isDark) {
 // The owner's own configured default (settings/siteTheme.defaultDarkMode --
 // see admin-branding.js) for visitors who have never touched the toggle
 // themselves. Never overrides a visitor's own explicit choice, and never
-// touches admin mode's separate always-dark forcing.
+// touches admin mode's separate always-dark forcing. Still only ever
+// reaches an admin's own screen in practice -- applyDarkMode ignores
+// userPrefersDark entirely for anyone who isn't one.
 export function applySiteDefaultDarkMode(isDark) {
   if (localStorage.getItem(THEME_KEY) !== null) return;
   userPrefersDark = Boolean(isDark);
