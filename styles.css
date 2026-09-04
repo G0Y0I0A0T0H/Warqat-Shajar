@@ -1128,7 +1128,20 @@ main {
   position: absolute;
   inset: 0;
   background-size: cover;
-  background-position: center;
+  /* Not dead-center on purpose. This banner's own box is far wider than it
+     is tall (full viewport width, but a height only as tall as the text
+     content needs -- at a big desktop window this ratio gets extreme), so
+     background-size:cover crops hard off the top and bottom of whatever
+     photo is behind it. Every hero photo used here (admin-uploaded,
+     js/pages/home.js's loadSiteImages) is a person shot with their face in
+     the upper third to upper half of the frame, never the bottom -- a
+     dead-center crop was cutting straight through the top of their head at
+     wide/short viewport ratios (reported live, e.g. 1920x1080 at 100% page
+     zoom). Biasing toward the top keeps the face in frame across every
+     current hero photo and viewport width tested, at the cost of cropping
+     a bit more off the bottom (background scenery, not a subject).
+  */
+  background-position: center 15%;
   opacity: 0;
   transition: opacity 1s ease;
 }
