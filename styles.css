@@ -4343,6 +4343,15 @@ main {
   background: var(--muted);
   color: var(--muted-foreground);
 }
+/* Admin-only alerts (new registration, new listing) -- a 5th color lane
+   distinct from success/warning/destructive/info, per the user's own
+   request that these stand out from regular transactional notifications
+   at a glance. Reuses the existing trader chart color rather than
+   inventing a new token, since it's already validated for contrast. */
+.notif-row-icon-admin {
+  background: color-mix(in srgb, var(--chart-role-trader) 15%, transparent);
+  color: var(--chart-role-trader);
+}
 
 .notif-row-content {
   flex: 1;
@@ -4367,6 +4376,44 @@ main {
   opacity: 0.8;
   margin-top: 0.3rem;
   text-align: end;
+}
+
+/* The panel was sized (20rem, 2rem icons, 0.85rem titles) for a desktop
+   dropdown -- on an actual phone that's most of the screen width with
+   every row still padded and typeset like it has room to spare, reading
+   as one oversized, cramped block rather than a normal mobile menu. Scales
+   the whole panel down a notch instead of just letting max-width clip it. */
+@media (max-width: 639px) {
+  .notif-panel {
+    width: calc(100vw - 2rem);
+    max-width: 22rem;
+    max-height: 70vh;
+    padding: 0.35rem;
+  }
+  .notif-panel-header {
+    padding: 0.3rem 0.4rem 0.5rem;
+  }
+  .notif-row {
+    padding: 0.5rem 0.45rem;
+    gap: 0.5rem;
+  }
+  .notif-row-icon {
+    width: 1.75rem;
+    height: 1.75rem;
+  }
+  .notif-row-icon svg {
+    width: 0.9rem;
+    height: 0.9rem;
+  }
+  .notif-row-title {
+    font-size: 0.78rem;
+  }
+  .notif-row-body {
+    font-size: 0.72rem;
+  }
+  .notif-row-time {
+    font-size: 0.65rem;
+  }
 }
 
 /* ---------------------------------------------------------------------- */

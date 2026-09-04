@@ -345,6 +345,25 @@ export const Profile = {
         crops: input.crops ?? [],
       }).catch(() => {});
     }
+    // The one call site every registration path (email/password, Google)
+    // ends up funneling through, so it's the single right place to alert
+    // every admin a new account exists -- best-effort, never blocks the
+    // signup itself, which has already succeeded by this point. accountType
+    // deliberately isn't interpolated into the body text here -- params are
+    // stored once and rendered later through whatever locale the admin
+    // *viewing* it has active (see interpolate() in ui.js), so baking in an
+    // already-translated role name would freeze it to the registering
+    // user's locale, not the admin's; the notification's own link is enough
+    // to see the rest on admin-users.html.
+    Admin.listAllAdmins()
+      .then((admins) =>
+        Notifications.broadcastToAll(admins.map((a) => a.uid), {
+          key: "newUserRegistered",
+          params: { name: input.fullName },
+          link: "admin-users.html",
+        }),
+      )
+      .catch(() => {});
   },
 
   async getUserProfile(uid) {

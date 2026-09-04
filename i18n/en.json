@@ -829,7 +829,9 @@
     "disputeRaised": { "title": "A deal is under dispute", "body": "A dispute was raised on the deal for {product} -- it needs review." },
     "orderRejectedByAdmin": { "title": "Order rejected by admin", "body": "Your order for {product} was rejected by Waraqat Shajar's admin. Reason: {reason}" },
     "cancelRequestSubmitted": { "title": "New cancellation request", "body": "A buyer requested to cancel the deal for {product} -- it needs review." },
-    "newFollower": { "title": "New follower", "body": "{name} started following you" }
+    "newFollower": { "title": "New follower", "body": "{name} started following you" },
+    "newUserRegistered": { "title": "New user", "body": "{name} registered a new account on the platform" },
+    "newProductListing": { "title": "New product", "body": "{name} listed a new product: {product}" }
   },
   "ads": {
     "title": "Ad Management",

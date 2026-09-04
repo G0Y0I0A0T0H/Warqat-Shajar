@@ -825,6 +825,8 @@
     "paymentClaimed": { "title": "أبلغ المشتري بتحويل الدفعة", "body": "تم تحويل {amount} جنيه مقابل {product} عبر {method} من الرقم {phone}. تأكد من استلام المبلغ من لوحة إدارة الدفع." },
     "codOrderConfirmed": { "title": "طلب جديد — دفع عند الاستلام", "body": "أكد المشتري طلب {product} بمبلغ {amount} جنيه، والدفع نقدًا عند التسليم." },
     "newFollower": { "title": "متابع جديد", "body": "بدأ {name} بمتابعتك" },
+    "newUserRegistered": { "title": "مستخدم جديد", "body": "سجّل {name} حسابًا جديدًا على المنصة" },
+    "newProductListing": { "title": "منتج جديد", "body": "أضاف {name} منتجًا جديدًا: {product}" },
     "deliveryConfirmedNeedsRelease": { "title": "طلب بحاجة إلى تحويل المبلغ", "body": "أكد {buyer} استلام {product} — يجب تحويل المبلغ إلى المزارع من لوحة إدارة الدفع." },
     "identityVerificationFailed": { "title": "تعذّر استلام بيانات التحقق من الهوية", "body": "حدثت مشكلة أثناء رفع صورة بطاقتك -- أُنشئ حسابك لكن بيانات الهوية لا تزال ناقصة. تواصل معنا لإتمامها." },
     "disputeRaised": { "title": "يوجد خلاف على صفقة", "body": "فُتح خلاف على صفقة {product} -- بحاجة إلى مراجعة." },
