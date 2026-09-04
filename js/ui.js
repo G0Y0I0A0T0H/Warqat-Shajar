@@ -245,11 +245,10 @@ let locationMenuSeq = 0;
 // A small "where do I actually go" menu, per the user's own design
 // reference: a trigger showing the address (same as the old plain link),
 // opening a dropdown of real ways to get moving -- Google Maps directions
-// (the one almost everyone already has), a plain web map view (no app
-// needed, the original OpenStreetMap link this replaces), a direct Uber
-// ride request (Uber's own documented deep-link format, opens the app with
-// the dropoff pre-filled if installed), and a "copy location" fallback for
-// every other app (inDrive, Careem, WhatsApp, ...) that has no public,
+// (the one almost everyone already has), a direct Uber ride request
+// (Uber's own documented deep-link format, opens the app with the dropoff
+// pre-filled if installed), a WhatsApp share, and a "copy location"
+// fallback for every other app (inDrive, Careem, ...) that has no public,
 // unauthenticated way to pre-fill a destination from a plain URL -- rather
 // than ship a guessed deep link for one of those that might silently not
 // work, this covers the same need honestly: paste the link anywhere.
@@ -257,9 +256,15 @@ function locationMenuHTML(lat, lng, address) {
   const id = `location-menu-${locationMenuSeq++}`;
   const label = address ? escapeHtml(address) : t("map.viewOnMap", "View location on map");
   const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
-  const osmUrl = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=16/${lat}/${lng}`;
   const uberUrl = `https://m.uber.com/ul/?action=setPickup&dropoff[latitude]=${lat}&dropoff[longitude]=${lng}${address ? `&dropoff[nickname]=${encodeURIComponent(address)}` : ""}`;
   const shareUrl = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+  // Same wa.me text-share pattern as shareButtonsHTML's WhatsApp link below
+  // -- a real Google Maps link in the message text (WhatsApp has no
+  // separate "location" param for an arbitrary share-intent link, only its
+  // own native location picker, which isn't reachable from a plain URL),
+  // so whoever gets it can tap straight into Maps on their end.
+  const whatsappText = address ? `${address}\n${shareUrl}` : shareUrl;
+  const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(whatsappText)}`;
   return `
     <div class="dropdown location-menu">
       <button type="button" class="btn btn-outline btn-sm" data-location-toggle title="${lat.toFixed(4)}, ${lng.toFixed(4)}">
@@ -267,8 +272,8 @@ function locationMenuHTML(lat, lng, address) {
       </button>
       <div class="dropdown-content" id="${id}">
         <a class="dropdown-item" href="${googleMapsUrl}" target="_blank" rel="noopener noreferrer">${icon("globe")} ${t("map.googleMaps", "Google Maps")}</a>
-        <a class="dropdown-item" href="${osmUrl}" target="_blank" rel="noopener noreferrer">${icon("map-pin")} ${t("map.webMap", "Web map")}</a>
         <a class="dropdown-item" href="${uberUrl}" target="_blank" rel="noopener noreferrer">${icon("car")} ${t("map.uber", "Uber")}</a>
+        <a class="dropdown-item" href="${whatsappUrl}" target="_blank" rel="noopener noreferrer">${icon("whatsapp")} ${t("map.shareWhatsapp", "Share via WhatsApp")}</a>
         <div class="dropdown-separator"></div>
         <button type="button" class="dropdown-item" data-copy-location="${escapeHtml(shareUrl)}">${icon("copy")} ${t("map.copyLocation", "Copy location link")}</button>
       </div>

@@ -200,6 +200,12 @@
   "language": {
     "switchTo": "English"
   },
+  "a11y": {
+    "toggleDarkMode": "تبديل الوضع الليلي",
+    "previousImage": "الصورة السابقة",
+    "nextImage": "الصورة التالية",
+    "close": "إغلاق"
+  },
   "share": {
     "copyLink": "نسخ الرابط",
     "copied": "تم النسخ",
@@ -228,8 +234,8 @@
     "resolvingAddress": "جارٍ تحديد العنوان...",
     "dragHint": "اسحب الدبوس لضبط الموقع بدقة",
     "googleMaps": "خرائط جوجل",
-    "webMap": "خريطة الويب",
     "uber": "أوبر",
+    "shareWhatsapp": "مشاركة عبر واتساب",
     "copyLocation": "نسخ رابط الموقع"
   },
   "deliveryMethod": {
