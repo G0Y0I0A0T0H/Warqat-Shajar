@@ -180,6 +180,13 @@ const NOTIF_ICON = {
   productAddedToCart: ["shopping-cart", "info"],
   newFollower: ["users", "info"],
   adminMessage: ["megaphone", "info"],
+  // A distinct 5th color (per the user's own request that these stand out)
+  // -- these two only ever reach admins (Profile.createUserProfile /
+  // dashboard-product-form.js broadcast to every admin uid), never a plain
+  // buyer/seller, so they get their own visual lane instead of reusing
+  // "info" and blending into the regular transactional notifications.
+  newUserRegistered: ["users", "admin"],
+  newProductListing: ["package", "admin"],
 };
 
 function notifIconHTML(key) {

@@ -2,7 +2,7 @@
 // (ProductForm). renderProductForm() is called by both dashboard-product-new.js
 // (existingProduct = null) and dashboard-product-edit.js (existingProduct set).
 import { t, getLocale, onLocaleChange, refreshTranslations } from "../i18n.js";
-import { Products, PhoneAttempts, Notifications, AuditLog } from "../firebase.js";
+import { Products, PhoneAttempts, Notifications, AuditLog, Admin } from "../firebase.js";
 import { mergeCategories, categoryLabelById, onCategoriesChange, UNITS, unitLabelKey } from "../constants.js";
 import { populateGovernorateSelect } from "./auth-shared.js";
 import { renderStarButtons, showMessage, renderImageInput, containsPhoneNumber, safeUrl, optimizedImageUrl, escapeHtml } from "../ui.js";
@@ -302,6 +302,21 @@ export function renderProductForm(mountEl, profile, existingProduct, options = {
           key: "productAdded",
           params: { product: title },
         }).catch(() => {});
+        // Admin-facing alert only when a farmer actually listed this
+        // themselves -- when an admin is the one adding it (addedByAdminUid
+        // set, admin-listings.html's own flow), they obviously already know,
+        // so this would just be self-directed noise.
+        if (!addedByAdminUid) {
+          Admin.listAllAdmins()
+            .then((admins) =>
+              Notifications.broadcastToAll(admins.map((a) => a.uid), {
+                key: "newProductListing",
+                params: { name: profile.fullName, product: title },
+                link: "admin-listings.html",
+              }),
+            )
+            .catch(() => {});
+        }
         if (addedByAdminUid) {
           AuditLog.record({
             adminUid: authState.user.uid,
