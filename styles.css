@@ -838,13 +838,7 @@ main {
 .header-search {
   position: relative;
   flex: 1;
-  display: none;
-}
-
-@media (min-width: 640px) {
-  .header-search {
-    display: block;
-  }
+  display: block;
 }
 
 .header-search svg {
@@ -860,6 +854,54 @@ main {
 .header-search input {
   border-radius: 999px;
   padding-inline-start: 2.25rem;
+}
+
+/* Used to be display:none below 640px entirely (no way to search at all
+   on a phone) -- collapses to a compact round icon button "on the side" of
+   the header instead (matching the cart/wishlist/theme icons already
+   there), per the user's own request, and expands into a real full-width
+   input on tap rather than trying to cram flex:1 in among an already-tight
+   mobile icon cluster. See wireHeaderSearch() in layout.js for the
+   tap-to-expand toggle. */
+@media (max-width: 639px) {
+  .header-search {
+    flex: 0 0 auto;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 999px;
+  }
+  .header-search:hover {
+    background: var(--muted);
+  }
+  .header-search input {
+    width: 2.25rem;
+    height: 2.25rem;
+    padding-inline-start: 2.25rem;
+    padding-inline-end: 0;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    transition: width 0.2s ease;
+  }
+  .header-search.is-expanded {
+    position: absolute;
+    top: 100%;
+    inset-inline: 0.75rem;
+    margin-top: 0.4rem;
+    width: auto;
+    height: auto;
+    z-index: 30;
+    background: var(--card);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+    padding: 0.35rem;
+  }
+  .header-search.is-expanded input {
+    width: 100%;
+    height: 2.25rem;
+    background: var(--muted);
+    cursor: text;
+  }
 }
 
 .header-actions {
