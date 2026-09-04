@@ -147,6 +147,46 @@ function formatNotifTime(ts) {
   });
 }
 
+// One small colored icon per notification type, per the user's own design
+// reference -- a plain bell for every row read the same at a glance no
+// matter what actually happened; this at least sorts them into "something
+// good happened" (green), "something needs your action" (amber, the same
+// warm-gold token the escrow stepper's in-progress step already uses),
+// "something bad/blocked" (red), and everything else (the site's own
+// neutral primary green, still on-brand but visually quieter than the
+// amber/red ones so those two keep standing out as the ones to act on).
+const NOTIF_ICON = {
+  offerAccepted: ["check", "success"],
+  accountReactivated: ["check", "success"],
+  orderConfirmed: ["check", "success"],
+  codOrderConfirmed: ["check", "success"],
+  newReview: ["star", "success"],
+  paymentClaimed: ["credit-card", "warning"],
+  deliveryConfirmedNeedsRelease: ["alert-triangle", "warning"],
+  cancelRequestSubmitted: ["alert-triangle", "warning"],
+  disputeRaised: ["alert-triangle", "destructive"],
+  accountSuspended: ["alert-triangle", "destructive"],
+  identityVerificationFailed: ["alert-triangle", "destructive"],
+  orderRejectedByAdmin: ["x", "destructive"],
+  offerDeclined: ["x", "neutral"],
+  offerCancelled: ["x", "neutral"],
+  newMessage: ["message-square", "info"],
+  newProductComment: ["message-square", "info"],
+  sourcingResponse: ["message-circle", "info"],
+  newOffer: ["send", "info"],
+  newOrderRequest: ["package", "info"],
+  productAdded: ["package", "info"],
+  cartItemAdded: ["shopping-cart", "info"],
+  productAddedToCart: ["shopping-cart", "info"],
+  newFollower: ["users", "info"],
+  adminMessage: ["megaphone", "info"],
+};
+
+function notifIconHTML(key) {
+  const [name, variant] = NOTIF_ICON[key] || ["bell", "neutral"];
+  return `<span class="notif-row-icon notif-row-icon-${variant}">${icon(name)}</span>`;
+}
+
 function renderNotifPanel(panelEl, items) {
   if (!panelEl) return;
   const hasUnread = items.some((n) => !n.read);
@@ -163,9 +203,12 @@ function renderNotifPanel(panelEl, items) {
               .map(
                 (n) => `
             <a href="${safeUrl(n.link) || "#"}" class="notif-row ${!n.read ? "is-unread" : ""}" data-notif-id="${n.id}">
-              <div class="notif-row-title">${escapeHtml(t(`notif.${n.key}.title`))}</div>
-              <div class="notif-row-body">${interpolate(escapeHtml(t(`notif.${n.key}.body`)), n.params)}</div>
-              <div class="notif-row-time">${formatNotifTime(n.createdAt)}</div>
+              ${notifIconHTML(n.key)}
+              <div class="notif-row-content">
+                <div class="notif-row-title">${!n.read ? '<span class="notif-unread-dot" aria-hidden="true"></span>' : ""}${escapeHtml(t(`notif.${n.key}.title`))}</div>
+                <div class="notif-row-body">${interpolate(escapeHtml(t(`notif.${n.key}.body`)), n.params)}</div>
+                <div class="notif-row-time">${formatNotifTime(n.createdAt)}</div>
+              </div>
             </a>
           `,
               )
