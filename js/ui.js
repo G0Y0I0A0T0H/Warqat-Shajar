@@ -100,30 +100,22 @@ const ICON_PATHS = {
   link: '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
   facebook: '<path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/>',
   instagram: '<rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/>',
-  // A single evenodd-filled compound path (bubble outline + phone-handset
-  // subpath), not two separate paths -- the previous version left the
-  // bubble with no fill override, so it inherited the wrapper svg's default
-  // fill:none/stroke:currentColor while the phone detail was solid-filled,
-  // rendering as a thin stroked outline with a solid glyph floating inside
-  // it (looked broken, especially at small sizes on a colored circle).
-  // evenodd punches the phone shape out of the solid bubble as a true
-  // cutout, so it reads correctly against ANY background, not just one
-  // hardcoded detail color.
-  // Thin-line outline, like every other glyph in this set -- used to be a
-  // filled evenodd-cutout shape (a solid bubble with the phone silhouette
-  // punched out of it), the one solid/filled icon in an otherwise all-
-  // outline set. That technique only reads correctly when the cutout has
-  // real contrast against whatever sits behind it; inside a small tinted
-  // circle (this app's own accent-on-accent icon slots, notif-row-icon,
-  // contact-widget-item-icon, ...) the "hole" and the fill ended up close
-  // enough in tone that the whole glyph just read as a plain green blob.
-  // Dropping fill-rule/clip-rule/fill/stroke here lets both subpaths fall
-  // back to the wrapping <svg>'s own stroke-currentColor/fill-none
-  // defaults, same as every other icon -- a real two-line silhouette
-  // (bubble + phone) instead of a filled shape, so it stays legible
-  // against any background this set is already used on.
+  // The one hardcoded-brand-color icon in this set, deliberately -- two
+  // earlier attempts kept it monochrome/adaptive like every other glyph
+  // here (an evenodd-cutout fill, then a thin-line outline), and both still
+  // read as "an odd green shape", not recognizably WhatsApp, once actually
+  // shown at real icon size. WhatsApp's own mark is one of the handful of
+  // logos people recognize purely by its exact two-tone color pairing
+  // (bright brand green + white), the same reason this project already
+  // leaves Facebook/Instagram-style brand marks alone elsewhere rather than
+  // reskinning them -- a plain circle (not the tailed chat-bubble variant)
+  // matches WhatsApp's actual app icon, which is the version people
+  // actually recognize on sight. Both colors hardcoded on purpose so it
+  // looks right against literally any background this set gets used on,
+  // never blending into a same-toned container the way the adaptive
+  // versions did.
   whatsapp:
-    '<path d="M12 2a10 10 0 0 0-8.5 15.3L2 22l4.9-1.3A10 10 0 1 0 12 2Z"/><path d="M8.5 8.3c.2-.5.5-.5.7-.5h.5c.2 0 .4 0 .6.4.2.5.6 1.6.7 1.7.1.1.1.3 0 .5-.1.2-.2.3-.4.5-.2.2-.4.3-.2.6.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.3 2.5 1.5.3.1.5.1.7-.1.2-.2.8-.9 1-1.2.2-.3.4-.2.6-.1.2.1 1.5.7 1.8.9.3.1.4.2.5.3.1.2.1 1-.3 1.9-.4.9-2.1 1.7-2.9 1.8-.7.1-1.6.2-4.6-1-3.7-1.5-6-5.3-6.2-5.6-.2-.3-1.5-2-1.5-3.8 0-1.8.9-2.6 1.3-3z"/>',
+    '<circle cx="12" cy="12" r="10" fill="#25D366" stroke="none"/><path fill="#fff" stroke="none" d="M8.5 8.3c.2-.5.5-.5.7-.5h.5c.2 0 .4 0 .6.4.2.5.6 1.6.7 1.7.1.1.1.3 0 .5-.1.2-.2.3-.4.5-.2.2-.4.3-.2.6.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.3 2.5 1.5.3.1.5.1.7-.1.2-.2.8-.9 1-1.2.2-.3.4-.2.6-.1.2.1 1.5.7 1.8.9.3.1.4.2.5.3.1.2.1 1-.3 1.9-.4.9-2.1 1.7-2.9 1.8-.7.1-1.6.2-4.6-1-3.7-1.5-6-5.3-6.2-5.6-.2-.3-1.5-2-1.5-3.8 0-1.8.9-2.6 1.3-3z"/>',
   tiktok: '<path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5"/>',
   youtube: '<rect x="2" y="6" width="20" height="12" rx="3"/><path d="M10 9l5 3-5 3z" fill="currentColor" stroke="none"/>',
   linkedin: '<path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/>',
