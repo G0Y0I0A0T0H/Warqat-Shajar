@@ -168,7 +168,12 @@ service cloud.firestore {
         // Buyer's own persistent delivery address (js/pages/profile.js) --
         // same shape check as sellerProfiles' pickupPoint.
         (!('deliveryAddress' in request.resource.data) ||
-         (request.resource.data.deliveryAddress.lat is number && request.resource.data.deliveryAddress.lng is number))
+         (request.resource.data.deliveryAddress.lat is number && request.resource.data.deliveryAddress.lng is number)) &&
+        // This device's push-notification token (js/push.js, mobile app
+        // only) -- just a list-shape check; functions/index.js (Admin SDK,
+        // bypasses rules entirely) is what actually reads/prunes these, so
+        // this only guards against a malformed non-list write, not content.
+        (!('fcmTokens' in request.resource.data) || request.resource.data.fcmTokens is list)
       ) || (
         // Client-driven phone-violation enforcement, with no backend/cron to
         // run it server-side: a user may only ever flip their OWN status in

@@ -3,6 +3,12 @@
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"
   },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default"
+    }
+  ],
   "hosting": {
     "public": ".",
     "ignore": ["firebase.json", "firestore.rules", "firestore.indexes.json", "**/*.md", "devserver.py", "**/.*", "**/node_modules/**"]

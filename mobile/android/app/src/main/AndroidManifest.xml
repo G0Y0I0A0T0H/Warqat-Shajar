@@ -32,4 +32,9 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Android 13+ (API 33) requires this to be declared before
+         @capacitor/push-notifications' runtime requestPermissions() call
+         (js/push.js) can show the OS prompt at all -- without it the app
+         silently gets no notifications on any 13+ device with no error. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 </manifest>

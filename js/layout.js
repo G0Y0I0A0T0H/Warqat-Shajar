@@ -7,6 +7,7 @@ import { Auth, SiteSettings, Notifications, OWNER_EMAIL, Activity } from "./fire
 import { t, getLocale, setLocale, initI18n, onLocaleChange } from "./i18n.js";
 import { icon, renderAvatar, wireDropdown, renderIcons, interpolate, showToast, btnClass, escapeHtml, safeUrl, optimizedImageUrl, initCustomSelects } from "./ui.js";
 import { isViewingAs, getEffectiveProfile, stopViewAs } from "./view-as.js";
+import { initPush } from "./push.js";
 
 const SOCIAL_ICON_KEY = {
   facebook: "facebook",
@@ -995,6 +996,7 @@ export async function initLayout() {
   wireHeaderSearch();
   maybeLogPageView();
   renderViewAsBanner();
+  initPush();
   subscribe(() => {
     renderHeaderAuthArea();
     renderWishlistBadge();

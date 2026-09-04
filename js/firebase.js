@@ -43,6 +43,8 @@ import {
   writeBatch,
   deleteField,
   runTransaction,
+  arrayUnion,
+  arrayRemove,
 } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
 const firebaseConfig = {
   apiKey: "AIzaSyDxum9DYcroSdHuXWoeCZvfJ1N5tH9WN0g",
@@ -2607,5 +2609,24 @@ export const Notifications = {
       }
       await batch.commit();
     }
+  },
+};
+
+// ===========================================================================
+// Native push notifications (Android app only, js/push.js) -- a device's FCM
+// token lives in an array on its owner's OWN users/{uid} doc (one user can
+// have several devices/reinstalls), self-write-only per firestore.rules.
+// functions/index.js (Admin SDK, a separate deployable piece, not loaded by
+// the website) is what actually reads this array and sends the push,
+// triggered off every new notifications/{id} doc -- the exact same writes
+// Notifications.create()/broadcastToAll() above already make, unchanged.
+// ===========================================================================
+export const Push = {
+  async saveToken(uid, token) {
+    await updateDoc(doc(db, "users", uid), { fcmTokens: arrayUnion(token) });
+  },
+
+  async removeToken(uid, token) {
+    await updateDoc(doc(db, "users", uid), { fcmTokens: arrayRemove(token) });
   },
 };
