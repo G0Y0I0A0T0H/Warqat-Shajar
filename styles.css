@@ -3083,14 +3083,15 @@ main {
   background: var(--card);
 }
 
-/* Escrow order stepper -- deliberately fixed dark styling regardless of
-   site theme (see js/ui.js escrowStepperHTML for why). */
+/* Escrow order stepper -- a light, card-based look (matches the rest of
+   the page) instead of the fixed-dark box this used to be. */
 .escrow-stepper {
-  background: #0f1b12;
-  border: 1px solid rgba(46, 125, 50, 0.35);
+  background: var(--card);
+  border: 1px solid var(--border);
   border-radius: 1rem;
   padding: 1.25rem;
-  color: #e8f5e9;
+  color: var(--card-foreground);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.05);
 }
 
 .escrow-stepper-header {
@@ -3103,8 +3104,8 @@ main {
 }
 
 .escrow-stepper-price {
-  background: rgba(46, 125, 50, 0.25);
-  color: #7ee08a;
+  background: var(--accent);
+  color: var(--accent-foreground);
   padding: 0.3rem 0.75rem;
   border-radius: 999px;
   font-size: 0.8rem;
@@ -3141,8 +3142,8 @@ main {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.08);
-  color: rgba(255, 255, 255, 0.4);
+  background: var(--muted);
+  color: var(--muted-foreground);
   flex-shrink: 0;
 }
 
@@ -3153,36 +3154,37 @@ main {
 
 .escrow-step.is-done .escrow-step-icon,
 .escrow-step.is-current .escrow-step-icon {
-  background: #2e7d32;
-  color: #fff;
+  background: var(--primary);
+  color: var(--primary-foreground);
 }
 
 .escrow-step.is-current .escrow-step-icon {
-  box-shadow: 0 0 0 4px rgba(46, 125, 50, 0.35);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 25%, transparent);
 }
 
 .escrow-step-label {
   font-size: 0.62rem;
   text-align: center;
   line-height: 1.25;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--muted-foreground);
 }
 
 .escrow-step.is-done .escrow-step-label,
 .escrow-step.is-current .escrow-step-label {
-  color: #e8f5e9;
+  color: var(--foreground);
+  font-weight: 600;
 }
 
 .escrow-step-line {
   flex: 1 1 auto;
   height: 2px;
   min-width: 0.5rem;
-  background: rgba(255, 255, 255, 0.14);
+  background: var(--border);
   margin-top: 1.1rem;
 }
 
 .escrow-step-line.is-done {
-  background: #2e7d32;
+  background: var(--primary);
 }
 
 @media (max-width: 420px) {
@@ -3225,18 +3227,18 @@ main {
 }
 
 .escrow-stepper-banner.is-dispute {
-  background: rgba(220, 38, 38, 0.18);
-  color: #ffb4b4;
+  background: var(--destructive-tint);
+  color: var(--destructive);
 }
 
 .escrow-stepper-banner.is-refund {
-  background: rgba(255, 255, 255, 0.08);
-  color: rgba(255, 255, 255, 0.8);
+  background: var(--muted);
+  color: var(--muted-foreground);
 }
 
 .escrow-stepper-banner.is-success {
-  background: rgba(46, 125, 50, 0.18);
-  color: #a5d6a7;
+  background: var(--accent);
+  color: var(--accent-foreground);
 }
 
 .escrow-stepper-banner-title {
@@ -3251,18 +3253,40 @@ main {
 }
 
 /* Interactive counterpart to the stepper above (renderEscrowActions /
-   escrowPaymentMethodsHTML in ui.js) -- kept the same fixed dark look on
-   purpose so it reads as one continuous widget with the stepper it sits
-   under, regardless of the site's light/dark theme. */
+   escrowPaymentMethodsHTML in ui.js) -- same light card treatment, so it
+   reads as one continuous widget with the stepper it sits under. */
 .escrow-actions {
-  background: #0f1b12;
-  border: 1px solid rgba(46, 125, 50, 0.35);
+  background: var(--card);
+  border: 1px solid var(--border);
   border-radius: 1rem;
   padding: 1.1rem;
-  color: #e8f5e9;
+  color: var(--card-foreground);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.05);
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
+}
+
+.escrow-amount-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+}
+
+.escrow-amount-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--muted-foreground);
+}
+
+.escrow-amount-row.is-total {
+  margin-top: 0.25rem;
+  padding-top: 0.5rem;
+  border-top: 1px dashed var(--border);
+  color: var(--foreground);
+  font-weight: 700;
 }
 
 .escrow-actions-buttons {
@@ -3286,8 +3310,8 @@ main {
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--muted);
+  border: 1px solid var(--border);
   border-radius: 0.6rem;
   padding: 0.55rem 0.75rem;
   cursor: pointer;
@@ -3295,12 +3319,12 @@ main {
 }
 
 .escrow-payment-method:has(input:checked) {
-  border-color: #2e7d32;
-  background: rgba(46, 125, 50, 0.2);
+  border-color: var(--primary);
+  background: var(--accent);
 }
 
 .escrow-payment-method input {
-  accent-color: #2e7d32;
+  accent-color: var(--primary);
   flex-shrink: 0;
 }
 
@@ -3312,89 +3336,14 @@ main {
 
 .escrow-payment-method-value {
   font-size: 0.8rem;
-  color: #7ee08a;
+  color: var(--primary);
+  font-weight: 600;
   margin-inline-start: auto;
 }
 
 .escrow-payment-methods-note {
   font-size: 0.75rem;
-  opacity: 0.75;
-}
-
-/* .input/.textarea/.select set color: var(--foreground) so they read
-   correctly on the PAGE's own light/dark background -- but .escrow-actions
-   is deliberately always dark regardless of the page's theme (see its own
-   comment above). On a light page (every regular visitor now, since
-   js/state.js's applyDarkMode locks non-admins to light) that near-black
-   --foreground rendered as near-invisible text typed into these fields,
-   sitting on this widget's own near-black hardcoded background --
-   perfectly legible only once manually text-selected, which is exactly
-   what made this so easy to miss. Pin these to the widget's own light
-   text color instead of the page's variable. */
-.escrow-actions .input,
-.escrow-actions .textarea,
-.escrow-actions .select {
-  color: #e8f5e9;
-  border-color: rgba(255, 255, 255, 0.2);
-}
-
-.escrow-actions .input::placeholder,
-.escrow-actions .textarea::placeholder {
-  color: rgba(255, 255, 255, 0.45);
-}
-
-/* Same bug, same fix, different shared utility classes -- .text-muted/
-   .error-text/.success-text are used all over the site for page-theme-
-   adaptive secondary/error/success text (var(--muted-foreground)/
-   var(--destructive)/var(--primary)), which is exactly wrong inside this
-   permanently-dark widget once the page itself is light. This is what
-   was actually behind "طلب الإلغاء بتاعك قيد المراجعة..." reading as
-   near-blank under the dispute button -- .text-muted on this dark
-   background, not a missing string. */
-.escrow-actions .text-muted {
-  color: rgba(255, 255, 255, 0.65);
-}
-
-.escrow-actions .error-text {
-  color: #ffb4b4;
-}
-
-.escrow-actions .success-text {
-  color: #7ee08a;
-}
-
-/* Same bug again, this time buttons -- .btn's base (which .btn-ghost never
-   overrides outside :hover) is transparent + color: var(--foreground),
-   and .btn-destructive's --destructive-tint/--destructive are tuned for a
-   light page background too. Both are exactly wrong on this permanently-
-   dark widget once the page itself is light -- .btn-default and
-   .btn-outline are unaffected (opaque backgrounds of their own, readable
-   regardless of what's behind them), so only these two need pinning. */
-.escrow-actions .btn-ghost {
-  color: #e8f5e9;
-  /* A ghost button is invisible-until-hover by design, which reads fine
-     surrounded by other page content -- but alone in this dark, otherwise
-     mostly-empty widget (an order past its payment step has nothing else
-     to show here) that left the whole box looking like a big blank
-     rectangle with two lines of plain text floating in it. A faint
-     default border/fill, matching .escrow-payment-method's own look,
-     gives it real button shape at rest too. */
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.15);
-}
-
-.escrow-actions .btn-ghost:hover {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.25);
-}
-
-.escrow-actions .btn-destructive {
-  background: rgba(220, 38, 38, 0.25);
-  color: #ffb4b4;
-}
-
-.escrow-actions .btn-destructive:hover {
-  background: rgba(220, 38, 38, 0.4);
+  color: var(--muted-foreground);
 }
 
 .escrow-method-circles {
@@ -3427,9 +3376,9 @@ main {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.06);
-  border: 2px solid rgba(255, 255, 255, 0.15);
-  color: #e8f5e9;
+  background: var(--muted);
+  border: 2px solid var(--border);
+  color: var(--muted-foreground);
   transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
 }
 
@@ -3439,41 +3388,39 @@ main {
 }
 
 .escrow-method-circle input:checked ~ .escrow-method-circle-icon {
-  border-color: #2e7d32;
-  background: rgba(46, 125, 50, 0.25);
-  color: #7ee08a;
+  border-color: var(--primary);
+  background: var(--accent);
+  color: var(--primary);
   transform: scale(1.05);
 }
 
 .escrow-method-circle input:focus-visible ~ .escrow-method-circle-icon {
-  outline: 2px solid #7ee08a;
+  outline: 2px solid var(--ring);
   outline-offset: 2px;
 }
 
 .escrow-method-circle-label {
   font-size: 0.68rem;
   text-align: center;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--muted-foreground);
   line-height: 1.2;
 }
 
 .escrow-method-circle input:checked ~ .escrow-method-circle-label {
-  color: #e8f5e9;
+  color: var(--foreground);
   font-weight: 700;
 }
 
 .escrow-method-value-display {
   font-size: 0.8rem;
-  background: rgba(46, 125, 50, 0.15);
-  border: 1px solid rgba(46, 125, 50, 0.35);
+  background: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--primary) 35%, transparent);
   border-radius: 0.5rem;
   padding: 0.5rem 0.75rem;
-  color: #e8f5e9;
+  color: var(--foreground);
 }
 
-/* Admin-side view of a buyer's payment proof (admin-payments.js) -- kept as
-   regular page content (follows light/dark theme), unlike the always-dark
-   escrow widgets above, since this lives inside the ordinary admin shell. */
+/* Admin-side view of a buyer's payment proof (admin-payments.js). */
 .payment-proof {
   display: flex;
   align-items: center;

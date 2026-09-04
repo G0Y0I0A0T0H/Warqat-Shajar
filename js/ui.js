@@ -1130,10 +1130,15 @@ export function renderLocationPicker(mountEl, { lat, lng, address, onChange } = 
 // ---------------------------------------------------------------------------
 // ---------------------------------------------------------------------------
 // Escrow order stepper — rich 5-step horizontal progress tracker for an
-// accepted-offer order (see js/firebase.js's Escrow module). Deliberately
-// self-contained dark styling regardless of site theme, same reasoning as
-// the kill-switch overlay: this is a distinct, always-the-same-look widget,
-// not page content that should follow light/dark mode.
+// accepted-offer order (see js/firebase.js's Escrow module). Used to be
+// fixed-dark regardless of site theme -- redesigned to a lighter,
+// card-based look (white/light-gray with subtle green accents, styles.css)
+// that matches the rest of the page instead of standing out from it, per
+// the user's own reference for what this order-tracking section should
+// look like. This also means the .input/.textarea/.text-muted/.btn-ghost/
+// etc. color overrides that .escrow-actions/.escrow-stepper used to need
+// (theme variables clashing with a hardcoded-dark background) are gone
+// too -- everything just follows the page's normal light theme now.
 // ---------------------------------------------------------------------------
 const ESCROW_STEPS = [
   { status: "awaiting_payment", icon: "credit-card", labelKey: "escrow.stepAwaitingPayment" },
@@ -1345,10 +1350,10 @@ export function renderEscrowActions(containerEl, { order, viewerUid, paymentInfo
   // shown/hidden, untouched functionally) reads as one tidy action bar
   // instead.
   const disputeToggleHtml = canDispute
-    ? `<button type="button" class="${btnClass("ghost", "sm")}" id="escrow-dispute-toggle-btn">${t("escrow.raiseDisputeBtn")}</button>`
+    ? `<button type="button" class="${btnClass("outline", "sm")}" id="escrow-dispute-toggle-btn">${t("escrow.raiseDisputeBtn")}</button>`
     : "";
   const cancelToggleHtml = canRequestCancel
-    ? `<button type="button" class="${btnClass("ghost", "sm")}" id="escrow-cancel-toggle-btn">${t("escrow.requestCancelBtn")}</button>`
+    ? `<button type="button" class="${btnClass("outline", "sm")}" id="escrow-cancel-toggle-btn">${t("escrow.requestCancelBtn")}</button>`
     : "";
 
   containerEl.innerHTML = `
