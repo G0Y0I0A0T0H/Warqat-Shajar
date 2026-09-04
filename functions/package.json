@@ -1,0 +1,14 @@
+{
+  "name": "functions",
+  "description": "Cloud Functions for Waraqat Shajar -- SMS/WhatsApp verification codes via Twilio. Everything else in this project is a static site with no backend; this is the one exception, added specifically because sending SMS/WhatsApp (unlike email via EmailJS) needs a real secret that can never live in client-side code.",
+  "engines": {
+    "node": "20"
+  },
+  "main": "index.js",
+  "dependencies": {
+    "firebase-admin": "^12.7.0",
+    "firebase-functions": "^6.3.2",
+    "twilio": "^5.4.3"
+  },
+  "private": true
+}
