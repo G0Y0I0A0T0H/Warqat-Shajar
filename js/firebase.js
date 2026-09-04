@@ -499,6 +499,15 @@ export const SellerProfiles = {
     return snap.exists() ? snap.data() : null;
   },
 
+  // Admin-only spotlight flag surfaced on the homepage's "أبرز المزارعين"
+  // (Featured Farmers) strip -- see js/pages/admin-users.js for the toggle
+  // and js/pages/home.js for where it's read. Its own narrow rules branch
+  // (firestore.rules) is what actually enforces admin-only, same pattern as
+  // updatePickupPoint above.
+  async setFeatured(uid, featured) {
+    await updateDoc(doc(sellerProfilesCol, uid), { featured });
+  },
+
   // Directory listing (farmers.html) -- fetched in full and filtered
   // client-side, same "fine at current scale" convention already used for
   // Admin.listAllUsers()/Escrow.listAllOnce() elsewhere in this file.

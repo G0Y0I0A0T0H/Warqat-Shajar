@@ -1,8 +1,8 @@
 import { initLayout } from "../layout.js";
 import { t, getLocale, onLocaleChange } from "../i18n.js";
-import { SiteSettings, Products, Ads } from "../firebase.js";
+import { SiteSettings, Products, Ads, SellerProfiles } from "../firebase.js";
 import { mergeCategories, CATEGORY_GROUPS, CATEGORY_IMAGES, categoryLabel, categoryLabelById, onCategoriesChange, governorateLabel } from "../constants.js";
-import { renderAdSlot, wireFavoriteButtons, productCardHTML, icon, escapeHtml, safeUrl, optimizedImageUrl, btnClass } from "../ui.js";
+import { renderAdSlot, wireFavoriteButtons, productCardHTML, featuredFarmerChipHTML, icon, escapeHtml, safeUrl, optimizedImageUrl, btnClass } from "../ui.js";
 import { authState, subscribe } from "../state.js";
 
 const TRUST_ITEMS = [
@@ -194,6 +194,22 @@ async function renderFeaturedProducts() {
   wireFavoriteButtons(el);
 }
 
+// Admin-curated spotlight, not a live "most followed" ranking -- see
+// SellerProfiles.setFeatured/js/pages/admin-users.js. Capped at 12 since this
+// is a single horizontally-scrolling row, not a paginated directory (that's
+// farmers.html, one tap away via the section's "Browse farmers" link).
+async function renderFeaturedFarmers() {
+  const el = document.getElementById("featured-farmers");
+  if (!el) return;
+  const profiles = await SellerProfiles.listAll().catch(() => []);
+  const featured = profiles.filter((p) => p.featured).slice(0, 12);
+  if (featured.length === 0) {
+    el.innerHTML = `<p class="empty-state">${t("farmers.noFeaturedYet", "No farmers have been featured yet.")}</p>`;
+    return;
+  }
+  el.innerHTML = featured.map((p) => featuredFarmerChipHTML(p)).join("");
+}
+
 async function loadSiteImages() {
   const images = await SiteSettings.getSiteImagesOnce().catch(() => ({ heroImages, categoryImages: {} }));
   heroImages = images.heroImages?.length ? images.heroImages : heroImages;
@@ -213,7 +229,7 @@ async function main() {
   // Independent reads (hero/category images vs. the featured product list,
   // different DOM sections) -- were awaited one after another, costing a
   // full extra network round-trip before featured products appeared.
-  await Promise.all([loadSiteImages(), renderFeaturedProducts()]);
+  await Promise.all([loadSiteImages(), renderFeaturedProducts(), renderFeaturedFarmers()]);
   renderAdSlot(document.getElementById("ad-home-top"), "home-top", Ads);
   renderAdSlot(document.getElementById("ad-home-mid"), "home-mid", Ads);
   renderAdSlot(document.getElementById("ad-home-bottom"), "home-bottom", Ads);
@@ -230,6 +246,7 @@ async function main() {
     renderHero();
     loadSiteImages();
     renderFeaturedProducts();
+    renderFeaturedFarmers();
     applySiteContent(siteContent);
     applyAuthAwareCTAs();
   });

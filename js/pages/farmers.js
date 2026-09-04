@@ -1,8 +1,8 @@
 import { initLayout } from "../layout.js";
 import { t, getLocale, onLocaleChange } from "../i18n.js";
 import { SellerProfiles } from "../firebase.js";
-import { GOVERNORATES, mergeCategories, categoryLabel, categoryLabelById, onCategoriesChange, governorateLabel } from "../constants.js";
-import { renderAvatar, escapeHtml, verifiedBadgeHTML, icon } from "../ui.js";
+import { GOVERNORATES, mergeCategories, categoryLabel, onCategoriesChange } from "../constants.js";
+import { farmerCardHTML } from "../ui.js";
 
 const categorySelect = document.getElementById("filter-category");
 const governorateSelect = document.getElementById("filter-governorate");
@@ -21,37 +21,6 @@ function populateFilters() {
     GOVERNORATES.map((g) => `<option value="${g.id}">${g[getLocale()]}</option>`).join("");
   categorySelect.value = category;
   governorateSelect.value = governorate;
-}
-
-// Follower count used to be fetched here too (one Follows.countFollowers()
-// call PER card via Promise.all -- 50 farmers on this directory meant 50
-// separate network round-trips just for that number, on top of the real
-// listing query). Dropped from this grid entirely rather than given a
-// denormalized counter field -- this project deliberately derives follow
-// counts live instead of syncing a stored counter (see js/firebase.js's
-// Follows module comment), and a directory CARD isn't where that number
-// earns its cost; it stays exactly one live query on the individual
-// seller-profile.html page, where it's an actual trust signal, not a list
-// of dozens of cards.
-function farmerCardHTML(profile) {
-  // Up to 3 -- a card this small has no room for a farmer's full crop
-  // list, and this is a taste of what they grow, not the full picture
-  // (that's what their own profile page, one tap away, already shows).
-  const crops = (profile.crops || []).slice(0, 3);
-  return `
-    <a class="card card-flush farmer-card" href="seller-profile.html?uid=${profile.uid}" style="padding:1.25rem;display:flex;flex-direction:column;align-items:center;text-align:center;gap:0.45rem">
-      ${renderAvatar(profile.fullName, profile.photoURL, "avatar-lg")}
-      <span style="font-weight:700;display:inline-flex;align-items:center;gap:0.3rem">${escapeHtml(profile.fullName)}${profile.verified ? verifiedBadgeHTML() : ""}</span>
-      <span class="text-muted" style="font-size:0.8rem;display:inline-flex;align-items:center;gap:0.25rem">${icon("map-pin")} ${governorateLabel(profile.governorate, getLocale())}</span>
-      ${
-        crops.length > 0
-          ? `<div class="profile-chips" style="justify-content:center">
-               ${crops.map((c) => `<span class="profile-chip">${icon("leaf")} ${escapeHtml(categoryLabelById(c, getLocale()))}</span>`).join("")}
-             </div>`
-          : ""
-      }
-    </a>
-  `;
 }
 
 async function loadFarmers() {

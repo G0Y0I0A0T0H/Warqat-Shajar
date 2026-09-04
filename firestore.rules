@@ -266,6 +266,14 @@ service cloud.firestore {
       allow update: if isOwner() &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['verified']);
 
+      // Lets any admin feature a farmer on the homepage's "أبرز المزارعين"
+      // (Featured Farmers) strip (js/pages/admin-users.js / home.js) --
+      // isAdmin() only, same generic scope as the pickupPoint branch above,
+      // not owner-only like verified.
+      allow update: if isAdmin() &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['featured']) &&
+        request.resource.data.featured is bool;
+
       // Lets an admin backfill the public directory entry for a farmer who
       // registered before sellerProfiles existed (or whose own
       // upsertOnRegister write silently failed) and never happened to visit

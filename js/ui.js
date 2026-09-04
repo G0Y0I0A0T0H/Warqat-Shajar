@@ -5,7 +5,7 @@
 import { authState, favoritesState, toggleFavorite } from "./state.js";
 import { t, getLocale } from "./i18n.js";
 import { Reports, Comments, SiteSettings, Storage, PhoneAttempts, Notifications, Escrow, Products } from "./firebase.js";
-import { computeFreshness, unitLabelKey } from "./constants.js";
+import { computeFreshness, unitLabelKey, governorateLabel, categoryLabelById } from "./constants.js";
 
 export function btnClass(variant = "default", size = "default", extra = "") {
   const variantClass = {
@@ -873,6 +873,43 @@ export function renderImageInput(mountEl, { value = "", uploadPathPrefix, accept
 // language instead of a second bespoke one.
 export function verifiedBadgeHTML() {
   return `<span title="${t("profile.verifiedTooltip", "Verified by the platform's admin")}" style="color:var(--primary);display:inline-flex">${icon("verified")}</span>`;
+}
+
+// farmers.html's directory card -- shared here (rather than kept local to
+// that page) so home.js's "featured farmers" section can render the exact
+// same card for a farmer the admin has spotlighted, instead of a second
+// bespoke layout. Follower count deliberately omitted -- see the module
+// comment above SellerProfiles.listAll in firebase.js for why that number
+// stays off list/grid cards.
+export function farmerCardHTML(profile) {
+  const crops = (profile.crops || []).slice(0, 3);
+  return `
+    <a class="card card-flush farmer-card" href="seller-profile.html?uid=${profile.uid}" style="padding:1.25rem;display:flex;flex-direction:column;align-items:center;text-align:center;gap:0.45rem">
+      ${renderAvatar(profile.fullName, profile.photoURL, "avatar-lg")}
+      <span style="font-weight:700;display:inline-flex;align-items:center;gap:0.3rem">${escapeHtml(profile.fullName)}${profile.verified ? verifiedBadgeHTML() : ""}</span>
+      <span class="text-muted" style="font-size:0.8rem;display:inline-flex;align-items:center;gap:0.25rem">${icon("map-pin")} ${governorateLabel(profile.governorate, getLocale())}</span>
+      ${
+        crops.length > 0
+          ? `<div class="profile-chips" style="justify-content:center">
+               ${crops.map((c) => `<span class="profile-chip">${icon("leaf")} ${escapeHtml(categoryLabelById(c, getLocale()))}</span>`).join("")}
+             </div>`
+          : ""
+      }
+    </a>
+  `;
+}
+
+// The homepage's "أبرز المزارعين" (Featured Farmers) strip -- a compact,
+// Instagram-story-style circular chip (gradient ring + avatar + name) rather
+// than farmerCardHTML's full directory card, since this is a quick visual
+// spotlight in a horizontally-scrolling row, not a browsable listing.
+export function featuredFarmerChipHTML(profile) {
+  return `
+    <a class="featured-farmer-chip" href="seller-profile.html?uid=${profile.uid}">
+      <span class="featured-farmer-ring">${renderAvatar(profile.fullName, profile.photoURL, "avatar-xl")}</span>
+      <span class="featured-farmer-name">${escapeHtml(profile.fullName)}${profile.verified ? verifiedBadgeHTML() : ""}</span>
+    </a>
+  `;
 }
 
 // ---------------------------------------------------------------------------

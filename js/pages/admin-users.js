@@ -11,6 +11,11 @@ let users = [];
 let searchTerm = "";
 let openIdentityUid = null;
 let openPickupUid = null;
+// uid -> featured (bool), from sellerProfiles -- fetched once alongside the
+// user list (see reload()) rather than lazily per-row like identity/pickup,
+// since it's needed just to draw the toggle button's initial label/state for
+// every farmer row up front, not only once an admin opens a panel.
+let featuredMap = new Map();
 // uid -> { loading, record, photoObjectUrl, error } while the panel for that
 // user is open. Fetched lazily on demand, not for the whole list up front --
 // this is sensitive data, no reason to pull it for users nobody is looking at.
@@ -170,6 +175,13 @@ function render() {
                           ? `<button type="button" class="${btnClass("outline", "sm")}" data-toggle-pickup="${u.uid}">${openPickupUid === u.uid ? t("admin.hidePickupPoint", "Hide pickup point") : t("admin.managePickupPoint", "Pickup point")}</button>`
                           : ""
                       }
+                      ${
+                        u.accountType === "farmer"
+                          ? `<button type="button" class="${btnClass("outline", "sm")}" data-toggle-featured="${u.uid}" aria-pressed="${featuredMap.get(u.uid) ? "true" : "false"}">
+                               ${icon("star", featuredMap.get(u.uid) ? "is-featured-star" : "")} ${featuredMap.get(u.uid) ? t("admin.unfeatureFarmer", "Remove from featured") : t("admin.featureFarmer", "Feature on homepage")}
+                             </button>`
+                          : ""
+                      }
                       <button type="button" class="${btnClass("outline", "icon-sm")}" data-notify="${u.uid}" aria-label="${t("broadcast.sendToUser")}">${icon("bell")}</button>
                       <button type="button" class="${btnClass("destructive", "icon-sm")}" data-delete="${u.uid}" aria-label="${t("admin.deleteUser")}">${icon("trash")}</button>
                     </div>
@@ -326,6 +338,23 @@ function render() {
     });
   });
 
+  contentEl.querySelectorAll("[data-toggle-featured]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const uid = btn.dataset.toggleFeatured;
+      const next = !featuredMap.get(uid);
+      btn.disabled = true;
+      try {
+        await SellerProfiles.setFeatured(uid, next);
+        featuredMap.set(uid, next);
+        auditRecord(next ? "farmer_featured" : "farmer_unfeatured", uid);
+        render();
+      } catch {
+        alert(t("admin.actionFailed", "Something went wrong -- please try again."));
+        btn.disabled = false;
+      }
+    });
+  });
+
   contentEl.querySelectorAll("[data-notify]").forEach((btn) => {
     btn.addEventListener("click", async () => {
       const text = prompt(t("broadcast.sendToUserPrompt"));
@@ -350,7 +379,9 @@ function render() {
 
 async function reload() {
   try {
-    users = await Admin.listAllUsers();
+    const [allUsers, sellerProfiles] = await Promise.all([Admin.listAllUsers(), SellerProfiles.listAll()]);
+    users = allUsers;
+    featuredMap = new Map(sellerProfiles.map((p) => [p.uid, Boolean(p.featured)]));
     render();
   } catch {
     contentEl.innerHTML = `<p class="empty-state">${t("admin.loadError")}</p>`;

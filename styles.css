@@ -497,6 +497,12 @@ main {
   font-size: 1rem;
 }
 
+.avatar-xl {
+  width: 4.5rem;
+  height: 4.5rem;
+  font-size: 1.35rem;
+}
+
 .avatar img {
   width: 100%;
   height: 100%;
@@ -1773,6 +1779,14 @@ main {
 .product-card-rating svg {
   width: 0.9rem;
   height: 0.9rem;
+  fill: var(--rating);
+  color: var(--rating);
+}
+
+/* admin-users.html's per-farmer "feature on homepage" toggle -- filled amber
+   once a farmer is featured, matching the star-rating color language used
+   everywhere else on the site rather than a second one-off color. */
+.is-featured-star {
   fill: var(--rating);
   color: var(--rating);
 }
@@ -4036,6 +4050,64 @@ main {
 .farmer-card:hover {
   transform: translateY(-3px);
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
+}
+
+/* index.html's "أبرز المزارعين" (Featured Farmers) strip -- admin-curated
+   spotlight (SellerProfiles.setFeatured), rendered as an Instagram-story-style
+   row of circular chips rather than farmers.html's full directory cards,
+   since this is a quick visual highlight, not a browsable listing. */
+.featured-farmers-scroll {
+  display: flex;
+  gap: 1.25rem;
+  overflow-x: auto;
+  padding: 0.5rem 0.15rem 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.featured-farmer-chip {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.55rem;
+  width: 6rem;
+  text-align: center;
+}
+
+.featured-farmer-ring {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--primary), var(--rating));
+  transition: transform 0.18s ease;
+}
+
+.featured-farmer-chip:hover .featured-farmer-ring {
+  transform: scale(1.05);
+}
+
+.featured-farmer-ring .avatar {
+  box-shadow: 0 0 0 3px var(--background);
+}
+
+.featured-farmer-name {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  max-width: 100%;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--foreground);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.featured-farmer-name svg {
+  flex-shrink: 0;
+  width: 0.85rem;
+  height: 0.85rem;
 }
 
 /* product.html's seller row -- used to be a single line of small underlined
