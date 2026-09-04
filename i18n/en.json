@@ -256,7 +256,12 @@
     "productsTitle": "Products",
     "noProducts": "No products yet.",
     "bioLabel": "Public bio",
-    "bioHint": "Shown on your public profile page -- visible to everyone."
+    "bioHint": "Shown on your public profile page -- visible to everyone.",
+    "coverColorsLabel": "Cover colors",
+    "coverColorsHint": "Shown behind your photo at the top of your public profile.",
+    "coverColorFrom": "First color",
+    "coverColorTo": "Second color",
+    "resetToDefault": "Reset to default"
   },
   "farmers": {
     "title": "Discover Farmers",

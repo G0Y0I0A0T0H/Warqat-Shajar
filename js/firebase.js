@@ -486,6 +486,15 @@ export const SellerProfiles = {
     await updateDoc(doc(sellerProfilesCol, uid), { bio, updatedAt: serverTimestamp() });
   },
 
+  // The farmer's own choice of cover-gradient colors on their public profile
+  // (seller-profile.html) -- self-service, same "only the doc owner can
+  // write it" model as bio, enforced by its own shape check in
+  // firestore.rules. Passing null reverts to this app's default themed
+  // gradient (see seller-profile.js) rather than storing an empty value.
+  async updateCoverColors(uid, colors) {
+    await updateDoc(doc(sellerProfilesCol, uid), { coverColors: colors ?? deleteField(), updatedAt: serverTimestamp() });
+  },
+
   // Writes ONLY the pickupPoint field, on purpose -- this is what lets the
   // exact same call satisfy either the farmer's own self-update rule or an
   // admin's deliberately narrower pickupPoint-only branch (see

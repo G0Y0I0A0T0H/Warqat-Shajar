@@ -11,6 +11,7 @@ let rating = { average: 0, count: 0 };
 let ratingLoadedFor = null;
 let sellerBio = "";
 let sellerPickupPoint = null;
+let sellerCoverColors = null;
 let bioLoadedFor = null;
 let pickupPicker = null;
 let deliveryAddressPicker = null;
@@ -46,6 +47,7 @@ async function render() {
     const sellerProfile = await SellerProfiles.getOnce(profile.uid).catch(() => null);
     sellerBio = sellerProfile?.bio || "";
     sellerPickupPoint = sellerProfile?.pickupPoint || null;
+    sellerCoverColors = sellerProfile?.coverColors || null;
     render();
     return;
   }
@@ -117,6 +119,23 @@ async function render() {
             <button type="submit" class="btn btn-default btn-sm" style="align-self:flex-start">${t("payments.save", "Save")}</button>
           </form>
           <div style="margin-top:1.5rem;padding-top:1.25rem;border-top:1px solid var(--border);max-width:28rem">
+            <div class="label">${t("sellerProfile.coverColorsLabel", "Cover colors")}</div>
+            <p class="text-muted" style="font-size:0.8rem;margin-bottom:0.6rem">${t("sellerProfile.coverColorsHint", "Shown behind your photo at the top of your public profile.")}</p>
+            <div style="display:flex;align-items:flex-end;gap:1.25rem;flex-wrap:wrap">
+              <div class="field" style="width:auto">
+                <label class="label" for="cover-color-from" style="font-size:0.8rem">${t("sellerProfile.coverColorFrom", "First color")}</label>
+                <input type="color" class="input" id="cover-color-from" style="padding:0.2rem;width:3.5rem;height:2.25rem" value="${sellerCoverColors?.from || "#2e7d32"}">
+              </div>
+              <div class="field" style="width:auto">
+                <label class="label" for="cover-color-to" style="font-size:0.8rem">${t("sellerProfile.coverColorTo", "Second color")}</label>
+                <input type="color" class="input" id="cover-color-to" style="padding:0.2rem;width:3.5rem;height:2.25rem" value="${sellerCoverColors?.to || "#f5a623"}">
+              </div>
+              <button type="button" class="btn btn-default btn-sm" id="cover-colors-save">${t("payments.save", "Save")}</button>
+              ${sellerCoverColors ? `<button type="button" class="btn btn-outline btn-sm" id="cover-colors-reset">${t("sellerProfile.resetToDefault", "Reset to default")}</button>` : ""}
+              <span id="cover-colors-saved" class="success-text" style="display:none">${t("payments.saved", "Saved")}</span>
+            </div>
+          </div>
+          <div style="margin-top:1.5rem;padding-top:1.25rem;border-top:1px solid var(--border);max-width:28rem">
             <div class="label">${t("map.pickupPointLabel", "Pickup point")}</div>
             <p class="text-muted" style="font-size:0.8rem;margin-bottom:0.4rem">${t("map.pickupPointHint", "Where buyers who choose pickup can collect their order -- free, no delivery involved.")}</p>
             <div id="pickup-point-mount"></div>
@@ -153,6 +172,24 @@ async function render() {
       sellerBio = text;
       savedEl.style.display = "inline";
       setTimeout(() => (savedEl.style.display = "none"), 2500);
+    });
+
+    viewEl.querySelector("#cover-colors-save").addEventListener("click", async (e) => {
+      const from = viewEl.querySelector("#cover-color-from").value;
+      const to = viewEl.querySelector("#cover-color-to").value;
+      e.target.disabled = true;
+      await SellerProfiles.updateCoverColors(profile.uid, { from, to });
+      sellerCoverColors = { from, to };
+      e.target.disabled = false;
+      const savedEl = viewEl.querySelector("#cover-colors-saved");
+      savedEl.style.display = "inline";
+      setTimeout(() => (savedEl.style.display = "none"), 2500);
+      render();
+    });
+    viewEl.querySelector("#cover-colors-reset")?.addEventListener("click", async () => {
+      await SellerProfiles.updateCoverColors(profile.uid, null);
+      sellerCoverColors = null;
+      render();
     });
 
     pickupPicker = renderLocationPicker(viewEl.querySelector("#pickup-point-mount"), {
