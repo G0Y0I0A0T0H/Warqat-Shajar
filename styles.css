@@ -4038,6 +4038,47 @@ main {
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
 }
 
+/* product.html's seller row -- used to be a single line of small underlined
+   text with no photo at all, easy to miss entirely. A real card with the
+   farmer's actual photo now, per the user's own request to make whose
+   listing this actually is clearly visible. */
+.product-seller-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  background: var(--card);
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+.product-seller-card:hover {
+  background: var(--muted);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.05);
+}
+.product-seller-info {
+  flex: 1;
+  min-width: 0;
+}
+.product-seller-name {
+  font-weight: 700;
+  color: var(--foreground);
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.product-seller-chevron {
+  width: 1.1rem;
+  height: 1.1rem;
+  color: var(--muted-foreground);
+  flex-shrink: 0;
+  /* Points toward the direction tapping this card navigates, same as the
+     contact widget's own chevron -- "forward" is the inline-end side
+     (left) in this site's RTL layout, not literally "down". */
+  transform: rotate(90deg);
+}
+
 /* A picked pin drops in rather than just appearing -- purely cosmetic,
    matches the small-polish bar the rest of this picker is held to now. */
 .leaflet-marker-icon {
