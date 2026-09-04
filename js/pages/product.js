@@ -1,8 +1,8 @@
 import { initLayout } from "../layout.js";
 import { t, getLocale, onLocaleChange } from "../i18n.js";
-import { Products, Chat, Ads, Notifications, SiteSettings } from "../firebase.js";
+import { Products, Chat, Ads, Notifications, SiteSettings, SellerProfiles } from "../firebase.js";
 import { governorateLabel, categoryLabelById, onCategoriesChange, computeFreshness, unitLabelKey } from "../constants.js";
-import { renderAdSlot, favoriteButtonHTML, wireFavoriteButtons, shareButtonsHTML, wireShareButtons, initReportDialog, initProductComments, icon, showMessage, escapeHtml, safeUrl, optimizedImageUrl, optimizedVideoUrl, badgeClass, interpolate } from "../ui.js";
+import { renderAdSlot, favoriteButtonHTML, wireFavoriteButtons, shareButtonsHTML, wireShareButtons, initReportDialog, initProductComments, icon, showMessage, escapeHtml, safeUrl, optimizedImageUrl, optimizedVideoUrl, badgeClass, interpolate, verifiedBadgeHTML } from "../ui.js";
 import { authState, subscribe, addToCart } from "../state.js";
 
 const params = new URLSearchParams(location.search);
@@ -10,6 +10,12 @@ const productId = params.get("id");
 const detailEl = document.getElementById("product-detail");
 
 let product = null;
+// Not denormalized onto the product doc itself (same reasoning as follower
+// counts elsewhere in this app -- verification status can change after the
+// product was listed, so it's fetched fresh here rather than trusted from a
+// stale copy). Best-effort, non-blocking -- render() already looks fine
+// without it, this just re-renders once it resolves to add the badge.
+let sellerVerified = false;
 let starting = false;
 let activePhotoIndex = 0;
 // "retail" or "wholesale" -- only switchable when the product actually has
@@ -266,7 +272,7 @@ function render() {
         }
       </div>
       <p style="margin-top:1rem;white-space:pre-line">${escapeHtml(product.description)}</p>
-      <a href="seller-profile.html?uid=${product.ownerId}" class="text-muted" style="margin-top:1rem;font-size:0.875rem;display:inline-block;text-decoration:underline">${escapeHtml(product.ownerName)}</a>
+      <a href="seller-profile.html?uid=${product.ownerId}" class="text-muted" style="margin-top:1rem;font-size:0.875rem;display:inline-flex;align-items:center;gap:0.3rem;text-decoration:underline">${escapeHtml(product.ownerName)}${sellerVerified ? verifiedBadgeHTML() : ""}</a>
       ${
         isOwner
           ? ""
@@ -454,6 +460,14 @@ async function main() {
   // registration below it.
   if (!product) return;
   updateSeoMetaTags(product);
+  SellerProfiles.getOnce(product.ownerId)
+    .then((sp) => {
+      if (sp?.verified) {
+        sellerVerified = true;
+        render();
+      }
+    })
+    .catch(() => {});
   // firestore.rules now requires isSignedIn() for this counter (an
   // unauthenticated script could otherwise inflate/reset it with unlimited,
   // untraceable requests) -- a signed-out visitor's view genuinely won't be
