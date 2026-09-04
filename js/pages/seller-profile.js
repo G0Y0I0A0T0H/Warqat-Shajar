@@ -2,7 +2,7 @@ import { initLayout } from "../layout.js";
 import { t, getLocale, onLocaleChange } from "../i18n.js";
 import { SellerProfiles, Follows, Products } from "../firebase.js";
 import { governorateLabel, categoryLabelById } from "../constants.js";
-import { renderAvatar, escapeHtml, btnClass, icon, wireFavoriteButtons, productCardHTML, verifiedBadgeHTML } from "../ui.js";
+import { renderAvatar, escapeHtml, btnClass, icon, wireFavoriteButtons, productCardHTML, verifiedBadgeHTML, locationMenuHTML, wireLocationMenus, renderMiniMap } from "../ui.js";
 import { authState, subscribe } from "../state.js";
 
 const headerEl = document.getElementById("seller-profile-header");
@@ -29,6 +29,9 @@ function renderHeader() {
   }
   const isSelf = authState.user?.uid === uid;
   const canFollow = authState.user && !isSelf;
+  const crops = profile.crops || [];
+  const pickup = profile.pickupPoint;
+  const hasPickupPoint = typeof pickup?.lat === "number" && typeof pickup?.lng === "number";
   headerEl.innerHTML = `
     <div class="card" style="padding:1.5rem;display:flex;gap:1.25rem;align-items:flex-start;flex-wrap:wrap">
       ${renderAvatar(profile.fullName, profile.photoURL, "avatar-lg")}
@@ -38,6 +41,13 @@ function renderHeader() {
           ${icon("map-pin")} ${governorateLabel(profile.governorate, getLocale())}
         </p>
         ${profile.bio ? `<p style="margin-top:0.75rem;white-space:pre-line">${escapeHtml(profile.bio)}</p>` : ""}
+        ${
+          crops.length > 0
+            ? `<div class="profile-chips" style="margin-top:0.85rem">
+                 ${crops.map((c) => `<span class="profile-chip">${icon("leaf")} ${escapeHtml(categoryLabelById(c, getLocale()))}</span>`).join("")}
+               </div>`
+            : ""
+        }
         <div style="display:flex;gap:1.25rem;margin-top:0.85rem;font-size:0.9rem">
           <span><strong>${followerCount}</strong> ${t("sellerProfile.followers", "Followers")}</span>
           <span><strong>${followingCount}</strong> ${t("sellerProfile.following", "Following")}</span>
@@ -53,7 +63,21 @@ function renderHeader() {
         }
       </div>
     </div>
+    ${
+      hasPickupPoint
+        ? `<div class="profile-address-card">
+             <h2 class="heading" style="font-size:1rem;display:flex;align-items:center;gap:0.4rem">${icon("map-pin")} ${t("map.pickupPointLabel", "Pickup point")}</h2>
+             <div id="seller-profile-map" style="margin-top:0.75rem"></div>
+             <div style="margin-top:0.75rem">${locationMenuHTML(pickup.lat, pickup.lng, pickup.address)}</div>
+           </div>`
+        : ""
+    }
   `;
+
+  if (hasPickupPoint) {
+    renderMiniMap(headerEl.querySelector("#seller-profile-map"), pickup.lat, pickup.lng);
+    wireLocationMenus(headerEl);
+  }
 
   headerEl.querySelector("#follow-btn")?.addEventListener("click", async (e) => {
     const btn = e.currentTarget;
