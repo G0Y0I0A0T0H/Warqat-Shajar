@@ -147,7 +147,7 @@ async function loadProducts() {
   }
 
   if (products.length === 0) {
-    listEl.innerHTML = `<p class="empty-state">${getLocale() === "ar" ? "مفيش منتجات مطابقة" : "No matching products"}</p>`;
+    listEl.innerHTML = `<p class="empty-state">${getLocale() === "ar" ? "لا توجد منتجات مطابقة" : "No matching products"}</p>`;
     return;
   }
 
