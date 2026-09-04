@@ -256,7 +256,12 @@
     "productsTitle": "المنتجات",
     "noProducts": "لا توجد منتجات بعد.",
     "bioLabel": "نبذة عامة",
-    "bioHint": "تظهر في صفحتك العامة -- يراها الجميع."
+    "bioHint": "تظهر في صفحتك العامة -- يراها الجميع.",
+    "coverColorsLabel": "ألوان الغلاف",
+    "coverColorsHint": "تظهر خلف صورتك في أعلى صفحتك العامة.",
+    "coverColorFrom": "اللون الأول",
+    "coverColorTo": "اللون الثاني",
+    "resetToDefault": "استعادة الافتراضي"
   },
   "farmers": {
     "title": "اكتشف المزارعين",

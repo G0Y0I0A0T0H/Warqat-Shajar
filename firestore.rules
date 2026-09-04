@@ -244,10 +244,19 @@ service cloud.firestore {
       allow read: if true;
       allow create, update: if isSignedIn() && request.auth.uid == uid &&
         request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['fullName', 'photoURL', 'governorate', 'crops', 'bio', 'pickupPoint', 'updatedAt', 'createdAt']) &&
+          .hasOnly(['fullName', 'photoURL', 'governorate', 'crops', 'bio', 'pickupPoint', 'coverColors', 'updatedAt', 'createdAt']) &&
         request.resource.data.get('bio', '') is string && request.resource.data.get('bio', '').size() <= 500 &&
         (!('pickupPoint' in request.resource.data) ||
-         (request.resource.data.pickupPoint.lat is number && request.resource.data.pickupPoint.lng is number));
+         (request.resource.data.pickupPoint.lat is number && request.resource.data.pickupPoint.lng is number)) &&
+        // The farmer's own cover-gradient colors (js/pages/profile.js, shown
+        // on seller-profile.html) -- exactly two hex colors, nothing else,
+        // so this can never become a vector for arbitrary CSS/HTML injection
+        // via the inline style it's read back into.
+        (!('coverColors' in request.resource.data) ||
+         (request.resource.data.coverColors.from is string &&
+          request.resource.data.coverColors.from.matches('^#[0-9a-fA-F]{6}$') &&
+          request.resource.data.coverColors.to is string &&
+          request.resource.data.coverColors.to.matches('^#[0-9a-fA-F]{6}$')));
 
       // Deliberately narrow -- an admin may manage a farmer's pickup point
       // (per the owner's ask) but never their name/photo/bio/crops through

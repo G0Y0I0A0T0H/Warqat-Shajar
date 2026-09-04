@@ -33,9 +33,12 @@ function renderHeader() {
   const crops = profile.crops || [];
   const pickup = profile.pickupPoint;
   const hasPickupPoint = typeof pickup?.lat === "number" && typeof pickup?.lng === "number";
+  // Falls back to the theme's own default gradient (styles.css) when the
+  // farmer hasn't picked their own -- see profile.js's "Cover colors" field.
+  const coverStyle = profile.coverColors ? ` style="background: linear-gradient(135deg, ${profile.coverColors.from}, ${profile.coverColors.to})"` : "";
   headerEl.innerHTML = `
     <div class="card seller-profile-card">
-      <div class="seller-profile-cover"></div>
+      <div class="seller-profile-cover"${coverStyle}></div>
       <div class="seller-profile-body">
         <span class="seller-profile-avatar-ring">${renderAvatar(profile.fullName, profile.photoURL, "avatar-2xl")}</span>
         <h1 class="heading seller-profile-name">${escapeHtml(profile.fullName)}${profile.verified ? verifiedBadgeHTML() : ""}</h1>
