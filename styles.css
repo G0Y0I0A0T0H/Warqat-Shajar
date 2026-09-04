@@ -3218,6 +3218,28 @@ main {
   opacity: 0.75;
 }
 
+/* .input/.textarea/.select set color: var(--foreground) so they read
+   correctly on the PAGE's own light/dark background -- but .escrow-actions
+   is deliberately always dark regardless of the page's theme (see its own
+   comment above). On a light page (every regular visitor now, since
+   js/state.js's applyDarkMode locks non-admins to light) that near-black
+   --foreground rendered as near-invisible text typed into these fields,
+   sitting on this widget's own near-black hardcoded background --
+   perfectly legible only once manually text-selected, which is exactly
+   what made this so easy to miss. Pin these to the widget's own light
+   text color instead of the page's variable. */
+.escrow-actions .input,
+.escrow-actions .textarea,
+.escrow-actions .select {
+  color: #e8f5e9;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.escrow-actions .input::placeholder,
+.escrow-actions .textarea::placeholder {
+  color: rgba(255, 255, 255, 0.45);
+}
+
 .escrow-method-circles {
   display: flex;
   flex-wrap: wrap;
