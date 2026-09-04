@@ -1336,30 +1336,40 @@ export function renderEscrowActions(containerEl, { order, viewerUid, paymentInfo
     return;
   }
 
+  // Dispute/cancel used to each be a full-width block (toggle button
+  // stacked directly above its own collapsed form), which read as two
+  // separate oversized sections even though most of that height was just
+  // padding around a single short line of text. Grouping the two toggles
+  // into one compact row -- same treatment as primaryBtnHtml above -- and
+  // keeping their forms as separate blocks below (still independently
+  // shown/hidden, untouched functionally) reads as one tidy action bar
+  // instead.
+  const disputeToggleHtml = canDispute
+    ? `<button type="button" class="${btnClass("ghost", "sm")}" id="escrow-dispute-toggle-btn">${t("escrow.raiseDisputeBtn")}</button>`
+    : "";
+  const cancelToggleHtml = canRequestCancel
+    ? `<button type="button" class="${btnClass("ghost", "sm")}" id="escrow-cancel-toggle-btn">${t("escrow.requestCancelBtn")}</button>`
+    : "";
+
   containerEl.innerHTML = `
     <div class="escrow-actions">
       ${topHtml}
       ${proofFormHtml}
       ${primaryBtnHtml ? `<div class="escrow-actions-buttons">${primaryBtnHtml}</div>` : ""}
+      ${disputeToggleHtml || cancelToggleHtml ? `<div class="escrow-actions-buttons">${disputeToggleHtml}${cancelToggleHtml}</div>` : ""}
       ${
         canDispute
-          ? `<div>
-              <button type="button" class="${btnClass("ghost", "sm")}" id="escrow-dispute-toggle-btn">${t("escrow.raiseDisputeBtn")}</button>
-              <div id="escrow-dispute-form" style="display:none;flex-direction:column;gap:0.4rem;margin-top:0.5rem">
-                <textarea class="textarea" id="escrow-dispute-note" rows="2" placeholder="${t("escrow.disputeNotePlaceholder")}"></textarea>
-                <button type="button" class="${btnClass("destructive", "sm")}" id="escrow-dispute-submit-btn" style="align-self:flex-start">${t("escrow.disputeSubmitBtn")}</button>
-              </div>
+          ? `<div id="escrow-dispute-form" style="display:none;flex-direction:column;gap:0.4rem">
+              <textarea class="textarea" id="escrow-dispute-note" rows="2" placeholder="${t("escrow.disputeNotePlaceholder")}"></textarea>
+              <button type="button" class="${btnClass("destructive", "sm")}" id="escrow-dispute-submit-btn" style="align-self:flex-start">${t("escrow.disputeSubmitBtn")}</button>
             </div>`
           : ""
       }
       ${
         canRequestCancel
-          ? `<div>
-              <button type="button" class="${btnClass("ghost", "sm")}" id="escrow-cancel-toggle-btn">${t("escrow.requestCancelBtn")}</button>
-              <div id="escrow-cancel-form" style="display:none;flex-direction:column;gap:0.4rem;margin-top:0.5rem">
-                <textarea class="textarea" id="escrow-cancel-note" rows="2" placeholder="${t("escrow.cancelReasonPlaceholder")}"></textarea>
-                <button type="button" class="${btnClass("destructive", "sm")}" id="escrow-cancel-submit-btn" style="align-self:flex-start">${t("escrow.cancelSubmitBtn")}</button>
-              </div>
+          ? `<div id="escrow-cancel-form" style="display:none;flex-direction:column;gap:0.4rem">
+              <textarea class="textarea" id="escrow-cancel-note" rows="2" placeholder="${t("escrow.cancelReasonPlaceholder")}"></textarea>
+              <button type="button" class="${btnClass("destructive", "sm")}" id="escrow-cancel-submit-btn" style="align-self:flex-start">${t("escrow.cancelSubmitBtn")}</button>
             </div>`
           : cancelRequestPending
             ? `<p class="text-muted" style="font-size:0.8rem">${t("escrow.cancelRequestPending")}</p>`
