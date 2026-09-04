@@ -1000,6 +1000,19 @@ export const Escrow = {
     deliveryMethod,
     deliveryLocation,
   }) {
+    // For a pickup order there's no per-order location the buyer supplied
+    // (unlike deliveryLocation above, which is the buyer's own address) --
+    // the relevant point is the seller's own sellerProfiles.pickupPoint, so
+    // it's snapshotted onto the order here, once, at creation time. Same
+    // reasoning as deliveryLocation being captured at creation rather than
+    // read live: if the farmer moves their pickup point later, an
+    // already-placed order shouldn't silently change where the buyer was
+    // told to go. Never trusted from the client's own claim -- read fresh
+    // from the seller's real profile doc, and simply absent (null) if the
+    // farmer never set one, in which case deliveryMethodLineHTML falls back
+    // to the old plain "Pickup" label with no map link.
+    const pickupLocation =
+      deliveryMethod !== "delivery" ? (await SellerProfiles.getOnce(sellerId))?.pickupPoint || null : null;
     await setDoc(doc(db, "escrowOrders", orderId), {
       chatId,
       productId,
@@ -1028,6 +1041,7 @@ export const Escrow = {
       // the firestore.rules escrowOrders create-rule's own hardcoded check.
       deliveryMethod: deliveryMethod || null,
       deliveryLocation: deliveryLocation || null,
+      pickupLocation,
       deliveryFee: deliveryMethod === "delivery" ? 50 : 0,
       status: "awaiting_payment",
       paymentClaimedAt: null,
@@ -1222,18 +1236,45 @@ export const Escrow = {
   // never for a COD order, since no money ever passed through the platform
   // for one of those (see the doc comment on Wallets below for why the
   // balance write itself isn't further delta-checked in firestore.rules).
+  //
+  // Runs as one Firestore transaction spanning BOTH the order doc and the
+  // wallet doc, not two sequential writes -- an admin double-clicking
+  // "release" (or the same order open in two tabs, or two payments-granted
+  // admins both landing on it) used to be able to read the order as still
+  // 'delivery_confirmed' twice before either write committed, credit the
+  // wallet twice, and only have the SECOND escrowOrders update actually
+  // fail (status no longer matched 'delivery_confirmed' by then) -- by
+  // which point the double credit had already gone through, silently
+  // overpaying the farmer with nothing surfaced to the admin. Firestore
+  // serializes concurrent transactions that touch the same document: the
+  // loser here re-reads the order, sees status is already 'released', and
+  // aborts before ever touching the wallet.
   async release(orderId) {
-    const snap = await getDoc(doc(db, "escrowOrders", orderId));
-    const order = snap.data();
-    // Credit the wallet BEFORE flipping status to "released" -- if the
-    // credit throws (it used to, for a farmer's very first payout, before
-    // the wallets/{uid} create-rule was fixed), the order must not end up
-    // permanently marked released with no money actually credited.
-    if (order && !order.noProofPayment) {
-      await Wallets.credit(order.sellerId, order.totalAmount, orderId);
-    }
-    await updateDoc(doc(db, "escrowOrders", orderId), { status: "released", releasedAt: serverTimestamp() });
-    if (order && !order.noProofPayment) {
+    const orderRef = doc(db, "escrowOrders", orderId);
+    let order;
+    await runTransaction(db, async (tx) => {
+      const snap = await tx.get(orderRef);
+      order = snap.data();
+      if (!order || order.status !== "delivery_confirmed") {
+        throw new Error("order is not awaiting release");
+      }
+      tx.update(orderRef, { status: "released", releasedAt: serverTimestamp() });
+      if (!order.noProofPayment) {
+        tx.set(walletRef(order.sellerId), { availableBalance: increment(order.totalAmount), updatedAt: serverTimestamp() }, { merge: true });
+      }
+    });
+    if (!order.noProofPayment) {
+      // Ledger write stays outside the transaction (append-only, so there's
+      // nothing for a concurrent write to race against) -- same as before.
+      await addDoc(walletTransactionsCol, {
+        uid: order.sellerId,
+        type: "credit",
+        amount: order.totalAmount,
+        orderId,
+        withdrawalId: null,
+        note: null,
+        createdAt: serverTimestamp(),
+      });
       // Live inventory: this is the completed-deal point for an electronic-
       // payment order (mirrors the COD decrement in confirmDelivery above).
       // isAdmin() already has unconditional product-update rights, so this
@@ -1348,38 +1389,14 @@ export const Wallets = {
     );
   },
 
-  // Internal -- called by Escrow.release() and WithdrawalRequests.markPaid()
-  // only, never exposed directly to a plain UI button.
-  async credit(uid, amount, orderId) {
-    // Atomic increment instead of read-then-write -- two credits landing at
-    // the same moment (two orders releasing for the same farmer close
-    // together) used to be able to read the same starting balance and have
-    // the second write silently clobber the first's addition, losing the
-    // farmer real money. increment() is resolved server-side, so concurrent
-    // writes to the same field always compose correctly regardless of order.
-    await setDoc(walletRef(uid), { availableBalance: increment(amount), updatedAt: serverTimestamp() }, { merge: true });
-    await addDoc(walletTransactionsCol, { uid, type: "credit", amount, orderId, withdrawalId: null, note: null, createdAt: serverTimestamp() });
-  },
-
-  async debit(uid, amount, withdrawalId) {
-    // Needs an actual transaction, not a plain increment() -- unlike
-    // credit(), this has to make a real decision (refuse to go negative)
-    // based on the balance it reads, and a transaction is what makes "read
-    // the real current value, decide, then write" atomic against a second
-    // debit racing in at the same moment (e.g. two of a farmer's stacked
-    // withdrawal requests both being marked paid together). Firestore
-    // retries the whole callback automatically if the document changes
-    // between the read and the commit.
-    await runTransaction(db, async (tx) => {
-      const snap = await tx.get(walletRef(uid));
-      const current = snap.exists() ? snap.data().availableBalance || 0 : 0;
-      if (current < amount) {
-        throw new Error("insufficient balance");
-      }
-      tx.set(walletRef(uid), { availableBalance: current - amount, updatedAt: serverTimestamp() }, { merge: true });
-    });
-    await addDoc(walletTransactionsCol, { uid, type: "debit", amount, orderId: null, withdrawalId, note: null, createdAt: serverTimestamp() });
-  },
+  // credit()/debit() used to live here as standalone helpers called by
+  // Escrow.release()/WithdrawalRequests.markPaid() below. Removed: each was
+  // a plain read-then-write against the wallet alone, with no way to also
+  // see whether the ORDER/REQUEST that authorized it had already been paid
+  // out by a concurrent call -- see the doc comments on release()/markPaid()
+  // for the double-credit/double-debit race that opened up. Both now do
+  // their own runTransaction() spanning the wallet doc AND the order/request
+  // doc together, so there's nothing generic left to share here.
 };
 
 // ===========================================================================
@@ -1426,15 +1443,37 @@ export const WithdrawalRequests = {
     return snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((r) => r.status === "requested");
   },
 
+  // One Firestore transaction spanning both the request doc and the wallet
+  // doc -- same double-spend shape as Escrow.release() above (see its
+  // comment): two concurrent markPaid() calls on the SAME request (a
+  // double-click, two tabs, two payments-granted admins) used to both read
+  // the wallet balance as still covering the amount and both debit it
+  // before either request update landed, silently short-changing the
+  // farmer's remaining balance for what was really only one real-world
+  // payout. Reading the request's own status inside the transaction (not
+  // just the wallet balance) closes that: the loser re-reads status as
+  // already 'paid' and aborts before touching the wallet at all.
   async markPaid(id) {
-    const snap = await getDoc(doc(db, "withdrawalRequests", id));
-    const req = snap.data();
-    // Debit BEFORE flipping status -- if the wallet doesn't actually have
-    // this much anymore (e.g. another stacked request already got paid),
-    // Wallets.debit throws and this request stays "requested" instead of
-    // being marked paid while no money was ever actually moved.
-    await Wallets.debit(req.uid, req.amount, id);
-    await updateDoc(doc(db, "withdrawalRequests", id), { status: "paid", resolvedAt: serverTimestamp() });
+    const reqRef = doc(db, "withdrawalRequests", id);
+    let req;
+    await runTransaction(db, async (tx) => {
+      const reqSnap = await tx.get(reqRef);
+      req = reqSnap.data();
+      if (!req || req.status !== "requested") {
+        throw new Error("withdrawal request already resolved");
+      }
+      const wRef = walletRef(req.uid);
+      const walletSnap = await tx.get(wRef);
+      const current = walletSnap.exists() ? walletSnap.data().availableBalance || 0 : 0;
+      if (current < req.amount) {
+        throw new Error("insufficient balance");
+      }
+      tx.update(reqRef, { status: "paid", resolvedAt: serverTimestamp() });
+      tx.set(wRef, { availableBalance: current - req.amount, updatedAt: serverTimestamp() }, { merge: true });
+    });
+    // Ledger write stays outside the transaction, same reasoning as
+    // Escrow.release() above.
+    await addDoc(walletTransactionsCol, { uid: req.uid, type: "debit", amount: req.amount, orderId: null, withdrawalId: id, note: null, createdAt: serverTimestamp() });
   },
 
   async reject(id, note) {
