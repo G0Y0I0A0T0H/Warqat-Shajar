@@ -2,7 +2,7 @@ import { initLayout } from "../layout.js";
 import { t, getLocale, onLocaleChange } from "../i18n.js";
 import { Products, Chat, Ads, Notifications, SiteSettings, SellerProfiles } from "../firebase.js";
 import { governorateLabel, categoryLabelById, onCategoriesChange, computeFreshness, unitLabelKey } from "../constants.js";
-import { renderAdSlot, favoriteButtonHTML, wireFavoriteButtons, shareButtonsHTML, wireShareButtons, initReportDialog, initProductComments, icon, showMessage, escapeHtml, safeUrl, optimizedImageUrl, optimizedVideoUrl, badgeClass, interpolate, verifiedBadgeHTML } from "../ui.js";
+import { renderAdSlot, favoriteButtonHTML, wireFavoriteButtons, shareButtonsHTML, wireShareButtons, initReportDialog, initProductComments, icon, showMessage, escapeHtml, safeUrl, optimizedImageUrl, optimizedVideoUrl, badgeClass, interpolate, verifiedBadgeHTML, renderAvatar } from "../ui.js";
 import { authState, subscribe, addToCart } from "../state.js";
 
 const params = new URLSearchParams(location.search);
@@ -11,11 +11,14 @@ const detailEl = document.getElementById("product-detail");
 
 let product = null;
 // Not denormalized onto the product doc itself (same reasoning as follower
-// counts elsewhere in this app -- verification status can change after the
-// product was listed, so it's fetched fresh here rather than trusted from a
-// stale copy). Best-effort, non-blocking -- render() already looks fine
-// without it, this just re-renders once it resolves to add the badge.
+// counts elsewhere in this app -- verification status/photo can change
+// after the product was listed, so it's fetched fresh here rather than
+// trusted from a stale copy). Best-effort, non-blocking -- render() already
+// looks fine without it, this just re-renders once it resolves to add the
+// seller's real photo/verified badge on top of the name product already has.
 let sellerVerified = false;
+let sellerPhotoURL = null;
+let sellerGovernorate = null;
 let starting = false;
 let activePhotoIndex = 0;
 // "retail" or "wholesale" -- only switchable when the product actually has
@@ -272,7 +275,18 @@ function render() {
         }
       </div>
       <p style="margin-top:1rem;white-space:pre-line">${escapeHtml(product.description)}</p>
-      <a href="seller-profile.html?uid=${product.ownerId}" class="text-muted" style="margin-top:1rem;font-size:0.875rem;display:inline-flex;align-items:center;gap:0.3rem;text-decoration:underline">${escapeHtml(product.ownerName)}${sellerVerified ? verifiedBadgeHTML() : ""}</a>
+      <a href="seller-profile.html?uid=${product.ownerId}" class="product-seller-card">
+        ${renderAvatar(product.ownerName, sellerPhotoURL, "avatar-lg")}
+        <div class="product-seller-info">
+          <div class="product-seller-name">${escapeHtml(product.ownerName)}${sellerVerified ? verifiedBadgeHTML() : ""}</div>
+          ${
+            sellerGovernorate
+              ? `<div class="text-muted" style="font-size:0.8rem;display:flex;align-items:center;gap:0.25rem">${icon("map-pin")} ${governorateLabel(sellerGovernorate, getLocale())}</div>`
+              : ""
+          }
+        </div>
+        ${icon("chevron-down", "product-seller-chevron")}
+      </a>
       ${
         isOwner
           ? ""
@@ -462,10 +476,11 @@ async function main() {
   updateSeoMetaTags(product);
   SellerProfiles.getOnce(product.ownerId)
     .then((sp) => {
-      if (sp?.verified) {
-        sellerVerified = true;
-        render();
-      }
+      if (!sp) return;
+      sellerVerified = Boolean(sp.verified);
+      sellerPhotoURL = sp.photoURL || null;
+      sellerGovernorate = sp.governorate || null;
+      render();
     })
     .catch(() => {});
   // firestore.rules now requires isSignedIn() for this counter (an
