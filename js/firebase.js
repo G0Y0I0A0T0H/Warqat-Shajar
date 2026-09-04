@@ -502,12 +502,24 @@ export const SellerProfiles = {
   // Directory listing (farmers.html) -- fetched in full and filtered
   // client-side, same "fine at current scale" convention already used for
   // Admin.listAllUsers()/Escrow.listAllOnce() elsewhere in this file.
+  // Verified accounts first (per the user's own request), newest-first
+  // within each of the two groups -- same tiebreaker this already used
+  // before verified sorting existed, kept rather than invented, since
+  // there's no cheap "how prominent is this account" signal actually
+  // sitting on this doc to sort by otherwise (follower counts are
+  // deliberately never stored -- see the comment above -- and rating
+  // lives on users/{uid}, not here, so pulling either in would mean a
+  // real per-farmer read on top of this already-full-collection fetch).
   async listAll(filters = {}) {
     const snap = await getDocs(sellerProfilesCol);
     let list = snap.docs.map((d) => d.data());
     if (filters.governorate) list = list.filter((p) => p.governorate === filters.governorate);
     if (filters.category) list = list.filter((p) => (p.crops || []).includes(filters.category));
-    return list.sort((a, b) => (b.createdAt?.toMillis() ?? 0) - (a.createdAt?.toMillis() ?? 0));
+    return list.sort((a, b) => {
+      const verifiedDiff = (b.verified ? 1 : 0) - (a.verified ? 1 : 0);
+      if (verifiedDiff !== 0) return verifiedDiff;
+      return (b.createdAt?.toMillis() ?? 0) - (a.createdAt?.toMillis() ?? 0);
+    });
   },
 };
 

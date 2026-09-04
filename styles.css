@@ -1538,22 +1538,27 @@ main {
   color: var(--muted-foreground);
 }
 
+/* Used to be a bare text link, hidden entirely below 640px (no way to get
+   to e.g. the full farmers directory from the homepage's own "Discover
+   farmers" section on a phone at all) -- a real pill button now, visible
+   on every viewport, per the user's own request for something clearly
+   tappable rather than a subtle line of colored text easy to miss. */
 .section-link {
-  display: none;
   flex-shrink: 0;
-  font-size: 0.875rem;
-  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+  font-weight: 600;
   color: var(--primary);
+  border: 1px solid var(--primary);
+  border-radius: 999px;
+  padding: 0.4rem 0.9rem;
+  white-space: nowrap;
 }
 
 .section-link:hover {
-  text-decoration: underline;
-}
-
-@media (min-width: 640px) {
-  .section-link {
-    display: inline-block;
-  }
+  background: var(--accent);
 }
 
 /* ---------------------------------------------------------------------- */
@@ -4020,6 +4025,17 @@ main {
   background: var(--card);
   border: 1px solid var(--border);
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.05);
+}
+
+/* farmers.html's directory cards -- a small lift + shadow on hover, per
+   the user's own request to make this section feel more polished, so the
+   grid reads as a set of real interactive cards rather than static tiles. */
+.farmer-card {
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+.farmer-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
 }
 
 /* A picked pin drops in rather than just appearing -- purely cosmetic,
