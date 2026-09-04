@@ -259,10 +259,11 @@
   },
   "farmers": {
     "title": "Discover Farmers",
-    "discoverTitle": "Discover farmers",
-    "discoverSubtitle": "Follow your favorite farmers and see their latest products",
+    "discoverTitle": "Featured Farmers",
+    "discoverSubtitle": "A handpicked selection of trusted farmers on the platform",
     "viewAll": "Browse farmers",
-    "noFarmers": "No farmers match these filters yet."
+    "noFarmers": "No farmers match these filters yet.",
+    "noFeaturedYet": "No farmers have been featured yet."
   },
   "userMenu": {
     "dashboard": "Dashboard",
@@ -716,7 +717,9 @@
     "addProductForFarmer": "Add product for a farmer",
     "searchFarmerPlaceholder": "Search farmer by name, phone, or email",
     "selectFarmer": "Select",
-    "addedByAdminBadge": "Added by admin"
+    "addedByAdminBadge": "Added by admin",
+    "featureFarmer": "Feature on homepage",
+    "unfeatureFarmer": "Remove from featured"
   },
   "phoneAttempts": {
     "hint": "Every attempt to share a phone number anywhere on the site is logged here automatically — 3 attempts from the same user auto-suspends their account for 24h.",
