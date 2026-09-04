@@ -3260,6 +3260,30 @@ main {
   color: #7ee08a;
 }
 
+/* Same bug again, this time buttons -- .btn's base (which .btn-ghost never
+   overrides outside :hover) is transparent + color: var(--foreground),
+   and .btn-destructive's --destructive-tint/--destructive are tuned for a
+   light page background too. Both are exactly wrong on this permanently-
+   dark widget once the page itself is light -- .btn-default and
+   .btn-outline are unaffected (opaque backgrounds of their own, readable
+   regardless of what's behind them), so only these two need pinning. */
+.escrow-actions .btn-ghost {
+  color: #e8f5e9;
+}
+
+.escrow-actions .btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.escrow-actions .btn-destructive {
+  background: rgba(220, 38, 38, 0.25);
+  color: #ffb4b4;
+}
+
+.escrow-actions .btn-destructive:hover {
+  background: rgba(220, 38, 38, 0.4);
+}
+
 .escrow-method-circles {
   display: flex;
   flex-wrap: wrap;
