@@ -200,6 +200,12 @@
   "language": {
     "switchTo": "العربية"
   },
+  "a11y": {
+    "toggleDarkMode": "Toggle dark mode",
+    "previousImage": "Previous image",
+    "nextImage": "Next image",
+    "close": "Close"
+  },
   "share": {
     "copyLink": "Copy link",
     "copied": "Copied",
@@ -228,8 +234,8 @@
     "resolvingAddress": "Resolving address...",
     "dragHint": "Drag the pin to fine-tune the exact spot",
     "googleMaps": "Google Maps",
-    "webMap": "Web map",
     "uber": "Uber",
+    "shareWhatsapp": "Share via WhatsApp",
     "copyLocation": "Copy location link"
   },
   "deliveryMethod": {

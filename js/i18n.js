@@ -44,6 +44,10 @@ function applyTranslations(root = document) {
     const value = t(el.getAttribute("data-i18n-title"));
     if (value) el.setAttribute("title", value);
   });
+  root.querySelectorAll("[data-i18n-aria-label]").forEach((el) => {
+    const value = t(el.getAttribute("data-i18n-aria-label"));
+    if (value) el.setAttribute("aria-label", value);
+  });
 }
 
 function applyDocumentAttrs() {
