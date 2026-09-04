@@ -3,7 +3,7 @@ import { t, getLocale, onLocaleChange } from "../i18n.js";
 import { Products, Chat, Notifications, SiteSettings, Escrow } from "../firebase.js";
 import { categoryLabelById, onCategoriesChange, unitLabelKey } from "../constants.js";
 import { authState, cartState, subscribe, updateCartQuantity, removeFromCart } from "../state.js";
-import { btnClass, icon, showMessage, escapeHtml, safeUrl, optimizedImageUrl, escrowStepperHTML, renderEscrowActions, scrollToAndHighlightOrder } from "../ui.js";
+import { btnClass, icon, showMessage, escapeHtml, safeUrl, optimizedImageUrl, escrowStepperHTML, renderEscrowActions, deliveryMethodLineHTML, scrollToAndHighlightOrder } from "../ui.js";
 
 const contentEl = document.getElementById("cart-content");
 const productCache = new Map();
@@ -172,6 +172,7 @@ async function render() {
                 : escrowOrder
                   ? `<div style="margin-top:0.6rem;max-width:26rem">
                        ${escrowOrder.createdAt?.toDate ? `<div class="text-muted" style="font-size:0.78rem;margin-bottom:0.35rem">${t("cart.orderedOnLabel", "Ordered on")}: ${escrowOrder.createdAt.toDate().toLocaleDateString(getLocale() === "ar" ? "ar-EG" : "en-US")}</div>` : ""}
+                       ${escrowOrder.deliveryMethod ? `<div class="text-muted" style="font-size:0.85rem;margin-bottom:0.35rem">${deliveryMethodLineHTML(escrowOrder)}</div>` : ""}
                        <div data-escrow-actions="${productId}"></div>
                        <div style="margin-top:0.75rem">${escrowStepperHTML(escrowOrder)}</div>
                      </div>`

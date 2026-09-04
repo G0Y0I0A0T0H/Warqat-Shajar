@@ -55,7 +55,7 @@ function render() {
               <div>${t("orders.quantity")}: ${escapeHtml(o.quantity)} ${t(unitLabelKey(o.unit))}</div>
               <div>${t("myOrders.farmer")}: ${escapeHtml(o.farmerName)}</div>
               <div>${t("chat.offerTotal")}: ${escapeHtml(o.totalPrice)}</div>
-              ${deliveryMethodLineHTML(o)}
+              ${deliveryMethodLineHTML(escrowOrder || o)}
             </div>
           </div>
           <div class="list-row-actions">

@@ -675,6 +675,12 @@ service cloud.firestore {
         // call deliveryMethodLineHTML/toFixed on these values unconditionally).
         (!('deliveryLocation' in request.resource.data) || request.resource.data.deliveryLocation == null ||
          (request.resource.data.deliveryLocation.lat is number && request.resource.data.deliveryLocation.lng is number)) &&
+        // Same shape check, for the seller's own pickup point snapshotted
+        // onto a pickup order at creation time (js/firebase.js's
+        // Escrow.createOrder) so the buyer has somewhere to go once they've
+        // paid -- see deliveryMethodLineHTML in js/ui.js.
+        (!('pickupLocation' in request.resource.data) || request.resource.data.pickupLocation == null ||
+         (request.resource.data.pickupLocation.lat is number && request.resource.data.pickupLocation.lng is number)) &&
         (
           (
             request.resource.data.chatId != null &&

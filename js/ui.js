@@ -239,7 +239,18 @@ export function optimizedVideoUrl(value) {
 // whichever method the buyer picked when they sent the offer.
 export function deliveryMethodLineHTML(order) {
   if (!order.deliveryMethod) return "";
-  if (order.deliveryMethod !== "delivery") return `<div>${t("deliveryMethod.pickupLabel", "Pickup")}</div>`;
+  if (order.deliveryMethod !== "delivery") {
+    // pickupLocation is a snapshot of the seller's sellerProfiles.pickupPoint
+    // taken at order-creation time (see Escrow.createOrder) -- absent on any
+    // order placed before this existed, or if the farmer never set one, in
+    // which case this falls back to the old plain label with no map link.
+    const { lat, lng, address } = order.pickupLocation || {};
+    if (typeof lat !== "number" || typeof lng !== "number") {
+      return `<div>${t("deliveryMethod.pickupLabel", "Pickup")}</div>`;
+    }
+    const mapUrl = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=16/${lat}/${lng}`;
+    return `<div>${t("deliveryMethod.pickupLabel", "Pickup")}: <a href="${mapUrl}" target="_blank" rel="noopener noreferrer" title="${lat.toFixed(4)}, ${lng.toFixed(4)}" style="display:inline-flex;align-items:center;gap:0.3rem">${icon("map-pin")} ${address ? escapeHtml(address) : t("map.viewOnMap", "View location on map")}</a></div>`;
+  }
   const { lat, lng, address } = order.deliveryLocation || {};
   // Defensive: firestore.rules validates lat/lng are numbers on new writes,
   // but this guards against any order written before that check existed.

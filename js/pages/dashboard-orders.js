@@ -84,7 +84,7 @@ function render() {
               <div>${t("orders.buyerType")}: ${o.buyerAccountType ? t(`roles.${o.buyerAccountType}`) : ""}</div>
               <div>${t("orders.contact")}: ${escapeHtml(o.buyerName)}</div>
               ${o.deliveryNotes ? `<div>${t("orders.delivery")}: ${escapeHtml(o.deliveryNotes)}</div>` : ""}
-              ${deliveryMethodLineHTML(o)}
+              ${deliveryMethodLineHTML(escrowOrder || o)}
             </div>
           </div>
           <div class="list-row-actions" ${isFirstPending ? 'data-order-actions="first-pending"' : ""}>

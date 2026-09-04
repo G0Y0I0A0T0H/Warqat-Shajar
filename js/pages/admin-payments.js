@@ -659,9 +659,11 @@ function render() {
         await WithdrawalRequests.markPaid(btn.dataset.markPaid);
         await reloadOrders();
       } catch {
-        // Wallets.debit now refuses to take a balance negative -- most
-        // likely cause: the farmer had multiple pending requests stacked up
-        // and another one already got paid out first.
+        // WithdrawalRequests.markPaid's transaction refuses to go through if
+        // the balance no longer covers it, or if the request was already
+        // resolved by another click/tab/admin in the meantime -- most likely
+        // cause: the farmer had multiple pending requests stacked up and
+        // another one already got paid out first.
         alert(t("payments.markPaidFailed", "Couldn't mark this paid -- the farmer's balance may no longer cover it (check for other pending requests)."));
         btn.disabled = false;
       }
