@@ -3240,6 +3240,26 @@ main {
   color: rgba(255, 255, 255, 0.45);
 }
 
+/* Same bug, same fix, different shared utility classes -- .text-muted/
+   .error-text/.success-text are used all over the site for page-theme-
+   adaptive secondary/error/success text (var(--muted-foreground)/
+   var(--destructive)/var(--primary)), which is exactly wrong inside this
+   permanently-dark widget once the page itself is light. This is what
+   was actually behind "طلب الإلغاء بتاعك قيد المراجعة..." reading as
+   near-blank under the dispute button -- .text-muted on this dark
+   background, not a missing string. */
+.escrow-actions .text-muted {
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.escrow-actions .error-text {
+  color: #ffb4b4;
+}
+
+.escrow-actions .success-text {
+  color: #7ee08a;
+}
+
 .escrow-method-circles {
   display: flex;
   flex-wrap: wrap;
