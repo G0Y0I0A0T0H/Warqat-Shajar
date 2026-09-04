@@ -3917,6 +3917,51 @@ main {
   border: 1px solid var(--border);
 }
 
+.profile-mini-map {
+  height: 180px;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.06);
+}
+
+/* Crop/category chips on a farmer's public profile -- soft-tinted pills,
+   one consistent icon (a single glyph reads calmer at this size than a
+   different one per category, and this app has no per-category icon set
+   to begin with, only full photos meant for much bigger tiles). */
+.profile-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.profile-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-foreground);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.profile-chip svg {
+  width: 0.9rem;
+  height: 0.9rem;
+}
+
+/* The pickup-point card on a farmer's public profile. */
+.profile-address-card {
+  margin-top: 1.25rem;
+  padding: 1.1rem;
+  border-radius: var(--radius-lg);
+  background: var(--card);
+  border: 1px solid var(--border);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.05);
+}
+
 /* A picked pin drops in rather than just appearing -- purely cosmetic,
    matches the small-polish bar the rest of this picker is held to now. */
 .leaflet-marker-icon {

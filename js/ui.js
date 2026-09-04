@@ -252,7 +252,7 @@ let locationMenuSeq = 0;
 // unauthenticated way to pre-fill a destination from a plain URL -- rather
 // than ship a guessed deep link for one of those that might silently not
 // work, this covers the same need honestly: paste the link anywhere.
-function locationMenuHTML(lat, lng, address) {
+export function locationMenuHTML(lat, lng, address) {
   const id = `location-menu-${locationMenuSeq++}`;
   const label = address ? escapeHtml(address) : t("map.viewOnMap", "View location on map");
   const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
@@ -983,6 +983,22 @@ async function nominatimReverse(lat, lng) {
   if (!res.ok) throw new Error(`nominatim reverse: ${res.status}`);
   const data = await res.json();
   return data.display_name || null;
+}
+
+// Small read-only map preview -- same Leaflet+OSM stack as the picker above,
+// just a single fixed marker with panning/zoom left on (so it still reads as
+// a real interactive map, per the user's own design reference) but no
+// search box, no drag-to-move, no click-to-pick. Used on a farmer's public
+// profile to show their pickup point without the full editing picker.
+export function renderMiniMap(mountEl, lat, lng) {
+  const mapId = `map-preview-${Math.random().toString(36).slice(2)}`;
+  mountEl.innerHTML = `<div id="${mapId}" class="profile-mini-map"></div>`;
+  ensureLeafletLoaded().then(() => {
+    const L = window.L;
+    const map = L.map(mapId, { attributionControl: false }).setView([lat, lng], 15);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19 }).addTo(map);
+    L.marker([lat, lng]).addTo(map);
+  });
 }
 
 export function renderLocationPicker(mountEl, { lat, lng, address, onChange } = {}) {
