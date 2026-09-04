@@ -2,7 +2,7 @@ import { initLayout } from "../layout.js";
 import { t, getLocale, onLocaleChange } from "../i18n.js";
 import { SellerProfiles } from "../firebase.js";
 import { GOVERNORATES, mergeCategories, categoryLabel, onCategoriesChange, governorateLabel } from "../constants.js";
-import { renderAvatar, escapeHtml } from "../ui.js";
+import { renderAvatar, escapeHtml, verifiedBadgeHTML } from "../ui.js";
 
 const categorySelect = document.getElementById("filter-category");
 const governorateSelect = document.getElementById("filter-governorate");
@@ -37,7 +37,7 @@ function farmerCardHTML(profile) {
   return `
     <a class="card card-flush" href="seller-profile.html?uid=${profile.uid}" style="padding:1.25rem;display:flex;flex-direction:column;align-items:center;text-align:center;gap:0.5rem">
       ${renderAvatar(profile.fullName, profile.photoURL, "avatar-lg")}
-      <span style="font-weight:600">${escapeHtml(profile.fullName)}</span>
+      <span style="font-weight:600;display:inline-flex;align-items:center;gap:0.3rem">${escapeHtml(profile.fullName)}${profile.verified ? verifiedBadgeHTML() : ""}</span>
       <span class="text-muted" style="font-size:0.8rem">${governorateLabel(profile.governorate, getLocale())}</span>
     </a>
   `;
