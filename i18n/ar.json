@@ -817,7 +817,7 @@
     "newReview": { "title": "تقييم جديد", "body": "قيّمك {name} بعد التعامل معك" },
     "offerCancelled": { "title": "أُلغي العرض", "body": "ألغى {name} العرض" },
     "adminMessage": { "title": "رسالة من إدارة ورقة شجر", "body": "{text}" },
-    "cartItemAdded": { "title": "أُضيف إلى السلة", "body": "أضاف {name} {product} إلى سلته" },
+    "cartItemAdded": { "title": "أُضيف إلى السلة", "body": "أضفت {product} إلى سلتك" },
     "orderConfirmed": { "title": "تم تأكيد الطلب", "body": "تأكد طلبك على {product}، ووصل إلى المزارع" },
     "newOrderRequest": { "title": "طلب جديد", "body": "طلب {name} {product}" },
     "productAddedToCart": { "title": "منتجك في السلة", "body": "أضاف {name} {product} إلى سلته" },
