@@ -185,7 +185,7 @@ async function renderFeaturedProducts() {
   const el = document.getElementById("featured-products");
   const products = await Products.listActiveProducts({ limitCount: 8 }).catch(() => []);
   if (products.length === 0) {
-    el.innerHTML = `<p class="empty-state">${getLocale() === "ar" ? "مفيش منتجات لسه" : "No products yet"}</p>`;
+    el.innerHTML = `<p class="empty-state">${getLocale() === "ar" ? "لا توجد منتجات بعد" : "No products yet"}</p>`;
     return;
   }
   el.innerHTML = `<div class="product-grid">${products
