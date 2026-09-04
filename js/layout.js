@@ -271,7 +271,7 @@ function renderNotifBell() {
           ${icon("bell")}
           <span class="icon-badge-count" id="notif-badge" style="display:none">0</span>
         </button>
-        <div class="dropdown-content" id="notif-content" style="inset-inline-end:0;inset-inline-start:auto"></div>
+        <div class="dropdown-content" id="notif-content"></div>
       </div>
     `;
     wireDropdown(mount.querySelector("#notif-trigger"), mount.querySelector("#notif-content"));
