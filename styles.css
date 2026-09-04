@@ -4356,6 +4356,15 @@ main {
 /* ---------------------------------------------------------------------- */
 /* Notification bell + dropdown panel                                     */
 /* ---------------------------------------------------------------------- */
+/* Was an inline style on the element itself (id="notif-content") -- moved
+   here as a plain rule so the mobile override below (same #notif-content
+   selector, later in the file) can actually win the cascade instead of
+   having to fight an inline style's automatic priority. */
+#notif-content {
+  inset-inline-end: 0;
+  inset-inline-start: auto;
+}
+
 .notif-panel {
   width: 20rem;
   max-height: 24rem;
@@ -4485,11 +4494,48 @@ main {
    reference: a 32px icon, 13px bold titles, 11px descriptions, minimal
    row padding. */
 @media (max-width: 639px) {
+  /* Anchoring this to the bell button's own position (like every other
+     dropdown still does) is what let it spill off both edges of the
+     screen at once on a real phone -- the bell sits wherever it lands in
+     an already-crowded, horizontally-scrolling header, not reliably near
+     either edge. Fixed + centered on the viewport itself instead, per the
+     user's own request -- position:fixed changes what inset-inline-end/
+     start (set in the unconditional #notif-content rule above) resolve
+     against, from "the trigger's own box" to "the viewport", so they're
+     overridden outright here rather than fought with more specificity. */
+  #notif-content {
+    position: fixed;
+    inset-inline-end: auto;
+    inset-inline-start: auto;
+    /* Plain physical left/right (not the inline-start/end logical
+       properties used everywhere else in this file) on purpose -- mixing
+       a logical inset (which flips to "right" under dir=rtl) with the
+       always-physical translateX(-50%) below silently miscentered this by
+       half the panel's own width instead of actually centering it. left
+       is unambiguous regardless of text direction, so the two combine
+       correctly. */
+    left: 50%;
+    top: 4.25rem;
+    transform: translateX(-50%);
+    margin: 0;
+    /* Glassmorphic, matching the contact widget's own panel (PR #163) --
+       same reasoning: translucent + blurred so it reads as "floating over
+       the page" rather than a solid box, and small/centered enough now to
+       never touch the screen edges regardless of where the bell sits. */
+    background: color-mix(in srgb, var(--popover) 78%, transparent);
+    backdrop-filter: blur(20px) saturate(1.6);
+    -webkit-backdrop-filter: blur(20px) saturate(1.6);
+    border: 1px solid color-mix(in srgb, var(--foreground) 8%, transparent);
+  }
   .notif-panel {
-    width: calc(100vw - 2rem);
-    max-width: 22rem;
-    max-height: 70vh;
+    width: calc(100vw - 3rem);
+    max-width: 19rem;
+    max-height: 65vh;
     padding: 0.3rem;
+    /* Transparent instead of the solid --muted backdrop above -- with the
+       panel itself already glassy, an opaque inner layer would just hide
+       the blur again in every gap between the row cards. */
+    background: transparent;
   }
   .notif-panel-header {
     padding: 0.25rem 0.35rem 0.4rem;
