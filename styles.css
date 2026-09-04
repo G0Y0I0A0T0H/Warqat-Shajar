@@ -4151,6 +4151,162 @@ main {
   transform: rotate(90deg);
 }
 
+/* ---------------------------------------------------------------------- */
+/* seller-profile.html -- Instagram/Facebook-style profile header: a       */
+/* gradient cover, an avatar overlapping it, a centered stat row, and a    */
+/* horizontally-scrolling "highlights" strip of the farmer's own crops     */
+/* (their site's take on story highlights -- built from data this app      */
+/* already has, not a new ephemeral-post upload feature). Per the owner's  */
+/* own request to make this page's identity match those apps closely.     */
+/* ---------------------------------------------------------------------- */
+.avatar-2xl {
+  width: 6.5rem;
+  height: 6.5rem;
+  font-size: 1.9rem;
+}
+
+.seller-profile-card {
+  padding: 0;
+  overflow: visible;
+}
+
+.seller-profile-cover {
+  position: relative;
+  height: 9rem;
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  overflow: hidden;
+  background: linear-gradient(135deg, var(--primary), var(--brand-light) 60%, var(--rating));
+}
+
+.seller-profile-cover::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 82% 15%, rgba(255, 255, 255, 0.28), transparent 45%), radial-gradient(circle at 12% 90%, rgba(255, 255, 255, 0.18), transparent 42%);
+}
+
+.seller-profile-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 0 1.5rem 1.5rem;
+}
+
+.seller-profile-avatar-ring {
+  display: inline-flex;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--card);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.14);
+  margin-top: -3.5rem;
+}
+
+.seller-profile-avatar-ring .avatar {
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+
+.seller-profile-name {
+  margin-top: 0.85rem;
+  font-size: 1.35rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+}
+
+.seller-profile-location {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-top: 0.3rem;
+  color: var(--muted-foreground);
+  font-size: 0.875rem;
+}
+
+.seller-profile-bio {
+  margin-top: 0.75rem;
+  max-width: 32rem;
+  white-space: pre-line;
+  color: var(--foreground);
+}
+
+.seller-profile-stats {
+  display: flex;
+  width: 100%;
+  max-width: 22rem;
+  margin-top: 1.15rem;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.seller-profile-stat {
+  flex: 1;
+  padding: 0.75rem 0.5rem;
+}
+
+.seller-profile-stat + .seller-profile-stat {
+  border-inline-start: 1px solid var(--border);
+}
+
+.seller-profile-stat-value {
+  display: block;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--foreground);
+}
+
+.seller-profile-stat-label {
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+}
+
+.seller-profile-highlights {
+  display: flex;
+  gap: 1.15rem;
+  overflow-x: auto;
+  max-width: 100%;
+  margin-top: 1.25rem;
+  padding: 0.2rem 0.15rem 0.4rem;
+}
+
+.seller-profile-highlight {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  width: 4.25rem;
+}
+
+.seller-profile-highlight-bubble {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-foreground);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+
+.seller-profile-highlight-label {
+  max-width: 100%;
+  font-size: 0.72rem;
+  color: var(--muted-foreground);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.seller-profile-follow-btn {
+  margin-top: 1.25rem;
+  width: 100%;
+  max-width: 16rem;
+  justify-content: center;
+}
+
 /* A picked pin drops in rather than just appearing -- purely cosmetic,
    matches the small-polish bar the rest of this picker is held to now. */
 .leaflet-marker-icon {

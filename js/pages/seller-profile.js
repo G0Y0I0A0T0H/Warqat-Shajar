@@ -13,6 +13,7 @@ let profile = null;
 let followerCount = 0;
 let followingCount = 0;
 let iAmFollowing = false;
+let productCount = 0;
 
 async function loadFollowCounts() {
   [followerCount, followingCount, iAmFollowing] = await Promise.all([
@@ -33,32 +34,49 @@ function renderHeader() {
   const pickup = profile.pickupPoint;
   const hasPickupPoint = typeof pickup?.lat === "number" && typeof pickup?.lng === "number";
   headerEl.innerHTML = `
-    <div class="card" style="padding:1.5rem;display:flex;gap:1.25rem;align-items:flex-start;flex-wrap:wrap">
-      ${renderAvatar(profile.fullName, profile.photoURL, "avatar-lg")}
-      <div style="flex:1;min-width:12rem">
-        <h1 class="heading" style="font-size:1.4rem;display:flex;align-items:center;gap:0.35rem">${escapeHtml(profile.fullName)}${profile.verified ? verifiedBadgeHTML() : ""}</h1>
-        <p class="text-muted" style="display:flex;align-items:center;gap:0.25rem;font-size:0.875rem;margin-top:0.25rem">
-          ${icon("map-pin")} ${governorateLabel(profile.governorate, getLocale())}
-        </p>
-        ${profile.bio ? `<p style="margin-top:0.75rem;white-space:pre-line">${escapeHtml(profile.bio)}</p>` : ""}
+    <div class="card seller-profile-card">
+      <div class="seller-profile-cover"></div>
+      <div class="seller-profile-body">
+        <span class="seller-profile-avatar-ring">${renderAvatar(profile.fullName, profile.photoURL, "avatar-2xl")}</span>
+        <h1 class="heading seller-profile-name">${escapeHtml(profile.fullName)}${profile.verified ? verifiedBadgeHTML() : ""}</h1>
+        <p class="seller-profile-location">${icon("map-pin")} ${governorateLabel(profile.governorate, getLocale())}</p>
+        ${profile.bio ? `<p class="seller-profile-bio">${escapeHtml(profile.bio)}</p>` : ""}
+        <div class="seller-profile-stats">
+          <div class="seller-profile-stat">
+            <span class="seller-profile-stat-value" id="seller-stat-products">${productCount}</span>
+            <span class="seller-profile-stat-label">${t("sellerProfile.statsProducts", "Products")}</span>
+          </div>
+          <div class="seller-profile-stat">
+            <span class="seller-profile-stat-value">${followerCount}</span>
+            <span class="seller-profile-stat-label">${t("sellerProfile.followers", "Followers")}</span>
+          </div>
+          <div class="seller-profile-stat">
+            <span class="seller-profile-stat-value">${followingCount}</span>
+            <span class="seller-profile-stat-label">${t("sellerProfile.following", "Following")}</span>
+          </div>
+        </div>
         ${
           crops.length > 0
-            ? `<div class="profile-chips" style="margin-top:0.85rem">
-                 ${crops.map((c) => `<span class="profile-chip">${icon("leaf")} ${escapeHtml(categoryLabelById(c, getLocale()))}</span>`).join("")}
+            ? `<div class="seller-profile-highlights">
+                 ${crops
+                   .map(
+                     (c) => `
+                   <span class="seller-profile-highlight">
+                     <span class="seller-profile-highlight-bubble">${icon("leaf")}</span>
+                     <span class="seller-profile-highlight-label">${escapeHtml(categoryLabelById(c, getLocale()))}</span>
+                   </span>`,
+                   )
+                   .join("")}
                </div>`
             : ""
         }
-        <div style="display:flex;gap:1.25rem;margin-top:0.85rem;font-size:0.9rem">
-          <span><strong>${followerCount}</strong> ${t("sellerProfile.followers", "Followers")}</span>
-          <span><strong>${followingCount}</strong> ${t("sellerProfile.following", "Following")}</span>
-        </div>
         ${
           canFollow
-            ? `<button type="button" class="${btnClass(iAmFollowing ? "outline" : "default", "sm")}" id="follow-btn" style="margin-top:0.85rem">
+            ? `<button type="button" class="${btnClass(iAmFollowing ? "outline" : "default")} seller-profile-follow-btn" id="follow-btn">
                  ${iAmFollowing ? t("sellerProfile.unfollow", "Unfollow") : t("sellerProfile.follow", "Follow")}
                </button>`
             : !authState.user
-              ? `<a href="login.html" class="${btnClass("outline", "sm")}" style="margin-top:0.85rem;display:inline-block">${t("sellerProfile.loginToFollow", "Log in to follow")}</a>`
+              ? `<a href="login.html" class="${btnClass("outline")} seller-profile-follow-btn">${t("sellerProfile.loginToFollow", "Log in to follow")}</a>`
               : ""
         }
       </div>
@@ -96,6 +114,12 @@ function renderHeader() {
 
 function renderProducts(products) {
   const active = products.filter((p) => p.status === "active");
+  productCount = active.length;
+  // Surgical update, not a full renderHeader() -- this fires on every
+  // realtime products change, and a full re-render would re-init the
+  // pickup-point Leaflet map and reset the follow button on every one.
+  const statEl = document.getElementById("seller-stat-products");
+  if (statEl) statEl.textContent = productCount;
   if (active.length === 0) {
     productsEl.innerHTML = `<p class="empty-state">${t("sellerProfile.noProducts", "No products yet.")}</p>`;
     return;
