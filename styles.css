@@ -3269,10 +3269,20 @@ main {
    regardless of what's behind them), so only these two need pinning. */
 .escrow-actions .btn-ghost {
   color: #e8f5e9;
+  /* A ghost button is invisible-until-hover by design, which reads fine
+     surrounded by other page content -- but alone in this dark, otherwise
+     mostly-empty widget (an order past its payment step has nothing else
+     to show here) that left the whole box looking like a big blank
+     rectangle with two lines of plain text floating in it. A faint
+     default border/fill, matching .escrow-payment-method's own look,
+     gives it real button shape at rest too. */
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.15);
 }
 
 .escrow-actions .btn-ghost:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.25);
 }
 
 .escrow-actions .btn-destructive {
