@@ -432,7 +432,7 @@ function renderContactWidgetPanel() {
       .map(
         (it, i) => `
       <a class="contact-widget-item" style="--item-delay:${i * 45}ms" href="${safeUrl(it.href)}" ${it.external ? 'target="_blank" rel="noopener noreferrer"' : ""}>
-        <span class="contact-widget-item-icon">${icon(it.icon)}</span>
+        <span class="contact-widget-item-icon${it.icon === "whatsapp" ? " is-whatsapp" : ""}">${icon(it.icon)}</span>
         <span>${it.label}</span>
         ${icon("chevron-down", "contact-widget-chevron")}
       </a>

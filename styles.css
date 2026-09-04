@@ -4584,6 +4584,17 @@ main {
   flex-shrink: 0;
 }
 
+/* WhatsApp's own two real brand colors, per the user's own design
+   reference -- a pastel-mint badge holding a vibrant-brand-green glyph,
+   not this app's usual muted --accent/--primary pairing every other row
+   here uses. Fixed values (not theme tokens) on purpose, same reasoning as
+   every other real brand mark: recognizability depends on the exact
+   color, not on matching whatever theme happens to be active. */
+.contact-widget-item-icon.is-whatsapp {
+  background: #e8f9ee;
+  color: #25d366;
+}
+
 .contact-widget-item-icon svg {
   width: 1.05rem;
   height: 1.05rem;
