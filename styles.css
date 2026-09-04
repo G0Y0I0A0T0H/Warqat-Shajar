@@ -2603,12 +2603,23 @@ main {
 /* ---------------------------------------------------------------------- */
 /* Cart page                                                               */
 /* ---------------------------------------------------------------------- */
+.cart-list {
+  padding-inline: 1.25rem;
+  /* .card's own inset border stays; this adds real elevation on top of it
+     -- the plain flat list (a thin divider between rows, nothing else) was
+     part of what read as unpolished, especially right where a row's own
+     dark, fully-opaque order-tracking widget sits directly against it. */
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--foreground) 10%, transparent),
+    0 8px 28px rgba(0, 0, 0, 0.06);
+}
+
 .cart-row {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 1.1rem;
   flex-wrap: wrap;
-  padding: 0.9rem 0;
+  padding: 1.15rem 0;
   border-bottom: 1px solid var(--border);
 }
 
@@ -2618,11 +2629,12 @@ main {
 
 .cart-row-media {
   flex-shrink: 0;
-  width: 4.5rem;
-  height: 4.5rem;
+  width: 5rem;
+  height: 5rem;
   border-radius: var(--radius-lg);
   overflow: hidden;
   background: var(--muted);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--foreground) 8%, transparent);
 }
 
 .cart-row-media img {
@@ -2646,16 +2658,107 @@ main {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: 1rem;
-  padding: 1rem;
-  background: var(--muted);
+  margin-top: 1.25rem;
+  padding: 1.1rem 1.4rem;
+  /* A plain var(--muted) gray read as an afterthought for the one number
+     on this page that actually matters most -- the brand-tinted --accent
+     plus a soft primary-colored ring gives it real visual weight instead. */
+  background: var(--accent);
   border-radius: var(--radius-lg);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary) 25%, transparent);
   font-weight: 600;
 }
 
 .cart-total-value {
-  font-size: 1.25rem;
+  font-size: 1.35rem;
   color: var(--primary);
+}
+
+/* Delivery method choice -- was two bare native radio buttons with plain
+   text labels, easy to miss and inconsistent with every other choice
+   control on the site (role-pill, escrow-method-circle). Same
+   hide-the-real-input-behind-a-styled-label trick as those. */
+.delivery-method-pill {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.85rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.delivery-method-pill input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.delivery-method-pill:has(input:checked) {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  border-color: var(--primary);
+}
+
+.delivery-method-pill:has(input:disabled) {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Quantity +/- stepper -- a bare <input type="number"> relies on the
+   browser's own tiny native spinner (or none at all on some platforms/
+   input modes), which read as the most basic possible control on an
+   otherwise polished page. */
+.qty-stepper {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.qty-stepper .input {
+  border: none;
+  border-radius: 0;
+  text-align: center;
+  width: 3rem;
+  height: 1.9rem;
+  padding-inline: 0.25rem;
+  -moz-appearance: textfield;
+}
+
+.qty-stepper .input::-webkit-inner-spin-button,
+.qty-stepper .input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.qty-stepper-btn {
+  width: 1.9rem;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--muted);
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  color: var(--foreground);
+}
+
+.qty-stepper-btn:hover {
+  background: var(--accent);
+}
+
+.qty-stepper-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 /* ---------------------------------------------------------------------- */

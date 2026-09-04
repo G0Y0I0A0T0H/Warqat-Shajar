@@ -53,14 +53,14 @@ let paymentInfo = null;
 function deliveryMethodRadioHTML(productId) {
   const hasAddress = Boolean(authState.profile?.deliveryAddress);
   return `
-    <div style="display:flex;align-items:center;gap:0.75rem;margin-top:0.4rem;font-size:0.8rem;flex-wrap:wrap">
-      <label style="display:flex;align-items:center;gap:0.3rem;cursor:pointer">
+    <div style="display:flex;align-items:center;gap:0.5rem;margin-top:0.5rem;flex-wrap:wrap">
+      <label class="delivery-method-pill">
         <input type="radio" name="delivery-method-${productId}" value="pickup" checked>
-        ${t("deliveryMethod.pickup")}
+        <span>${t("deliveryMethod.pickup")}</span>
       </label>
-      <label style="display:flex;align-items:center;gap:0.3rem;cursor:${hasAddress ? "pointer" : "not-allowed"}">
+      <label class="delivery-method-pill">
         <input type="radio" name="delivery-method-${productId}" value="delivery" ${hasAddress ? "" : "disabled"}>
-        ${t("deliveryMethod.delivery")}
+        <span>${t("deliveryMethod.delivery")}</span>
       </label>
       ${!hasAddress ? `<a href="profile.html" class="text-muted" style="font-size:0.75rem;text-decoration:underline">${t("map.setAddressLink", "Set your delivery address")}</a>` : ""}
     </div>
@@ -177,8 +177,12 @@ async function render() {
                      </div>`
                   : isPending
                     ? `<div style="margin-top:0.5rem"><span class="${btnClass("outline", "sm")}" style="pointer-events:none">${icon("headset")} ${t("cart.awaitingFarmerResponse", "Waiting for the farmer's response")}</span></div>`
-                    : `<div style="display:flex;align-items:center;gap:0.5rem;margin-top:0.5rem;flex-wrap:wrap">
-                        <input class="input" type="number" min="${escapeHtml(minQtyForTier)}" max="${escapeHtml(product.quantity)}" value="${quantity}" data-qty-input="${productId}" style="max-width:6rem">
+                    : `<div style="display:flex;align-items:center;gap:0.6rem;margin-top:0.5rem;flex-wrap:wrap">
+                        <div class="qty-stepper">
+                          <button type="button" class="qty-stepper-btn" data-qty-decrement="${productId}" aria-label="${t("cart.decreaseQty", "Decrease quantity")}">&minus;</button>
+                          <input class="input" type="number" min="${escapeHtml(minQtyForTier)}" max="${escapeHtml(product.quantity)}" value="${quantity}" data-qty-input="${productId}">
+                          <button type="button" class="qty-stepper-btn" data-qty-increment="${productId}" aria-label="${t("cart.increaseQty", "Increase quantity")}">+</button>
+                        </div>
                         <span class="text-muted" style="font-size:0.8rem">${unitLabel}</span>
                         <span class="cart-row-subtotal" data-subtotal="${productId}">${subtotal.toLocaleString(getLocale())} ${t("products.currency")}</span>
                       </div>
@@ -195,7 +199,7 @@ async function render() {
     .join("");
 
   contentEl.innerHTML = `
-    <div class="card" style="padding:0 1rem">${rows}</div>
+    <div class="card cart-list">${rows}</div>
     <div class="cart-total-row">
       <span>${t("cart.total")}</span>
       <span class="cart-total-value">${grandTotal.toLocaleString(getLocale())} ${t("products.currency")}</span>
@@ -224,6 +228,23 @@ async function render() {
         showMessage(pageErrorEl, t("cart.updateFailed"));
       }
     });
+  });
+
+  // +/- stepper buttons -- just nudge the same <input> and fire the same
+  // "change" event the input's own handler above already listens for
+  // (which does the real min/max clamping and the actual cart write), so
+  // there's exactly one place that logic lives.
+  function nudgeQty(productId, delta) {
+    const input = contentEl.querySelector(`[data-qty-input="${productId}"]`);
+    if (!input) return;
+    input.value = (Number(input.value) || 0) + delta;
+    input.dispatchEvent(new Event("change"));
+  }
+  contentEl.querySelectorAll("[data-qty-decrement]").forEach((btn) => {
+    btn.addEventListener("click", () => nudgeQty(btn.dataset.qtyDecrement, -1));
+  });
+  contentEl.querySelectorAll("[data-qty-increment]").forEach((btn) => {
+    btn.addEventListener("click", () => nudgeQty(btn.dataset.qtyIncrement, 1));
   });
 
   contentEl.querySelectorAll("[data-remove]").forEach((btn) => {

@@ -85,7 +85,9 @@
     "orderFailed": "معرفناش نبعت الطلب، جرب تاني",
     "awaitingFarmerResponse": "مستني رد المزارع",
     "loadingStatus": "جاري التحقق من حالة الطلب...",
-    "orderedOnLabel": "اتطلب يوم"
+    "orderedOnLabel": "اتطلب يوم",
+    "decreaseQty": "قلّل الكمية",
+    "increaseQty": "زوّد الكمية"
   },
   "roles": {
     "farmer": "مزارع",
