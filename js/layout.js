@@ -840,10 +840,24 @@ function wireHeaderSearch() {
   input.addEventListener("keydown", (e) => {
     if (e.key === "Enter") go();
   });
+  const searchWrap = document.querySelector(".header-search");
+  // Below 639px (see styles.css) this collapses to an icon-only button --
+  // the icon's first tap there just expands the real input into view and
+  // focuses it instead of searching on an empty query; a second tap (now
+  // that it's expanded, same as the always-expanded desktop case) searches
+  // for real. Collapses back on blur if nothing was typed/submitted.
+  input.addEventListener("blur", () => searchWrap.classList.remove("is-expanded"));
   const icon = document.querySelector(".header-search [data-icon='search']");
   if (icon) {
     icon.style.cursor = "pointer";
-    icon.addEventListener("click", go);
+    icon.addEventListener("click", () => {
+      if (window.innerWidth < 640 && !searchWrap.classList.contains("is-expanded")) {
+        searchWrap.classList.add("is-expanded");
+        input.focus();
+        return;
+      }
+      go();
+    });
   }
 }
 
