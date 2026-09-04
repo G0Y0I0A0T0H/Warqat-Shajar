@@ -6,7 +6,7 @@ import { guardDashboard } from "../dashboard-shell.js";
 import { t, onLocaleChange } from "../i18n.js";
 import { Chat, Notifications, Escrow, SiteSettings } from "../firebase.js";
 import { unitLabelKey } from "../constants.js";
-import { badgeClass, btnClass, escapeHtml, escrowStepperHTML, renderEscrowActions, deliveryMethodLineHTML } from "../ui.js";
+import { badgeClass, btnClass, escapeHtml, escrowStepperHTML, renderEscrowActions, deliveryMethodLineHTML, wireLocationMenus } from "../ui.js";
 
 const listEl = document.getElementById("my-orders-list");
 let orders = [];
@@ -91,6 +91,8 @@ function render() {
       onChange: reload,
     });
   });
+
+  wireLocationMenus(listEl);
 
   listEl.querySelectorAll("[data-cancel]").forEach((btn) => {
     btn.addEventListener("click", async () => {

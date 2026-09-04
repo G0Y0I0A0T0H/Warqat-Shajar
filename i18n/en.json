@@ -226,7 +226,11 @@
     "searchNoResults": "No matching results",
     "searchError": "Couldn't search, try again",
     "resolvingAddress": "Resolving address...",
-    "dragHint": "Drag the pin to fine-tune the exact spot"
+    "dragHint": "Drag the pin to fine-tune the exact spot",
+    "googleMaps": "Google Maps",
+    "webMap": "Web map",
+    "uber": "Uber",
+    "copyLocation": "Copy location link"
   },
   "deliveryMethod": {
     "title": "Delivery method",
