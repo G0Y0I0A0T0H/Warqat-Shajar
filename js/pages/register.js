@@ -15,6 +15,7 @@ import {
   redirectIfAlreadySignedIn,
 } from "./auth-shared.js";
 import { generateVerificationCode, sendVerificationCode, CODE_VALID_MINUTES } from "../email-verification.js";
+import { sendVerificationSms } from "../sms-verification.js";
 import { subscribe } from "../state.js";
 
 const RESEND_COOLDOWN_SECONDS = 60;
@@ -102,10 +103,28 @@ async function main() {
     submitBtn.disabled = false;
   }
 
+  // registrationData.verifyChannel is "email" | "sms" | "whatsapp" (the pill
+  // picker on the form) -- dispatches to EmailJS (js/email-verification.js)
+  // or the sendVerificationSms Cloud Function (js/sms-verification.js,
+  // functions/index.js) accordingly. Same generated code, same 5-minute
+  // expiry, same client-side check either way -- only the delivery channel
+  // differs.
+  async function deliverVerificationCode(registrationData, code) {
+    if (registrationData.verifyChannel === "email") {
+      await sendVerificationCode(registrationData.email, code);
+    } else {
+      await sendVerificationSms(registrationData.phone, code, registrationData.verifyChannel);
+    }
+  }
+
+  function verifyDestinationLabel(registrationData) {
+    return registrationData.verifyChannel === "email" ? registrationData.email : registrationData.phone;
+  }
+
   async function openVerifyDialog(registrationData) {
     const code = generateVerificationCode();
     pending = { code, expiresAt: Date.now() + CODE_VALID_MINUTES * 60 * 1000, data: registrationData };
-    verifySubtitle.textContent = interpolate(t("auth.verify.subtitle"), { email: registrationData.email });
+    verifySubtitle.textContent = interpolate(t("auth.verify.subtitle"), { destination: verifyDestinationLabel(registrationData) });
     verifyCodeInput.value = "";
     showMessage(verifyError, "");
     verifyResendBtn.disabled = true;
@@ -113,10 +132,10 @@ async function main() {
     openDialog(verifyDialog);
     verifyOverlay.classList.add("is-open");
     try {
-      await sendVerificationCode(registrationData.email, code);
+      await deliverVerificationCode(registrationData, code);
       startResendCooldown();
     } catch {
-      showMessage(verifyError, t("auth.errors.emailSendFailed"));
+      showMessage(verifyError, t(registrationData.verifyChannel === "email" ? "auth.errors.emailSendFailed" : "auth.errors.smsSendFailed"));
       verifyResendBtn.disabled = false;
     }
     verifyCodeInput.focus();
@@ -209,11 +228,11 @@ async function main() {
     showMessage(verifyError, "");
     verifyResendBtn.disabled = true;
     try {
-      await sendVerificationCode(pending.data.email, newCode);
+      await deliverVerificationCode(pending.data, newCode);
       startResendCooldown();
       showMessage(verifyError, t("auth.verify.resent"), "success");
     } catch {
-      showMessage(verifyError, t("auth.errors.emailSendFailed"));
+      showMessage(verifyError, t(pending.data.verifyChannel === "email" ? "auth.errors.emailSendFailed" : "auth.errors.smsSendFailed"));
       verifyResendBtn.disabled = false;
     }
   });
@@ -255,6 +274,7 @@ async function main() {
     const confirmPassword = document.getElementById("confirmPassword").value;
     const governorate = governorateSelect.value;
     const termsAccepted = document.getElementById("terms-accepted").checked;
+    const verifyChannel = document.querySelector('input[name="verify-channel"]:checked')?.value || "email";
 
     if (fullName.length < 2 || !email || password.length < 6) {
       showMessage(formError, t("auth.errors.generic"));
@@ -288,7 +308,7 @@ async function main() {
     }
 
     submitBtn.disabled = true;
-    await openVerifyDialog({ fullName, phone, nationalId, idCardPhoto, email, password, governorate, accountType, categories });
+    await openVerifyDialog({ fullName, phone, nationalId, idCardPhoto, email, password, governorate, accountType, categories, verifyChannel });
   });
 
   googleBtn.addEventListener("click", async () => {

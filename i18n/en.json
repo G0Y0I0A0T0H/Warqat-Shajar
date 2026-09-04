@@ -304,12 +304,16 @@
       "submit": "Save and Continue"
     },
     "verify": {
-      "title": "Confirm your email",
-      "subtitle": "We sent a 6-character verification code to {email}. Enter it below to finish creating your account.",
+      "title": "Confirm your account",
+      "subtitle": "We sent a 6-character verification code to {destination}. Enter it below to finish creating your account.",
       "codeLabel": "Verification code",
       "resend": "Resend code",
-      "resent": "A new code was sent to your email",
-      "confirm": "Confirm and create account"
+      "resent": "A new verification code was sent",
+      "confirm": "Confirm and create account",
+      "channelLabel": "Where should we send your verification code?",
+      "channelEmail": "Email",
+      "channelSms": "Text message (SMS)",
+      "channelWhatsapp": "WhatsApp"
     },
     "errors": {
       "generic": "Something went wrong, please try again",
@@ -324,6 +328,7 @@
       "phoneInvalid": "Enter a valid Egyptian mobile number (e.g. 01xxxxxxxxx).",
       "idCardPhotoRequired": "Please upload a photo of your national ID card",
       "emailSendFailed": "Couldn't send the verification code, check your connection and try again",
+      "smsSendFailed": "Couldn't send the verification code, check your connection and try again",
       "codeRequired": "Please enter the code we sent you",
       "codeInvalid": "That code is incorrect",
       "codeExpired": "This code has expired, press \"Resend code\"",

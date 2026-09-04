@@ -107,6 +107,27 @@
         </div>
 
         <div class="field">
+          <label class="label" data-i18n="auth.verify.channelLabel">Where should we send your verification code?</label>
+          <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+            <label class="delivery-method-pill">
+              <input type="radio" name="verify-channel" value="email" checked>
+              <span data-i18n="auth.verify.channelEmail">Email</span>
+            </label>
+            <label class="delivery-method-pill">
+              <input type="radio" name="verify-channel" value="sms">
+              <span data-i18n="auth.verify.channelSms">Text message (SMS)</span>
+            </label>
+            <!-- WhatsApp delivery is wired end-to-end (js/sms-verification.js,
+                 functions/index.js) but deliberately not offered here yet --
+                 Twilio's WhatsApp sending needs its own Meta-approved sender
+                 and message template, a separate step from plain SMS. Add
+                 this pill back once that's actually approved and
+                 TWILIO_WHATSAPP_FROM is configured, or it would just fail
+                 every time a real registering user picked it. -->
+          </div>
+        </div>
+
+        <div class="field">
           <label class="label" for="password" data-i18n="auth.register.passwordLabel">Password</label>
           <input class="input force-ltr" id="password" name="password" type="password" required minlength="6" dir="ltr">
         </div>
