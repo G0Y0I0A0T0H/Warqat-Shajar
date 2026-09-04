@@ -708,6 +708,21 @@ main {
   margin: 0.25rem 0;
 }
 
+/* "Where do I go" menu (js/ui.js's locationMenuHTML) -- a plain .dropdown,
+   just with its trigger allowed to wrap onto a second line (addresses run
+   long) and its own items tinted green on hover instead of the generic
+   neutral gray, so picking an actual navigation option reads as the
+   brand-colored action it is. */
+.location-menu .btn {
+  white-space: normal;
+  text-align: start;
+  line-height: 1.3;
+}
+.location-menu .dropdown-item:hover {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
 /* ---------------------------------------------------------------------- */
 /* Custom select popup (js/ui.js's enhanceSelect) -- a real <select>'s open
    options list is drawn by the OS/browser, not by this stylesheet, so it

@@ -226,7 +226,11 @@
     "searchNoResults": "لم يُعثر على نتائج مطابقة",
     "searchError": "تعذّر البحث، حاول مرة أخرى",
     "resolvingAddress": "جارٍ تحديد العنوان...",
-    "dragHint": "اسحب الدبوس لضبط الموقع بدقة"
+    "dragHint": "اسحب الدبوس لضبط الموقع بدقة",
+    "googleMaps": "خرائط جوجل",
+    "webMap": "خريطة الويب",
+    "uber": "أوبر",
+    "copyLocation": "نسخ رابط الموقع"
   },
   "deliveryMethod": {
     "title": "طريقة الاستلام",

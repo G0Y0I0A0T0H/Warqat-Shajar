@@ -4,7 +4,7 @@ import { t, getLocale, onLocaleChange } from "../i18n.js";
 import { SiteSettings, Escrow, Wallets, WithdrawalRequests, AuditLog, Profile } from "../firebase.js";
 import { unitLabelKey } from "../constants.js";
 import { isValidPhone } from "./auth-shared.js";
-import { btnClass, badgeClass, icon, showMessage, escapeHtml, deliveryMethodLineHTML, renderZoomableImage, wireZoomableImages } from "../ui.js";
+import { btnClass, badgeClass, icon, showMessage, escapeHtml, deliveryMethodLineHTML, wireLocationMenus, renderZoomableImage, wireZoomableImages } from "../ui.js";
 import { authState } from "../state.js";
 
 function auditPaymentMethod(action, targetId, targetLabel, meta) {
@@ -574,6 +574,7 @@ function render() {
   `;
 
   wireZoomableImages(contentEl);
+  wireLocationMenus(contentEl);
 
   contentEl.querySelectorAll("[data-payments-tab]").forEach((btn) => {
     btn.addEventListener("click", () => {

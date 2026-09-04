@@ -131,6 +131,8 @@ const ICON_PATHS = {
   send: '<path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/>',
   "clipboard-list":
     '<rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/>',
+  car: '<path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.6-1.5-1.8L18 10l-2-3.3c-.4-.6-1-.9-1.7-.9H7.6c-.7 0-1.4.4-1.7 1L4 10l-2.5 1.2A2 2 0 0 0 0 13v3c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/>',
+  copy: '<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
 };
 
 export function icon(name, extraClass = "") {
@@ -234,9 +236,72 @@ export function optimizedVideoUrl(value) {
   return url.replace("/video/upload/", "/video/upload/q_auto/");
 }
 
+// One counter shared by every locationMenuHTML() call on a page, so each
+// dropdown's id is guaranteed unique even across multiple order rows
+// rendered in the same batch -- nothing here needs to survive a reload, it
+// only has to be unique for the life of one render pass.
+let locationMenuSeq = 0;
+
+// A small "where do I actually go" menu, per the user's own design
+// reference: a trigger showing the address (same as the old plain link),
+// opening a dropdown of real ways to get moving -- Google Maps directions
+// (the one almost everyone already has), a plain web map view (no app
+// needed, the original OpenStreetMap link this replaces), a direct Uber
+// ride request (Uber's own documented deep-link format, opens the app with
+// the dropoff pre-filled if installed), and a "copy location" fallback for
+// every other app (inDrive, Careem, WhatsApp, ...) that has no public,
+// unauthenticated way to pre-fill a destination from a plain URL -- rather
+// than ship a guessed deep link for one of those that might silently not
+// work, this covers the same need honestly: paste the link anywhere.
+function locationMenuHTML(lat, lng, address) {
+  const id = `location-menu-${locationMenuSeq++}`;
+  const label = address ? escapeHtml(address) : t("map.viewOnMap", "View location on map");
+  const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+  const osmUrl = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=16/${lat}/${lng}`;
+  const uberUrl = `https://m.uber.com/ul/?action=setPickup&dropoff[latitude]=${lat}&dropoff[longitude]=${lng}${address ? `&dropoff[nickname]=${encodeURIComponent(address)}` : ""}`;
+  const shareUrl = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+  return `
+    <div class="dropdown location-menu">
+      <button type="button" class="btn btn-outline btn-sm" data-location-toggle title="${lat.toFixed(4)}, ${lng.toFixed(4)}">
+        ${icon("map-pin")} ${label} ${icon("chevron-down")}
+      </button>
+      <div class="dropdown-content" id="${id}">
+        <a class="dropdown-item" href="${googleMapsUrl}" target="_blank" rel="noopener noreferrer">${icon("globe")} ${t("map.googleMaps", "Google Maps")}</a>
+        <a class="dropdown-item" href="${osmUrl}" target="_blank" rel="noopener noreferrer">${icon("map-pin")} ${t("map.webMap", "Web map")}</a>
+        <a class="dropdown-item" href="${uberUrl}" target="_blank" rel="noopener noreferrer">${icon("car")} ${t("map.uber", "Uber")}</a>
+        <div class="dropdown-separator"></div>
+        <button type="button" class="dropdown-item" data-copy-location="${escapeHtml(shareUrl)}">${icon("copy")} ${t("map.copyLocation", "Copy location link")}</button>
+      </div>
+    </div>
+  `;
+}
+
+// Wires every location-menu dropdown rendered by locationMenuHTML above --
+// call once on the container after inserting its HTML, same pattern as
+// wireShareButtons/wireZoomableImages elsewhere in this file.
+export function wireLocationMenus(root = document) {
+  root.querySelectorAll("[data-location-toggle]").forEach((toggleBtn) => {
+    const menu = toggleBtn.nextElementSibling;
+    if (menu) wireDropdown(toggleBtn, menu);
+  });
+  root.querySelectorAll("[data-copy-location]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      await copyToClipboard(btn.dataset.copyLocation);
+      const original = btn.innerHTML;
+      btn.innerHTML = `${icon("check")} ${t("share.copied")}`;
+      setTimeout(() => {
+        btn.innerHTML = original;
+      }, 1800);
+    });
+  });
+}
+
 // Shared by dashboard-orders.js, dashboard-my-orders.js, and admin-payments.js's
 // deal rows -- one line, next to the existing deliveryNotes display, for
-// whichever method the buyer picked when they sent the offer.
+// whichever method the buyer picked when they sent the offer. Any page
+// rendering this must also call wireLocationMenus() on the same container
+// afterward, same as every other self-contained-markup-but-needs-wiring
+// helper in this file.
 export function deliveryMethodLineHTML(order) {
   if (!order.deliveryMethod) return "";
   if (order.deliveryMethod !== "delivery") {
@@ -248,8 +313,7 @@ export function deliveryMethodLineHTML(order) {
     if (typeof lat !== "number" || typeof lng !== "number") {
       return `<div>${t("deliveryMethod.pickupLabel", "Pickup")}</div>`;
     }
-    const mapUrl = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=16/${lat}/${lng}`;
-    return `<div>${t("deliveryMethod.pickupLabel", "Pickup")}: <a href="${mapUrl}" target="_blank" rel="noopener noreferrer" title="${lat.toFixed(4)}, ${lng.toFixed(4)}" style="display:inline-flex;align-items:center;gap:0.3rem">${icon("map-pin")} ${address ? escapeHtml(address) : t("map.viewOnMap", "View location on map")}</a></div>`;
+    return `<div style="display:flex;align-items:center;gap:0.4rem;flex-wrap:wrap">${t("deliveryMethod.pickupLabel", "Pickup")}: ${locationMenuHTML(lat, lng, address)}</div>`;
   }
   const { lat, lng, address } = order.deliveryLocation || {};
   // Defensive: firestore.rules validates lat/lng are numbers on new writes,
@@ -257,14 +321,13 @@ export function deliveryMethodLineHTML(order) {
   if (typeof lat !== "number" || typeof lng !== "number") {
     return `<div>${t("deliveryMethod.deliveryLabel", "Delivery to")}: ${t("map.noLocationSet", "No location set yet -- click the map to drop a pin")}</div>`;
   }
-  const mapUrl = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=16/${lat}/${lng}`;
   // The picker (js/ui.js's renderLocationPicker) reverse-geocodes every pick
-  // to a real address now, so that's the link's visible text when a saved
-  // location actually has one -- meaningless to read raw coordinates at a
-  // glance for a farmer deciding where to deliver. An order written before
-  // that existed just falls back to the old generic "view on map" wording;
-  // the exact coordinates stay available either way as a tooltip.
-  return `<div>${t("deliveryMethod.deliveryLabel", "Delivery to")}: <a href="${mapUrl}" target="_blank" rel="noopener noreferrer" title="${lat.toFixed(4)}, ${lng.toFixed(4)}" style="display:inline-flex;align-items:center;gap:0.3rem">${icon("map-pin")} ${address ? escapeHtml(address) : t("map.viewOnMap", "View location on map")}</a></div>`;
+  // to a real address now, so that's the trigger's visible text when a
+  // saved location actually has one -- meaningless to read raw coordinates
+  // at a glance for a farmer deciding where to deliver. An order written
+  // before that existed just falls back to the old generic "view on map"
+  // wording; the exact coordinates stay available either way as a tooltip.
+  return `<div style="display:flex;align-items:center;gap:0.4rem;flex-wrap:wrap">${t("deliveryMethod.deliveryLabel", "Delivery to")}: ${locationMenuHTML(lat, lng, address)}</div>`;
 }
 
 export function interpolate(str, params) {
@@ -662,7 +725,7 @@ export function shareButtonsHTML({ url, title, summary }) {
   `;
 }
 
-async function copyToClipboard(text) {
+export async function copyToClipboard(text) {
   try {
     await navigator.clipboard.writeText(text);
   } catch {

@@ -3,7 +3,7 @@ import { guardDashboard } from "../dashboard-shell.js";
 import { t, onLocaleChange } from "../i18n.js";
 import { Chat, Products, Escrow, Notifications, SiteSettings } from "../firebase.js";
 import { unitLabelKey } from "../constants.js";
-import { badgeClass, btnClass, icon, escapeHtml, deliveryMethodLineHTML, renderEscrowActions, escrowStepperHTML, scrollToAndHighlightOrder } from "../ui.js";
+import { badgeClass, btnClass, icon, escapeHtml, deliveryMethodLineHTML, wireLocationMenus, renderEscrowActions, escrowStepperHTML, scrollToAndHighlightOrder } from "../ui.js";
 import { initHelpTour } from "../help-tour.js";
 
 const listEl = document.getElementById("orders-list");
@@ -117,6 +117,8 @@ function render() {
     if (!order) return;
     renderEscrowActions(mountEl, { order, viewerUid: profileRef.uid, paymentInfo, onChange: reload });
   });
+
+  wireLocationMenus(listEl);
 
   listEl.querySelectorAll("[data-accept]").forEach((btn) => {
     btn.addEventListener("click", async () => {

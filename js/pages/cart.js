@@ -3,7 +3,7 @@ import { t, getLocale, onLocaleChange } from "../i18n.js";
 import { Products, Chat, Notifications, SiteSettings, Escrow } from "../firebase.js";
 import { categoryLabelById, onCategoriesChange, unitLabelKey } from "../constants.js";
 import { authState, cartState, subscribe, updateCartQuantity, removeFromCart } from "../state.js";
-import { btnClass, icon, showMessage, escapeHtml, safeUrl, optimizedImageUrl, escrowStepperHTML, renderEscrowActions, deliveryMethodLineHTML, scrollToAndHighlightOrder } from "../ui.js";
+import { btnClass, icon, showMessage, escapeHtml, safeUrl, optimizedImageUrl, escrowStepperHTML, renderEscrowActions, deliveryMethodLineHTML, wireLocationMenus, scrollToAndHighlightOrder } from "../ui.js";
 
 const contentEl = document.getElementById("cart-content");
 const productCache = new Map();
@@ -273,6 +273,8 @@ async function render() {
       onChange: loadOrderState,
     });
   });
+
+  wireLocationMenus(contentEl);
 }
 
 async function handleOrderNow(productId) {
