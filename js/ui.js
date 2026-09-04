@@ -1178,8 +1178,18 @@ export function escrowAmountBreakdownHTML(order) {
   `;
 }
 
-export function escrowStepperHTML(order) {
+// photoUrl is optional -- a small product thumbnail next to the title, per
+// the user's own design reference for this widget. Only cart.js passes one
+// today (it already has the product's own photo loaded for that row); every
+// other page renders this without it and the thumbnail simply doesn't show.
+export function escrowStepperHTML(order, { photoUrl } = {}) {
   const total = `${order.totalAmount + (order.deliveryFee || 0)} ${t("products.currency", "EGP")}`;
+  const headingHtml = `
+    <div class="escrow-stepper-heading">
+      ${photoUrl ? `<img class="escrow-stepper-thumb" src="${optimizedImageUrl(photoUrl, 80)}" alt="" loading="lazy">` : ""}
+      <span class="escrow-stepper-title">${t("escrow.title", "Order status")}</span>
+    </div>
+  `;
 
   // Cash-on-delivery (or any other admin-flagged noProofRequired method)
   // never has a payment to verify or funds to release -- it's done the
@@ -1188,7 +1198,7 @@ export function escrowStepperHTML(order) {
     return `
       <div class="escrow-stepper">
         <div class="escrow-stepper-header">
-          <span>${t("escrow.title", "Order status")}</span>
+          ${headingHtml}
           <span class="escrow-stepper-price">${total}</span>
         </div>
         <div class="escrow-stepper-banner is-success">
@@ -1214,7 +1224,7 @@ export function escrowStepperHTML(order) {
     return `
       <div class="escrow-stepper">
         <div class="escrow-stepper-header">
-          <span>${t("escrow.title", "Order status")}</span>
+          ${headingHtml}
           <span class="escrow-stepper-price">${total}</span>
         </div>
         <div class="escrow-stepper-banner ${isDisputed ? "is-dispute" : "is-refund"}">
@@ -1232,7 +1242,7 @@ export function escrowStepperHTML(order) {
   return `
     <div class="escrow-stepper">
       <div class="escrow-stepper-header">
-        <span>${t("escrow.title", "Order status")}</span>
+        ${headingHtml}
         <span class="escrow-stepper-price">${total}</span>
       </div>
       <div class="escrow-stepper-steps">

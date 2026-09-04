@@ -174,7 +174,7 @@ async function render() {
                        ${escrowOrder.createdAt?.toDate ? `<div class="text-muted" style="font-size:0.78rem;margin-bottom:0.35rem">${t("cart.orderedOnLabel", "Ordered on")}: ${escrowOrder.createdAt.toDate().toLocaleDateString(getLocale() === "ar" ? "ar-EG" : "en-US")}</div>` : ""}
                        ${escrowOrder.deliveryMethod ? `<div class="text-muted" style="font-size:0.85rem;margin-bottom:0.35rem">${deliveryMethodLineHTML(escrowOrder)}</div>` : ""}
                        <div data-escrow-actions="${productId}"></div>
-                       <div style="margin-top:0.75rem">${escrowStepperHTML(escrowOrder)}</div>
+                       <div style="margin-top:0.75rem">${escrowStepperHTML(escrowOrder, { photoUrl: photo })}</div>
                      </div>`
                   : isPending
                     ? `<div style="margin-top:0.5rem"><span class="${btnClass("outline", "sm")}" style="pointer-events:none">${icon("headset")} ${t("cart.awaitingFarmerResponse", "Waiting for the farmer's response")}</span></div>`

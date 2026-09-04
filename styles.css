@@ -3084,23 +3084,56 @@ main {
 }
 
 /* Escrow order stepper -- a light, card-based look (matches the rest of
-   the page) instead of the fixed-dark box this used to be. */
+   the page) instead of the fixed-dark box this used to be. Two-tone accent
+   per the user's own design reference: fresh green for completed steps
+   (reusing --primary, the site's own brand green -- no new token needed),
+   warm gold for the one step currently in progress (reusing --rating,
+   already the site's one warm-gold token, used elsewhere for star ratings
+   -- picked over inventing a new color so the accent stays consistent with
+   the rest of the design system instead of a one-off). */
 .escrow-stepper {
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 1rem;
+  border-radius: 1.25rem;
   padding: 1.25rem;
   color: var(--card-foreground);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.06);
 }
 
 .escrow-stepper-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 0.85rem;
   font-size: 0.85rem;
   font-weight: 700;
   margin-bottom: 1.25rem;
+}
+
+.escrow-stepper-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-width: 0;
+}
+
+/* Optional small product thumbnail (see escrowStepperHTML's `photoUrl`
+   param -- only cart.js passes one today, since it's the one call site
+   that already has the product's own photo on hand while rendering this
+   row; every other page just omits it and this block never renders). */
+.escrow-stepper-thumb {
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 0.75rem;
+  object-fit: cover;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+.escrow-stepper-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .escrow-stepper-price {
@@ -3111,6 +3144,7 @@ main {
   font-size: 0.8rem;
   font-weight: 700;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .escrow-stepper-steps {
@@ -3152,14 +3186,38 @@ main {
   height: 1.05rem;
 }
 
-.escrow-step.is-done .escrow-step-icon,
-.escrow-step.is-current .escrow-step-icon {
+.escrow-step.is-done .escrow-step-icon {
   background: var(--primary);
   color: var(--primary-foreground);
 }
 
+/* The one step actually in progress gets the warm-gold treatment (not
+   green -- green means "done", gold means "this is where things stand
+   right now"), plus a slow, subtle breathing glow so it reads as live
+   rather than a static illustration. Kept understated on purpose: a
+   4-second cycle and a soft box-shadow pulse, not a jumpy scale/bounce
+   that would feel gimmicky on something as serious as a payment tracker. */
 .escrow-step.is-current .escrow-step-icon {
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 25%, transparent);
+  background: var(--rating);
+  color: #2a1c00;
+  animation: escrow-step-pulse 2.6s ease-in-out infinite;
+}
+
+@keyframes escrow-step-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--rating) 22%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 7px color-mix(in srgb, var(--rating) 12%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .escrow-step.is-current .escrow-step-icon {
+    animation: none;
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--rating) 22%, transparent);
+  }
 }
 
 .escrow-step-label {
@@ -3169,10 +3227,14 @@ main {
   color: var(--muted-foreground);
 }
 
-.escrow-step.is-done .escrow-step-label,
-.escrow-step.is-current .escrow-step-label {
+.escrow-step.is-done .escrow-step-label {
   color: var(--foreground);
   font-weight: 600;
+}
+
+.escrow-step.is-current .escrow-step-label {
+  color: color-mix(in srgb, var(--rating) 70%, var(--foreground));
+  font-weight: 700;
 }
 
 .escrow-step-line {
@@ -3181,6 +3243,7 @@ main {
   min-width: 0.5rem;
   background: var(--border);
   margin-top: 1.1rem;
+  transition: background 0.4s ease;
 }
 
 .escrow-step-line.is-done {
@@ -3198,6 +3261,10 @@ main {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.5rem;
+  }
+  .escrow-stepper-thumb {
+    width: 2.25rem;
+    height: 2.25rem;
   }
   .escrow-step {
     width: 2.6rem;
