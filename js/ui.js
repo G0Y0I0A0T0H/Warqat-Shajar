@@ -109,8 +109,21 @@ const ICON_PATHS = {
   // evenodd punches the phone shape out of the solid bubble as a true
   // cutout, so it reads correctly against ANY background, not just one
   // hardcoded detail color.
+  // Thin-line outline, like every other glyph in this set -- used to be a
+  // filled evenodd-cutout shape (a solid bubble with the phone silhouette
+  // punched out of it), the one solid/filled icon in an otherwise all-
+  // outline set. That technique only reads correctly when the cutout has
+  // real contrast against whatever sits behind it; inside a small tinted
+  // circle (this app's own accent-on-accent icon slots, notif-row-icon,
+  // contact-widget-item-icon, ...) the "hole" and the fill ended up close
+  // enough in tone that the whole glyph just read as a plain green blob.
+  // Dropping fill-rule/clip-rule/fill/stroke here lets both subpaths fall
+  // back to the wrapping <svg>'s own stroke-currentColor/fill-none
+  // defaults, same as every other icon -- a real two-line silhouette
+  // (bubble + phone) instead of a filled shape, so it stays legible
+  // against any background this set is already used on.
   whatsapp:
-    '<path fill-rule="evenodd" clip-rule="evenodd" fill="currentColor" stroke="none" d="M12 2a10 10 0 0 0-8.5 15.3L2 22l4.9-1.3A10 10 0 1 0 12 2Z M8.5 8.3c.2-.5.5-.5.7-.5h.5c.2 0 .4 0 .6.4.2.5.6 1.6.7 1.7.1.1.1.3 0 .5-.1.2-.2.3-.4.5-.2.2-.4.3-.2.6.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.3 2.5 1.5.3.1.5.1.7-.1.2-.2.8-.9 1-1.2.2-.3.4-.2.6-.1.2.1 1.5.7 1.8.9.3.1.4.2.5.3.1.2.1 1-.3 1.9-.4.9-2.1 1.7-2.9 1.8-.7.1-1.6.2-4.6-1-3.7-1.5-6-5.3-6.2-5.6-.2-.3-1.5-2-1.5-3.8 0-1.8.9-2.6 1.3-3z"/>',
+    '<path d="M12 2a10 10 0 0 0-8.5 15.3L2 22l4.9-1.3A10 10 0 1 0 12 2Z"/><path d="M8.5 8.3c.2-.5.5-.5.7-.5h.5c.2 0 .4 0 .6.4.2.5.6 1.6.7 1.7.1.1.1.3 0 .5-.1.2-.2.3-.4.5-.2.2-.4.3-.2.6.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.3 2.5 1.5.3.1.5.1.7-.1.2-.2.8-.9 1-1.2.2-.3.4-.2.6-.1.2.1 1.5.7 1.8.9.3.1.4.2.5.3.1.2.1 1-.3 1.9-.4.9-2.1 1.7-2.9 1.8-.7.1-1.6.2-4.6-1-3.7-1.5-6-5.3-6.2-5.6-.2-.3-1.5-2-1.5-3.8 0-1.8.9-2.6 1.3-3z"/>',
   tiktok: '<path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5"/>',
   youtube: '<rect x="2" y="6" width="20" height="12" rx="3"/><path d="M10 9l5 3-5 3z" fill="currentColor" stroke="none"/>',
   linkedin: '<path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/>',
