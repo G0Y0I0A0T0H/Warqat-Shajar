@@ -261,7 +261,10 @@
     "coverColorsHint": "تظهر خلف صورتك في أعلى صفحتك العامة.",
     "coverColorFrom": "اللون الأول",
     "coverColorTo": "اللون الثاني",
-    "resetToDefault": "استعادة الافتراضي"
+    "resetToDefault": "استعادة الافتراضي",
+    "followerOverrideLabel": "عدد المتابعين",
+    "followerOverrideHint": "يستبدل عدد المتابعين الحقيقي المعروض في صفحتك العامة.",
+    "followerOverrideInputLabel": "العدد المعروض"
   },
   "farmers": {
     "title": "اكتشف المزارعين",
