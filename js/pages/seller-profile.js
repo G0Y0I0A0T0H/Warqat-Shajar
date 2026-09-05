@@ -50,7 +50,7 @@ function renderHeader() {
             <span class="seller-profile-stat-label">${t("sellerProfile.statsProducts", "Products")}</span>
           </div>
           <div class="seller-profile-stat">
-            <span class="seller-profile-stat-value">${followerCount}</span>
+            <span class="seller-profile-stat-value">${profile.followerCountOverride ?? followerCount}</span>
             <span class="seller-profile-stat-label">${t("sellerProfile.followers", "Followers")}</span>
           </div>
           <div class="seller-profile-stat">

@@ -519,6 +519,15 @@ export const SellerProfiles = {
     await updateDoc(doc(sellerProfilesCol, uid), { featured });
   },
 
+  // Owner-only, and only on the owner's OWN profile (see firestore.rules) --
+  // lets the platform owner show a specific follower number on their own
+  // public page instead of the real live Follows count (js/pages/profile.js
+  // writes it, seller-profile.js reads it back). null reverts to the real
+  // count.
+  async setFollowerCountOverride(uid, count) {
+    await updateDoc(doc(sellerProfilesCol, uid), { followerCountOverride: count ?? deleteField() });
+  },
+
   // Directory listing (farmers.html) -- fetched in full and filtered
   // client-side, same "fine at current scale" convention already used for
   // Admin.listAllUsers()/Escrow.listAllOnce() elsewhere in this file.

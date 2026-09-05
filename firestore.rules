@@ -280,6 +280,15 @@ service cloud.firestore {
       allow update: if isOwner() &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['verified']);
 
+      // The owner's own displayed follower count on their OWN public profile
+      // (js/pages/profile.js) -- request.auth.uid == uid on top of isOwner()
+      // on purpose, narrower than the verified branch above: this is "let
+      // the owner style their own page," not "let the owner edit anyone's."
+      allow update: if isOwner() && request.auth.uid == uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['followerCountOverride']) &&
+        (!('followerCountOverride' in request.resource.data) ||
+         (request.resource.data.followerCountOverride is int && request.resource.data.followerCountOverride >= 0));
+
       // Lets any admin feature a farmer on the homepage's "أبرز المزارعين"
       // (Featured Farmers) strip (js/pages/admin-users.js / home.js) --
       // isAdmin() only, same generic scope as the pickupPoint branch above,

@@ -12,6 +12,7 @@ let ratingLoadedFor = null;
 let sellerBio = "";
 let sellerPickupPoint = null;
 let sellerCoverColors = null;
+let sellerFollowerOverride = null;
 let bioLoadedFor = null;
 let pickupPicker = null;
 let deliveryAddressPicker = null;
@@ -48,6 +49,7 @@ async function render() {
     sellerBio = sellerProfile?.bio || "";
     sellerPickupPoint = sellerProfile?.pickupPoint || null;
     sellerCoverColors = sellerProfile?.coverColors || null;
+    sellerFollowerOverride = typeof sellerProfile?.followerCountOverride === "number" ? sellerProfile.followerCountOverride : null;
     render();
     return;
   }
@@ -135,6 +137,23 @@ async function render() {
               <span id="cover-colors-saved" class="success-text" style="display:none">${t("payments.saved", "Saved")}</span>
             </div>
           </div>
+          ${
+            showOwnerPrivileges
+              ? `<div style="margin-top:1.5rem;padding-top:1.25rem;border-top:1px solid var(--border);max-width:28rem">
+                  <div class="label">${t("sellerProfile.followerOverrideLabel", "Follower count")}</div>
+                  <p class="text-muted" style="font-size:0.8rem;margin-bottom:0.6rem">${t("sellerProfile.followerOverrideHint", "Overrides the real follower count shown on your public profile.")}</p>
+                  <div style="display:flex;align-items:flex-end;gap:0.75rem;flex-wrap:wrap">
+                    <div class="field" style="width:auto">
+                      <label class="label" for="follower-override-input" style="font-size:0.8rem">${t("sellerProfile.followerOverrideInputLabel", "Shown count")}</label>
+                      <input type="number" class="input" id="follower-override-input" min="0" step="1" style="width:8rem" value="${sellerFollowerOverride ?? ""}">
+                    </div>
+                    <button type="button" class="btn btn-default btn-sm" id="follower-override-save">${t("payments.save", "Save")}</button>
+                    ${sellerFollowerOverride !== null ? `<button type="button" class="btn btn-outline btn-sm" id="follower-override-reset">${t("sellerProfile.resetToDefault", "Reset to default")}</button>` : ""}
+                    <span id="follower-override-saved" class="success-text" style="display:none">${t("payments.saved", "Saved")}</span>
+                  </div>
+                </div>`
+              : ""
+          }
           <div style="margin-top:1.5rem;padding-top:1.25rem;border-top:1px solid var(--border);max-width:28rem">
             <div class="label">${t("map.pickupPointLabel", "Pickup point")}</div>
             <p class="text-muted" style="font-size:0.8rem;margin-bottom:0.4rem">${t("map.pickupPointHint", "Where buyers who choose pickup can collect their order -- free, no delivery involved.")}</p>
@@ -189,6 +208,24 @@ async function render() {
     viewEl.querySelector("#cover-colors-reset")?.addEventListener("click", async () => {
       await SellerProfiles.updateCoverColors(profile.uid, null);
       sellerCoverColors = null;
+      render();
+    });
+
+    viewEl.querySelector("#follower-override-save")?.addEventListener("click", async (e) => {
+      const raw = viewEl.querySelector("#follower-override-input").value;
+      const count = raw === "" ? null : Math.max(0, Math.trunc(Number(raw)));
+      e.target.disabled = true;
+      await SellerProfiles.setFollowerCountOverride(profile.uid, count);
+      sellerFollowerOverride = count;
+      e.target.disabled = false;
+      const savedEl = viewEl.querySelector("#follower-override-saved");
+      savedEl.style.display = "inline";
+      setTimeout(() => (savedEl.style.display = "none"), 2500);
+      render();
+    });
+    viewEl.querySelector("#follower-override-reset")?.addEventListener("click", async () => {
+      await SellerProfiles.setFollowerCountOverride(profile.uid, null);
+      sellerFollowerOverride = null;
       render();
     });
 

@@ -261,7 +261,10 @@
     "coverColorsHint": "Shown behind your photo at the top of your public profile.",
     "coverColorFrom": "First color",
     "coverColorTo": "Second color",
-    "resetToDefault": "Reset to default"
+    "resetToDefault": "Reset to default",
+    "followerOverrideLabel": "Follower count",
+    "followerOverrideHint": "Overrides the real follower count shown on your public profile.",
+    "followerOverrideInputLabel": "Shown count"
   },
   "farmers": {
     "title": "Discover Farmers",
